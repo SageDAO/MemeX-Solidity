@@ -6,6 +6,6 @@ import pytest
 
 
 @pytest.fixture(scope='module', autouse=True)
-def ERC1155_token(ERC1155Mintable):
-    ERC1155_token = ERC1155Mintable.deploy("try","t",{"from": accounts[0]})
+def ERC1155_token(MemeXNFT):
+    ERC1155_token = MemeXNFT.deploy("try","t",{"from": accounts[0]})
     return ERC1155_token
