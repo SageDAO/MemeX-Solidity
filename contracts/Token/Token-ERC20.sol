@@ -1,16 +1,15 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 // SPDX-License-Identifier: MIT
 
-import "./SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
     @title Bare-bones Token implementation
     @notice Based on the ERC-20 token standard as defined at
             https://eips.ethereum.org/EIPS/eip-20
  */
-contract Token {
-
+contract TokenERC20 {
     using SafeMath for uint256;
 
     string public symbol;
@@ -29,9 +28,7 @@ contract Token {
         string memory _symbol,
         uint256 _decimals,
         uint256 _totalSupply
-    )
-        public
-    {
+    ) public {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
@@ -55,10 +52,7 @@ contract Token {
         @param _spender The address which will spend the funds
         @return The amount of tokens still available for the spender
      */
-    function allowance(
-        address _owner,
-        address _spender
-    )
+    function allowance(address _owner, address _spender)
         public
         view
         returns (uint256)
@@ -83,7 +77,11 @@ contract Token {
     }
 
     /** shared logic for transfer and transferFrom */
-    function _transfer(address _from, address _to, uint256 _value) internal {
+    function _transfer(
+        address _from,
+        address _to,
+        uint256 _value
+    ) internal {
         require(balances[_from] >= _value, "Insufficient balance");
         balances[_from] = balances[_from].sub(_value);
         balances[_to] = balances[_to].add(_value);
@@ -112,14 +110,10 @@ contract Token {
         address _from,
         address _to,
         uint256 _value
-    )
-        public
-        returns (bool)
-    {
+    ) public returns (bool) {
         require(allowed[_from][msg.sender] >= _value, "Insufficient allowance");
         allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
         _transfer(_from, _to, _value);
         return true;
     }
-
 }
