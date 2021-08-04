@@ -22,8 +22,10 @@ compiler:
         runs: 200
         remappings:
           - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.0.0"
+          - '@chainlink=smartcontractkit/chainlink-brownie-contracts@0.2.1'
 dependencies:
     - OpenZeppelin/openzeppelin-contracts@4.0.0
+    - smartcontractkit/chainlink-brownie-contracts@0.2.1
 colors:
     key:
     value: bright blue
