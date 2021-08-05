@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 //import "@openzeppelin/contracts/ownership/Ownable.sol";
 
-contract MemeXNFT is ERC1155("www."){
+contract MemeXNFT is ERC1155(""){
     using SafeMath for uint256;
     string public name;
     // Contract symbol
@@ -93,9 +93,9 @@ contract MemeXNFT is ERC1155("www."){
         // Returns the token IDs of minted tokens
         return tokenIds;
     }
-    function uri(uint256 _id) public override view returns (string memory) {
+   /*  function uri(uint256 _id) public override view returns (string memory) {
         return string(abi.encodePacked(super.uri(_id), toHexString(_id), ".json"));
-    }
+    } */
 
 
 
@@ -113,6 +113,9 @@ contract MemeXNFT is ERC1155("www."){
         return true;
     }
 
+    function setURI(string memory newUri) public {
+        _setURI(newUri);
+    }
       /**
      * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation.
      */

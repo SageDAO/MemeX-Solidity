@@ -10,5 +10,6 @@ def test_get_uri(ERC1155_token):
     _quantity = 2
     _data = ""
     ERC1155_token.mint(_to, _id, _quantity, _data)
-
+    ERC1155_token.setURI("https://gateway.pinata.cloud/ipfs/QmVGujQmpxnsgE21TpNzjir5xMmjxuoCn2HyZWyKcs2Lbu/{id}.json")
     print(ERC1155_token.uri(_id))
+
