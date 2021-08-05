@@ -12,23 +12,21 @@ contract MemeXNFT is ERC1155(""){
     bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
     address internal lotteryContract;
 
-    uint256 internal totalSupply;
+    address public owner;
     mapping(uint256 => uint256) tokenSupply;
-    struct TicketInfo {
+
+    
+    struct NFTInfo{
         address owner;
-        bool claimed;
+        bool minted;
         uint256 lotteryId;
     }
-    mapping(uint256 => TicketInfo) internal ticketInfo;
-    // User address => Lottery ID => Ticket IDs
-    mapping(address => mapping(uint256 => uint256[])) internal userTickets;
+
+    mapping(uint256 => NFTInfo) internal nftInfo;
     
-    event InfoBatchMint(
-        address indexed receiving, 
-        uint256 lotteryId,
-        uint256 amountOfTokens, 
-        uint256[] tokenIds
-    );
+    
+    event LotteryContractUpdated(address oldLotteryContract, address newLotteryContract);
+    
 
     constructor(
         string memory _name,
@@ -36,86 +34,59 @@ contract MemeXNFT is ERC1155(""){
     ) public {
         name = _name;
         symbol = _symbol;
+        owner = msg.sender;
     }
 
+    // add owner
+    function setLotteryContract(address _lotteryContract) public  {
+        require(owner == msg.sender);
+        require(lotteryContract != address(0));
+        lotteryContract = _lotteryContract;
+        oldAddrr = address(lotteryContract);
+        emit LotteryContractUpdated(oldAddr, lotteryContract);
 
+    }
+
+    ///@dev use this function to mint the tokens with lottery contract
     function mint(
         address _to,
         uint256 _id,
         uint256 _quantity,
-        bytes memory _data
+        bytes memory _data,
+        uint256 _lotteryId
         ) public  {
+            require(msg.sender == lotteryContract,"Only lottery contract can mint");
             _mint(_to, _id, _quantity, _data);
             tokenSupply[_id] = tokenSupply[_id].add(_quantity);
-    }
 
-    
-
-    function batchMint(
-        address _to,
-        uint256 _lotteryId,
-        uint8 _numberOfTickets,
-        uint8 sizeOfLottery
-    )
-        external
-        returns(uint256[] memory)
-    {
-        // Storage for the amount of tokens to mint (always 1)
-        uint256[] memory amounts = new uint256[](_numberOfTickets);
-        // Storage for the token IDs
-        uint256[] memory tokenIds = new uint256[](_numberOfTickets);
-        for (uint8 i = 0; i < _numberOfTickets; i++) {
-            totalSupply = totalSupply.add(1);
-            tokenIds[i] = totalSupply;
-            amounts[i] = 1;
-            
-            ticketInfo[totalSupply] = TicketInfo(
+            nftInfo(_id) = NFTInfo(
                 _to,
-                false,
+                true,
                 _lotteryId
             );
-            userTickets[_to][_lotteryId].push(totalSupply);
+    }       
+
+    
+    
+    function batchMint(
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _quantities,
+        bytes memory _data
+    ) public {
+        for (uint256 i = 0; i< _ids.length; i++){
+            uint256 _id = _ids[i];
+            uint256 quantity = _quantities[i];
+            tokenSupply[_id] =  tokenSupply[_id].add(quantity);
+
         }
-        // Minting the batch of tokens
-        _mintBatch(
-            _to,
-            tokenIds,
-            amounts,
-            msg.data
-        );
-        // Emitting relevant info
-        emit InfoBatchMint(
-            _to, 
-            _lotteryId,
-            _numberOfTickets, 
-            tokenIds
-        ); 
-        // Returns the token IDs of minted tokens
-        return tokenIds;
-    }
-   /*  function uri(uint256 _id) public override view returns (string memory) {
-        return string(abi.encodePacked(super.uri(_id), toHexString(_id), ".json"));
-    } */
-
-
-
-    function claimTicket(uint256 _ticketID, uint256 _lotteryId) external returns(bool) {
-        require(
-            ticketInfo[_ticketID].claimed == false,
-            "Ticket already claimed"
-        );
-        require(
-            ticketInfo[_ticketID].lotteryId == _lotteryId,
-            "Ticket not for this lottery"
-        );
-        
-        ticketInfo[_ticketID].claimed = true;
-        return true;
+        _batchMint(_to, _ids, _quantities, _data);
     }
 
-    function setURI(string memory newUri) public {
-        _setURI(newUri);
+    function getLotteryId(uint256 _tokenId) public view{
+            return nftInfo(_tokenId)._lotteryId;
     }
+
       /**
      * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation.
      */
