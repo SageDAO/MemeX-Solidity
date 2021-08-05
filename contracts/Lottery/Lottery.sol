@@ -4,6 +4,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "../../interfaces/IRandomNumberGenerator.sol";
+
 contract Lottery is Ownable {
     using SafeMath for uint256;
 
@@ -29,10 +31,9 @@ contract Lottery is Ownable {
         Status lotteryStatus; // Status for lotto
         uint16 lotSize; // number of NFTs on this lot
         uint8 costPerTicket; // Cost per ticket in $PINA
-        uint256 startingBlock; // Block for start of lotto
-        uint256 closingBlock; // Block for end of entries
+        uint256 startingTime; // Timestamp to start the lottery
+        uint256 closingTime; // Timestamp for end of entries
         uint16[] winningNumbers; // The winning numbers
-        address[] boosters; // Accounts that boosted the participation on this lottery
     }
 
     //-------------------------------------------------------------------------
@@ -44,11 +45,7 @@ contract Lottery is Ownable {
         pina = IERC20(_pina);
     }
 
-    function initialize(address _IRandomNumberGenerator)
-        external
-        initializer
-        onlyOwner
-    {
+    function initialize(address _IRandomNumberGenerator) external onlyOwner {
         require(
             _IRandomNumberGenerator != address(0),
             "Contracts cannot be 0 address"
@@ -74,28 +71,7 @@ contract Lottery is Ownable {
         address _address
     ) external view returns (uint256 totalCost) {
         uint256 ticketPrice = lotteryHistory[_lotteryId].costPerTicket;
-        if (isBooster(_lotteryId, _address)) {
-            ticketPrice = ticketPrice.div(2);
-        }
         totalCost = ticketPrice.mul(_numberOfTickets);
-    }
-
-    function isBooster(uint256 _lotteryId, address _address)
-        internal
-        view
-        returns (bool)
-    {
-        // check if a given address boosted on a given lottery
-        for (
-            uint256 i = 0;
-            i < lotteryHistory[_lotteryId].boosters.length;
-            i++
-        ) {
-            if (lotteryHistory[_lotteryId].boosters[i] == _address) {
-                return (true);
-            }
-        }
-        return (false);
     }
 
     //-------------------------------------------------------------------------
@@ -107,44 +83,45 @@ contract Lottery is Ownable {
         _;
     }
 
-    function createNewLotto(
+    function createNewLottery(
         uint16 _lotSize,
-        uint256 _costPerTicket,
-        uint256 _startingTimestamp,
-        uint256 _closingTimestamp
+        uint8 _costPerTicket,
+        uint256 _startingTime,
+        uint256 _closingTime
     ) external onlyOwner returns (uint256 lotteryId) {
         require(
             _lotSize != 0 && _costPerTicket != 0,
             "Lot size and Ticket cost cannot be 0"
         );
         require(
-            _startingTimestamp != 0 && _startingTimestamp < _closingTimestamp,
+            _startingTime != 0 && _startingTime < _closingTime,
             "Timestamps for lottery invalid"
         );
         // Incrementing lottery ID
         lotteryCounter = lotteryCounter.add(1);
         lotteryId = lotteryCounter;
-        uint16[] memory winningNumbers = new uint16[](sizeOfLottery_);
+        uint16[] memory winningNumbers = new uint16[](_lotSize);
+        uint16[] memory boosters = new uint16[](0);
         Status lotteryStatus;
-        if (_startingBlock >= getCurrentTime()) {
+        if (_startingTime >= getCurrentTime()) {
             lotteryStatus = Status.Open;
         } else {
-            lotteryStatus = Status.NotStarted;
+            lotteryStatus = Status.Planned;
         }
         // Saving data in struct
-        LottoInfo memory newLottery = LottoInfo(
+        LotteryInfo memory newLottery = LotteryInfo(
             lotteryId,
             lotteryStatus,
-            _prizePoolInCake,
+            _lotSize,
             _costPerTicket,
-            _prizeDistribution,
-            _startingTimestamp,
-            _closingTimestamp,
+            _startingTime,
+            _closingTime,
             winningNumbers
         );
-        allLotteries_[lotteryId] = newLottery;
+        lotteryHistory[lotteryId] = newLottery;
+    }
 
-        // Emitting important information around new lottery.
-        emit LotteryOpen(lotteryId, nft_.getTotalSupply());
+    function getCurrentTime() public view returns (uint256) {
+        return block.timestamp;
     }
 }
