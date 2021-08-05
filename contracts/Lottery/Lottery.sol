@@ -53,8 +53,7 @@ contract Lottery is Ownable {
             _IRandomNumberGenerator != address(0),
             "Contracts cannot be 0 address"
         );
-        nft_ = ILotteryNFT(_lotteryNFT);
-        randomGenerator_ = IRandomNumberGenerator(_IRandomNumberGenerator);
+        randomGenerator = IRandomNumberGenerator(_IRandomNumberGenerator);
     }
 
     function getLotteryInfo(uint256 _lotteryId)
@@ -86,7 +85,66 @@ contract Lottery is Ownable {
         view
         returns (bool)
     {
-        // check if the address boosted on this lottery
-        return false;
+        // check if a given address boosted on a given lottery
+        for (
+            uint256 i = 0;
+            i < lotteryHistory[_lotteryId].boosters.length;
+            i++
+        ) {
+            if (lotteryHistory[_lotteryId].boosters[i] == _address) {
+                return (true);
+            }
+        }
+        return (false);
+    }
+
+    //-------------------------------------------------------------------------
+    // MODIFIERS
+    //-------------------------------------------------------------------------
+
+    modifier onlyRandomGenerator() {
+        require(msg.sender == address(randomGenerator), "Only RNG address");
+        _;
+    }
+
+    function createNewLotto(
+        uint16 _lotSize,
+        uint256 _costPerTicket,
+        uint256 _startingTimestamp,
+        uint256 _closingTimestamp
+    ) external onlyOwner returns (uint256 lotteryId) {
+        require(
+            _lotSize != 0 && _costPerTicket != 0,
+            "Lot size and Ticket cost cannot be 0"
+        );
+        require(
+            _startingTimestamp != 0 && _startingTimestamp < _closingTimestamp,
+            "Timestamps for lottery invalid"
+        );
+        // Incrementing lottery ID
+        lotteryCounter = lotteryCounter.add(1);
+        lotteryId = lotteryCounter;
+        uint16[] memory winningNumbers = new uint16[](sizeOfLottery_);
+        Status lotteryStatus;
+        if (_startingBlock >= getCurrentTime()) {
+            lotteryStatus = Status.Open;
+        } else {
+            lotteryStatus = Status.NotStarted;
+        }
+        // Saving data in struct
+        LottoInfo memory newLottery = LottoInfo(
+            lotteryId,
+            lotteryStatus,
+            _prizePoolInCake,
+            _costPerTicket,
+            _prizeDistribution,
+            _startingTimestamp,
+            _closingTimestamp,
+            winningNumbers
+        );
+        allLotteries_[lotteryId] = newLottery;
+
+        // Emitting important information around new lottery.
+        emit LotteryOpen(lotteryId, nft_.getTotalSupply());
     }
 }
