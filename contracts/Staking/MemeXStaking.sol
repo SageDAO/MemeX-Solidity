@@ -1,7 +1,10 @@
-/* 
+
 pragma  solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "../../interfaces/IERC1155.sol";
+import './Pausable.sol';
 
 contract PoolTokenWrapper {
 	using SafeMath for uint256;
@@ -33,7 +36,7 @@ contract PoolTokenWrapper {
 		return _balances[id][account];
 	}
 
-	function stake(uint256 id, uint256 amount) public {
+	function stake(uint256 id, uint256 amount) virtual public {
 		_totalSupply = _totalSupply.add(amount);
 		_poolBalances[id] = _poolBalances[id].add(amount);
 		_accountBalances[msg.sender] = _accountBalances[msg.sender].add(amount);
@@ -41,7 +44,7 @@ contract PoolTokenWrapper {
 		token.transferFrom(msg.sender, address(this), amount);
 	}
 
-	function withdraw(uint256 id, uint256 amount) public {
+	function withdraw(uint256 id, uint256 amount) virtual public {
 		_totalSupply = _totalSupply.sub(amount);
 		_poolBalances[id] = _poolBalances[id].sub(amount);
 		_accountBalances[msg.sender] = _accountBalances[msg.sender].sub(amount);
@@ -53,7 +56,7 @@ contract PoolTokenWrapper {
 		uint256 fromId,
 		uint256 toId,
 		uint256 amount
-	) public {
+	) public virtual {
 		_poolBalances[fromId] = _poolBalances[fromId].sub(amount);
 		_balances[fromId][msg.sender] = _balances[fromId][msg.sender].sub(amount);
 
@@ -160,11 +163,13 @@ contract MemeLimitedCollections is PoolTokenWrapper, Ownable, Pausable {
 	// override PoolTokenWrapper's stake() function
 	function stake(uint256 pool, uint256 amount)
 		public
+        override
 		poolExists(pool)
 		updateReward(msg.sender, pool)
 		whenNotPaused()
+        
 	{
-		Pool memory p = pools[pool];
+		Pool storage p = pools[pool];
 
 		require(block.timestamp >= p.periodStart, "pool not open");
 		require(amount.add(balanceOf(msg.sender, pool)) <= p.maxStake, "stake exceeds max");
@@ -174,7 +179,7 @@ contract MemeLimitedCollections is PoolTokenWrapper, Ownable, Pausable {
 	}
 
 	// override PoolTokenWrapper's withdraw() function
-	function withdraw(uint256 pool, uint256 amount) public poolExists(pool) updateReward(msg.sender, pool) {
+	function withdraw(uint256 pool, uint256 amount) public override poolExists(pool) updateReward(msg.sender, pool) {
 		require(amount > 0, "cannot withdraw 0");
 
 		super.withdraw(pool, amount);
@@ -188,13 +193,14 @@ contract MemeLimitedCollections is PoolTokenWrapper, Ownable, Pausable {
 		uint256 amount
 	)
 		public
+        override
 		poolExists(fromPool)
 		poolExists(toPool)
 		updateReward(msg.sender, fromPool)
 		updateReward(msg.sender, toPool)
 		whenNotPaused()
 	{
-		Pool memory toP = pools[toPool];
+		Pool storage toP = pools[toPool];
 
 		require(block.timestamp >= toP.periodStart, "pool not open");
 		require(amount.add(balanceOf(msg.sender, toPool)) <= toP.maxStake, "stake exceeds max");
@@ -242,6 +248,7 @@ contract MemeLimitedCollections is PoolTokenWrapper, Ownable, Pausable {
 
 	function rescuePineapples(address account, uint256 pool)
 		public
+        
 		poolExists(pool)
 		updateReward(account, pool)
 		returns (uint256)
@@ -343,6 +350,6 @@ contract MemeLimitedCollections is PoolTokenWrapper, Ownable, Pausable {
 		uint256 amount = pendingWithdrawals[msg.sender];
 		require(amount > 0, "nothing to withdraw");
 		pendingWithdrawals[msg.sender] = 0;
-		msg.sender.transfer(amount);
+		payable(msg.sender).transfer(amount);
 	}
-} */
+}
