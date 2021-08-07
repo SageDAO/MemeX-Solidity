@@ -22,8 +22,7 @@ contract MemeXNFT is ERC1155(""){
         uint256 lotteryId;
     }
 
-    mapping(uint256 => NFTInfo) internal nftInfo;
-    
+    NFTInfo[] public nftInfo;
     
     event LotteryContractUpdated(address oldLotteryContract, address newLotteryContract);
     
@@ -31,7 +30,7 @@ contract MemeXNFT is ERC1155(""){
     constructor(
         string memory _name,
         string memory _symbol
-    ) public {
+    ) {
         name = _name;
         symbol = _symbol;
         owner = msg.sender;
@@ -42,7 +41,7 @@ contract MemeXNFT is ERC1155(""){
         require(owner == msg.sender);
         require(lotteryContract != address(0));
         lotteryContract = _lotteryContract;
-        oldAddrr = address(lotteryContract);
+        address oldAddr = address(lotteryContract);
         emit LotteryContractUpdated(oldAddr, lotteryContract);
 
     }
@@ -59,11 +58,11 @@ contract MemeXNFT is ERC1155(""){
             _mint(_to, _id, _quantity, _data);
             tokenSupply[_id] = tokenSupply[_id].add(_quantity);
 
-            nftInfo(_id) = NFTInfo(
+            nftInfo.push(NFTInfo(
                 _to,
                 true,
                 _lotteryId
-            );
+            ));
     }       
 
     
@@ -80,11 +79,11 @@ contract MemeXNFT is ERC1155(""){
             tokenSupply[_id] =  tokenSupply[_id].add(quantity);
 
         }
-        _batchMint(_to, _ids, _quantities, _data);
+        _mintBatch(_to, _ids, _quantities, _data);
     }
 
-    function getLotteryId(uint256 _tokenId) public view{
-            return nftInfo(_tokenId)._lotteryId;
+    function getLotteryId(uint256 _tokenId) public view returns (uint256){
+            return nftInfo[_tokenId].lotteryId;
     }
 
       /**
