@@ -12,15 +12,27 @@ import "../../interfaces/IRandomNumberGenerator.sol";
 contract Lottery is Ownable {
     using SafeMath for uint256;
 
+    
     // Address of the PINA token
     IERC20 internal pina;
     bytes32 internal requestId_;
+    uint256 public priceOfTicket;
     // Address of the randomness generator
     IRandomNumberGenerator internal randomGenerator;
 
     uint256 private lotteryCounter;
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
+    
+    //lotteryid => participants
+    mapping(uint256 => address[]) internal participants;
 
+    //lotteryId => participantId => participant address
+    mapping(uint256 => mapping(uint256 => address)) participant;
+
+    mapping(uint256 => mapping(uint256 => bool)) winningParticipants;
+
+    //lotteryId => participant address => participantId
+    mapping(uint256 => mapping(address => uint256)) participantToId;
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
         Canceled, // A planned lottery that got canceled before any tickets bought
@@ -29,9 +41,10 @@ contract Lottery is Ownable {
         Completed // The lottery has been closed and the numbers drawn
     }
 
+    
+
     // Information about lotteries
     struct LotteryInfo {
-        uint16 maxValidRange;
         uint256 lotteryID; // ID for lotto
         Status lotteryStatus; // Status for lotto
         uint16 lotSize; // number of NFTs on this lot
@@ -39,10 +52,13 @@ contract Lottery is Ownable {
         uint256 startingTime; // Timestamp to start the lottery
         uint256 closingTime; // Timestamp for end of entries
         uint16[] winningNumbers; // The winning numbers
+        
     }
 
-    event RequestNumbers(uint256 lotteryId, bytes32 requestId);
 
+
+    event RequestNumbers(uint256 lotteryId, bytes32 requestId);
+    event priceOfTokenSet(address operator, uint256 priceOfTicket);
 
     //-------------------------------------------------------------------------
     // CONSTRUCTOR
@@ -51,6 +67,11 @@ contract Lottery is Ownable {
     constructor(address _pina) public {
         require(_pina != address(0), "Contract can't be 0 address");
         pina = IERC20(_pina);
+    }
+
+    function setPriceOfToken(uint256 _price) public onlyOwner(){
+        priceOfTicket = _price;
+        emit priceOfTokenSet(msg.sender, _price);
     }
 
     function initialize(address _IRandomNumberGenerator) external onlyOwner {
@@ -62,9 +83,9 @@ contract Lottery is Ownable {
     }
 
     function getLotteryInfo(uint256 _lotteryId)
-        external
+        internal
         view
-        returns (LotteryInfo memory)
+        returns (LotteryInfo storage)
     {
         return (lotteryHistory[_lotteryId]);
     }
@@ -95,8 +116,7 @@ contract Lottery is Ownable {
         uint16 _lotSize,
         uint8 _costPerTicket,
         uint256 _startingTime,
-        uint256 _closingTime,
-        uint16 maxValidRange
+        uint256 _closingTime
     ) external onlyOwner returns (uint256 lotteryId) {
         require(
             _lotSize != 0 && _costPerTicket != 0,
@@ -119,7 +139,6 @@ contract Lottery is Ownable {
         }
         // Saving data in struct
         LotteryInfo memory newLottery = LotteryInfo(
-            maxValidRange,
             lotteryId,
             lotteryStatus,
             _lotSize,
@@ -127,6 +146,7 @@ contract Lottery is Ownable {
             _startingTime,
             _closingTime,
             winningNumbers
+            
         );
         lotteryHistory[lotteryId] = newLottery;
     }
@@ -155,27 +175,39 @@ contract Lottery is Ownable {
         bytes32 _requestId, 
         uint256 _randomNumber
     ) 
-        external
+        internal
         onlyRandomGenerator()
     {
-        /* require(
-            allLotteries_[_lotteryId].lotteryStatus == Status.Closed,
-            "Draw numbers first"
-        );
-        if(requestId_ == _requestId) {
-            allLotteries_[_lotteryId].lotteryStatus = Status.Completed;
-            allLotteries_[_lotteryId].winningNumbers = _split(_randomNumber);
-        } */
+        
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         uint16 sizeOfLottery_ = lottery.lotSize;
-        uint16 maxValidRange_ = lottery.maxValidRange;
+        uint256 maxValidRange_ = participants[_lotteryId].length;
         lottery.winningNumbers = _split(_randomNumber, sizeOfLottery_,maxValidRange_);
+    }
+
+    function buyOneTicket(uint256 _lotteryId) public{
+        require(pina.balanceOf(msg.sender) >= priceOfTicket);
+        
+        pina.transferFrom(msg.sender, address(this), priceOfTicket);
+        participants[_lotteryId].push(msg.sender);
+
+        uint256 participantId = participants[_lotteryId].length - 1;
+        participant[_lotteryId][participantId] = msg.sender;
+        participantToId[_lotteryId][msg.sender] = participantId;
+        
+    }
+
+    function buyMultipleTicket(uint256 _lotteryId, uint256 _numberOfTickets) public{
+        require(pina.balanceOf(msg.sender) >= priceOfTicket.mul(_numberOfTickets));
+        for(uint i = 0; i< _numberOfTickets; i++){
+            buyOneTicket(_lotteryId);
+        }
     }
     
     function _split(
         uint256 _randomNumber,
         uint16 sizeOfLottery_,
-        uint16 maxValidRange_
+        uint256 maxValidRange_
     ) 
         internal
         view 
@@ -193,5 +225,21 @@ contract Lottery is Ownable {
             winningNumbers[i] = uint16(numberRepresentation.mod(maxValidRange_));
         }
     return winningNumbers;
+    }
+
+    function finaliseLottery(uint256 _lotteryId) public onlyOwner(){
+        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
+        uint16 winningNumber;
+        for(uint256 i = 0; i<lottery.lotSize; i++){
+            winningNumber = lottery.winningNumbers[i];
+            winningParticipants[_lotteryId][winningNumber] = true;
+        }
+    }
+
+    function redeemNFT(uint256 _lotteryId) public{
+        uint256 winningNumber = participantToId[_lotteryId][msg.sender];
+        require(winningParticipants[_lotteryId][winningNumber] == true);
+
+        //mint
     }
 }
