@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 
 
@@ -14,11 +14,14 @@ contract Lottery is Ownable {
 
     
     // Address of the PINA token
-    IERC20 internal pina;
     bytes32 internal requestId_;
     uint256 public priceOfTicket;
+
+    uint256 public poolId;
     // Address of the randomness generator
     IRandomNumberGenerator internal randomGenerator;
+    IRewards public pinaRewards;
+
 
     uint256 private lotteryCounter;
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
@@ -26,6 +29,10 @@ contract Lottery is Ownable {
     //lotteryid => participants
     mapping(uint256 => address[]) internal participants;
 
+    //lotteryId => user => pinaRemaining
+    mapping(uint256 => mapping(address => uint256)) internal pinaRemaining;
+    
+    mapping(uint256 => mapping(address => bool)) internal pinaVisitedOnce;
     //lotteryId => participantId => participant address
     mapping(uint256 => mapping(uint256 => address)) participant;
 
@@ -54,7 +61,7 @@ contract Lottery is Ownable {
         uint16[] winningNumbers; // The winning numbers
         
     }
-
+    
 
 
     event RequestNumbers(uint256 lotteryId, bytes32 requestId);
@@ -64,9 +71,10 @@ contract Lottery is Ownable {
     // CONSTRUCTOR
     //-------------------------------------------------------------------------
 
-    constructor(address _pina) public {
+    constructor(address _pina, address _stakingContract) public {
         require(_pina != address(0), "Contract can't be 0 address");
-        pina = IERC20(_pina);
+        poolId = 1;
+        pinaRewards = IRewards(_stakingContract);
     }
 
     function setPriceOfToken(uint256 _price) public onlyOwner(){
@@ -74,6 +82,18 @@ contract Lottery is Ownable {
         emit priceOfTokenSet(msg.sender, _price);
     }
 
+    function setPoolId(uint256 _poolId) public onlyOwner(){
+        poolId = _poolId;
+    }
+
+    function _updatePina(address _user, uint256 _lotteryId) internal{
+        if(pinaVisitedOnce[_lotteryId][_user] == false){
+            pinaRemaining[_lotteryId][_user] = pinaRewards.earned(_user,poolId);
+            pinaVisitedOnce[_lotteryId][_user] = true;
+        }else{
+            pinaRemaining[_lotteryId][_user] = pinaRemaining[_lotteryId][_user].sub(priceOfTicket);
+        }
+    }
     function initialize(address _IRandomNumberGenerator) external onlyOwner {
         require(
             _IRandomNumberGenerator != address(0),
@@ -186,9 +206,9 @@ contract Lottery is Ownable {
     }
 
     function buyOneTicket(uint256 _lotteryId) public{
-        require(pina.balanceOf(msg.sender) >= priceOfTicket);
+        _updatePina(msg.sender, _lotteryId);
+        require(pinaRemaining[_lotteryId][msg.sender] >= priceOfTicket);
         
-        pina.transferFrom(msg.sender, address(this), priceOfTicket);
         participants[_lotteryId].push(msg.sender);
 
         uint256 participantId = participants[_lotteryId].length - 1;
@@ -198,7 +218,7 @@ contract Lottery is Ownable {
     }
 
     function buyMultipleTicket(uint256 _lotteryId, uint256 _numberOfTickets) public{
-        require(pina.balanceOf(msg.sender) >= priceOfTicket.mul(_numberOfTickets));
+        require(pinaRemaining[_lotteryId][msg.sender] >= priceOfTicket.mul(_numberOfTickets));
         for(uint i = 0; i< _numberOfTickets; i++){
             buyOneTicket(_lotteryId);
         }

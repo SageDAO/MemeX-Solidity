@@ -76,9 +76,8 @@ contract PoolTokenWrapper {
 }
 
 
-contract MemeLimitedCollections is PoolTokenWrapper, Ownable, Pausable {
+contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
 	using SafeMath for uint256;
-	IERC1155 public memeLtd;
 
 	struct Card {
 		uint256 points;
@@ -110,7 +109,6 @@ contract MemeLimitedCollections is PoolTokenWrapper, Ownable, Pausable {
 	event Staked(address indexed user, uint256 poolId, uint256 amount);
 	event Withdrawn(address indexed user, uint256 poolId, uint256 amount);
 	event Transferred(address indexed user, uint256 fromPoolId, uint256 toPoolId, uint256 amount);
-	event Redeemed(address indexed user, uint256 poolId, uint256 amount);
 
 	modifier updateReward(address account, uint256 id) {
 		if (account != address(0)) {
@@ -132,11 +130,9 @@ contract MemeLimitedCollections is PoolTokenWrapper, Ownable, Pausable {
 
 	constructor(
 		address _controller,
-		IERC1155 _memeLtdAddress,
 		IERC20 _tokenAddress
 	) public PoolTokenWrapper(_tokenAddress) {
 		controller = _controller;
-		memeLtd = _memeLtdAddress;
 	}
 
 	function cardMintFee(uint256 pool, uint256 card) public view returns (uint256) {
@@ -217,57 +213,9 @@ contract MemeLimitedCollections is PoolTokenWrapper, Ownable, Pausable {
 		withdraw(pool, balanceOf(msg.sender, pool));
 	}
 
-	function redeem(uint256 pool, uint256 card)
-		public
-		payable
-		poolExists(pool)
-		cardExists(pool, card)
-		updateReward(msg.sender, pool)
-	{
-		Pool storage p = pools[pool];
-		Card memory c = p.cards[card];
-		require(block.timestamp >= c.releaseTime, "card not released");
-		require(p.points[msg.sender] >= c.points, "not enough pineapples");
-		require(msg.value == c.mintFee, "support our artists, send eth");
+	
 
-		if (c.mintFee > 0) {
-			uint256 _controllerShare = msg.value.mul(p.controllerShare).div(1000);
-			uint256 _artistRoyalty = msg.value.sub(_controllerShare);
-			require(_artistRoyalty.add(_controllerShare) == msg.value, "problem with fee");
-
-			p.feesCollected = p.feesCollected.add(c.mintFee);
-			pendingWithdrawals[controller] = pendingWithdrawals[controller].add(_controllerShare);
-			pendingWithdrawals[p.artist] = pendingWithdrawals[p.artist].add(_artistRoyalty);
-		}
-
-		p.points[msg.sender] = p.points[msg.sender].sub(c.points);
-		p.spentPineapples = p.spentPineapples.add(c.points);
-		memeLtd.mint(msg.sender, card, 1, "");
-		emit Redeemed(msg.sender, pool, c.points);
-	}
-
-	function rescuePineapples(address account, uint256 pool)
-		public
-        
-		poolExists(pool)
-		updateReward(account, pool)
-		returns (uint256)
-	{
-		require(msg.sender == rescuer, "!rescuer");
-		Pool storage p = pools[pool];
-
-		uint256 earnedPoints = p.points[account];
-		p.spentPineapples = p.spentPineapples.add(earnedPoints);
-		p.points[account] = 0;
-
-		// transfer remaining MEME to the account
-		if (balanceOf(account, pool) > 0) {
-			_rescuePineapples(account, pool);
-		}
-
-		emit Redeemed(account, pool, earnedPoints);
-		return earnedPoints;
-	}
+	
 
 	function setArtist(uint256 pool, address artist) public onlyOwner {
 		uint256 amount = pendingWithdrawals[artist];
@@ -307,23 +255,7 @@ contract MemeLimitedCollections is PoolTokenWrapper, Ownable, Pausable {
 		emit CardAdded(pool, id, points, mintFee, releaseTime);
 	}
 
-	function createCard(
-		uint256 pool,
-		uint256 supply,
-		uint256 points,
-		uint256 mintFee,
-		uint256 releaseTime
-	) public onlyOwner poolExists(pool) returns (uint256) {
-		uint256 tokenId = memeLtd.create(supply, 0, "", "");
-		require(tokenId > 0, "ERC1155 create did not succeed");
 
-		Card storage c = pools[pool].cards[tokenId];
-		c.points = points;
-		c.releaseTime = releaseTime;
-		c.mintFee = mintFee;
-		emit CardAdded(pool, tokenId, points, mintFee, releaseTime);
-		return tokenId;
-	}
 
 	function createPool(
 		uint256 id,
