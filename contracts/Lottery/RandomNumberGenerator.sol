@@ -2,12 +2,15 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
+import "../../interfaces/ILottery.sol";
 
 contract RandomNumberConsumer is Ownable, VRFConsumerBase {
     bytes32 internal keyHash;
     uint256 internal fee;
     uint256 public randomResult;
     address public lotteryAddr;
+    address internal requester;
+    uint256 public currentLotteryId;
 
     modifier onlyLottery() {
         require(msg.sender == lotteryAddr, "Lottery calls only");
@@ -35,11 +38,14 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
     /**
      * Requests randomness
      */
-    function getRandomNumber() public returns (bytes32 requestId) {
+    function getRandomNumber(uint256 lotteryId, uint256 userProvidedSeed) 
+                public returns (bytes32 requestId) {
         require(
             LINK.balanceOf(address(this)) >= fee,
             "Not enough LINK - fill contract"
         );
+        requester = msg.sender;
+        currentLotteryId = lotteryId;
         return requestRandomness(keyHash, fee);
     }
 
@@ -49,7 +55,12 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
     function fulfillRandomness(bytes32 requestId, uint256 randomness)
         internal
         override
-    {
+    {   
+        ILottery(requester).numbersDrawn(
+            currentLotteryId,
+            requestId,
+            randomness
+        );
         randomResult = randomness;
     }
 

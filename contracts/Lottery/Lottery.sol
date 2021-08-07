@@ -6,11 +6,15 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/IRandomNumberGenerator.sol";
 
+
+/// SSS: Things to think about:
+// Winning numbers should be generated based on reward points;
 contract Lottery is Ownable {
     using SafeMath for uint256;
 
     // Address of the PINA token
     IERC20 internal pina;
+    bytes32 internal requestId_;
     // Address of the randomness generator
     IRandomNumberGenerator internal randomGenerator;
 
@@ -27,6 +31,7 @@ contract Lottery is Ownable {
 
     // Information about lotteries
     struct LotteryInfo {
+        uint16 maxValidRange;
         uint256 lotteryID; // ID for lotto
         Status lotteryStatus; // Status for lotto
         uint16 lotSize; // number of NFTs on this lot
@@ -35,6 +40,9 @@ contract Lottery is Ownable {
         uint256 closingTime; // Timestamp for end of entries
         uint16[] winningNumbers; // The winning numbers
     }
+
+    event RequestNumbers(uint256 lotteryId, bytes32 requestId);
+
 
     //-------------------------------------------------------------------------
     // CONSTRUCTOR
@@ -87,7 +95,8 @@ contract Lottery is Ownable {
         uint16 _lotSize,
         uint8 _costPerTicket,
         uint256 _startingTime,
-        uint256 _closingTime
+        uint256 _closingTime,
+        uint16 maxValidRange
     ) external onlyOwner returns (uint256 lotteryId) {
         require(
             _lotSize != 0 && _costPerTicket != 0,
@@ -110,6 +119,7 @@ contract Lottery is Ownable {
         }
         // Saving data in struct
         LotteryInfo memory newLottery = LotteryInfo(
+            maxValidRange,
             lotteryId,
             lotteryStatus,
             _lotSize,
@@ -123,5 +133,65 @@ contract Lottery is Ownable {
 
     function getCurrentTime() public view returns (uint256) {
         return block.timestamp;
+    }
+
+
+    function drawWinningNumbers(
+        uint256 _lotteryId, 
+        uint256 _seed
+    ) 
+        external 
+        onlyOwner() 
+    {
+
+
+        requestId_ = randomGenerator.getRandomNumber(_lotteryId, _seed);
+        // Emits that random number has been requested
+        emit RequestNumbers(_lotteryId, requestId_);
+    }
+
+    function numbersDrawn(
+        uint256 _lotteryId,
+        bytes32 _requestId, 
+        uint256 _randomNumber
+    ) 
+        external
+        onlyRandomGenerator()
+    {
+        /* require(
+            allLotteries_[_lotteryId].lotteryStatus == Status.Closed,
+            "Draw numbers first"
+        );
+        if(requestId_ == _requestId) {
+            allLotteries_[_lotteryId].lotteryStatus = Status.Completed;
+            allLotteries_[_lotteryId].winningNumbers = _split(_randomNumber);
+        } */
+        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        uint16 sizeOfLottery_ = lottery.lotSize;
+        uint16 maxValidRange_ = lottery.maxValidRange;
+        lottery.winningNumbers = _split(_randomNumber, sizeOfLottery_,maxValidRange_);
+    }
+    
+    function _split(
+        uint256 _randomNumber,
+        uint16 sizeOfLottery_,
+        uint16 maxValidRange_
+    ) 
+        internal
+        view 
+        returns(uint16[] memory) 
+    {
+        // Temparary storage for winning numbers
+        uint16[] memory winningNumbers = new uint16[](sizeOfLottery_);
+        // Loops the size of the number of tickets in the lottery
+        for(uint i = 0; i < sizeOfLottery_; i++){
+            // Encodes the random number with its position in loop
+            bytes32 hashOfRandom = keccak256(abi.encodePacked(_randomNumber, i));
+            // Casts random number hash into uint256
+            uint256 numberRepresentation = uint256(hashOfRandom);
+            // Sets the winning number position to a uint16 of random hash number
+            winningNumbers[i] = uint16(numberRepresentation.mod(maxValidRange_));
+        }
+    return winningNumbers;
     }
 }
