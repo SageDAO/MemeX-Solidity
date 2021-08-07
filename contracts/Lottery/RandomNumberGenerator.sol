@@ -38,6 +38,7 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
     /**
      * Requests randomness
      */
+     //SSS: No need for userProvidedSeed i think;
     function getRandomNumber(uint256 lotteryId, uint256 userProvidedSeed) 
                 public returns (bytes32 requestId) {
         require(
