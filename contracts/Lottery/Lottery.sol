@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../interfaces/IRandomNumberGenerator.sol";
 
-
 /// SSS: Things to think about:
 // Winning numbers should be generated based on reward points;
 contract Lottery is Ownable {
@@ -31,18 +30,18 @@ contract Lottery is Ownable {
 
     // Information about lotteries
     struct LotteryInfo {
+        uint8 entryFee; // Entry fee for the lottery
         uint16 maxValidRange;
         uint256 lotteryID; // ID for lotto
         Status lotteryStatus; // Status for lotto
         uint16 lotSize; // number of NFTs on this lot
         uint8 costPerTicket; // Cost per ticket in $PINA
-        uint256 startingTime; // Timestamp to start the lottery
-        uint256 closingTime; // Timestamp for end of entries
+        uint256 startingTime; // Timestamp - start the lottery
+        uint256 closingTime; // Timestamp - end of entries
         uint16[] winningNumbers; // The winning numbers
     }
 
     event RequestNumbers(uint256 lotteryId, bytes32 requestId);
-
 
     //-------------------------------------------------------------------------
     // CONSTRUCTOR
@@ -135,16 +134,10 @@ contract Lottery is Ownable {
         return block.timestamp;
     }
 
-
-    function drawWinningNumbers(
-        uint256 _lotteryId, 
-        uint256 _seed
-    ) 
-        external 
-        onlyOwner() 
+    function drawWinningNumbers(uint256 _lotteryId, uint256 _seed)
+        external
+        onlyOwner
     {
-
-
         requestId_ = randomGenerator.getRandomNumber(_lotteryId, _seed);
         // Emits that random number has been requested
         emit RequestNumbers(_lotteryId, requestId_);
@@ -152,12 +145,9 @@ contract Lottery is Ownable {
 
     function numbersDrawn(
         uint256 _lotteryId,
-        bytes32 _requestId, 
+        bytes32 _requestId,
         uint256 _randomNumber
-    ) 
-        external
-        onlyRandomGenerator()
-    {
+    ) external onlyRandomGenerator {
         /* require(
             allLotteries_[_lotteryId].lotteryStatus == Status.Closed,
             "Draw numbers first"
@@ -169,29 +159,33 @@ contract Lottery is Ownable {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         uint16 sizeOfLottery_ = lottery.lotSize;
         uint16 maxValidRange_ = lottery.maxValidRange;
-        lottery.winningNumbers = _split(_randomNumber, sizeOfLottery_,maxValidRange_);
+        lottery.winningNumbers = _split(
+            _randomNumber,
+            sizeOfLottery_,
+            maxValidRange_
+        );
     }
-    
+
     function _split(
         uint256 _randomNumber,
         uint16 sizeOfLottery_,
         uint16 maxValidRange_
-    ) 
-        internal
-        view 
-        returns(uint16[] memory) 
-    {
+    ) internal view returns (uint16[] memory) {
         // Temparary storage for winning numbers
         uint16[] memory winningNumbers = new uint16[](sizeOfLottery_);
         // Loops the size of the number of tickets in the lottery
-        for(uint i = 0; i < sizeOfLottery_; i++){
+        for (uint256 i = 0; i < sizeOfLottery_; i++) {
             // Encodes the random number with its position in loop
-            bytes32 hashOfRandom = keccak256(abi.encodePacked(_randomNumber, i));
+            bytes32 hashOfRandom = keccak256(
+                abi.encodePacked(_randomNumber, i)
+            );
             // Casts random number hash into uint256
             uint256 numberRepresentation = uint256(hashOfRandom);
             // Sets the winning number position to a uint16 of random hash number
-            winningNumbers[i] = uint16(numberRepresentation.mod(maxValidRange_));
+            winningNumbers[i] = uint16(
+                numberRepresentation.mod(maxValidRange_)
+            );
         }
-    return winningNumbers;
+        return winningNumbers;
     }
 }
