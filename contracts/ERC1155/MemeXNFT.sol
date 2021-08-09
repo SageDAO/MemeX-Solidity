@@ -2,11 +2,15 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "./String.sol";
 //import "@openzeppelin/contracts/ownership/Ownable.sol";
 
 contract MemeXNFT is ERC1155(""){
     using SafeMath for uint256;
+    using Strings for string;
+    string internal baseMetadataURI;
     string public name;
+    mapping(uint256 => address) public creators;
     // Contract symbol
     string public symbol;
     bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
@@ -15,7 +19,7 @@ contract MemeXNFT is ERC1155(""){
     address public owner;
     mapping(uint256 => uint256) tokenSupply;
 
-    
+            
     struct NFTInfo{
         address owner;
         bool minted;
@@ -56,8 +60,7 @@ contract MemeXNFT is ERC1155(""){
         ) public  {
             require(msg.sender == lotteryContract,"Only lottery contract can mint");
             _mint(_to, _id, _quantity, _data);
-            tokenSupply[_id] = tokenSupply[_id].add(_quantity);
-
+            creators[_id] = msg.sender;
             nftInfo.push(NFTInfo(
                 _to,
                 true,
@@ -82,41 +85,21 @@ contract MemeXNFT is ERC1155(""){
         _mintBatch(_to, _ids, _quantities, _data);
     }
 
+    function _setBaseMetadataURI(string memory _newBaseMetadataURI) internal {
+        baseMetadataURI = _newBaseMetadataURI;
+    }
+
+
+    function uri(uint256 _id) public view returns (string memory) {
+		require(_exists(_id), "ERC721Tradable#uri: NONEXISTENT_TOKEN");
+		return Strings.strConcat(baseMetadataURI, Strings.toString(_id));
+	}
+
     function getLotteryId(uint256 _tokenId) public view returns (uint256){
             return nftInfo[_tokenId].lotteryId;
     }
 
-      /**
-     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation.
-     */
-    function toHexString(uint256 value) internal pure returns (string memory) {
-        if (value == 0) {
-            return "0x00";
-        }
-        uint256 temp = value;
-        uint256 length = 0;
-        while (temp != 0) {
-            length++;
-            temp >>= 8;
-        }
-        return toHexString(value, length);
-    }
 
-    /**
-     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation with fixed length.
-     */
-    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
-        bytes memory buffer = new bytes(2 * length + 2);
-        buffer[0] = "0";
-        buffer[1] = "x";
-        for (uint256 i = 2 * length + 1; i > 1; --i) {
-            buffer[i] = _HEX_SYMBOLS[value & 0xf];
-            value >>= 4;
-        }
-        require(value == 0, "Strings: hex length insufficient");
-        return string(buffer);
-    }
-    
 
     
 

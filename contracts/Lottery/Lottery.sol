@@ -59,7 +59,7 @@ contract Lottery is Ownable {
         uint256 startingTime; // Timestamp to start the lottery
         uint256 closingTime; // Timestamp for end of entries
         uint16[] winningNumbers; // The winning numbers
-        
+        bool isFinalised;
     }
     
 
@@ -71,8 +71,7 @@ contract Lottery is Ownable {
     // CONSTRUCTOR
     //-------------------------------------------------------------------------
 
-    constructor(address _pina, address _stakingContract) public {
-        require(_pina != address(0), "Contract can't be 0 address");
+    constructor( address _stakingContract) public {
         poolId = 1;
         pinaRewards = IRewards(_stakingContract);
     }
@@ -94,7 +93,7 @@ contract Lottery is Ownable {
             pinaRemaining[_lotteryId][_user] = pinaRemaining[_lotteryId][_user].sub(priceOfTicket);
         }
     }
-    function initialize(address _IRandomNumberGenerator) external onlyOwner {
+    function setRandomGenerator(address _IRandomNumberGenerator) external onlyOwner {
         require(
             _IRandomNumberGenerator != address(0),
             "Contracts cannot be 0 address"
@@ -137,7 +136,7 @@ contract Lottery is Ownable {
         uint8 _costPerTicket,
         uint256 _startingTime,
         uint256 _closingTime
-    ) external onlyOwner returns (uint256 lotteryId) {
+    ) public onlyOwner returns (uint256 lotteryId) {
         require(
             _lotSize != 0 && _costPerTicket != 0,
             "Lot size and Ticket cost cannot be 0"
@@ -149,7 +148,8 @@ contract Lottery is Ownable {
         // Incrementing lottery ID
         lotteryCounter = lotteryCounter.add(1);
         lotteryId = lotteryCounter;
-        uint16[] memory winningNumbers = new uint16[](_lotSize);
+        uint256 lotterySize = 2;
+        uint16[] memory winningNumbers = new uint16[](lotterySize);
         uint16[] memory boosters = new uint16[](0);
         Status lotteryStatus;
         if (_startingTime >= getCurrentTime()) {
@@ -165,7 +165,8 @@ contract Lottery is Ownable {
             _costPerTicket,
             _startingTime,
             _closingTime,
-            winningNumbers
+            winningNumbers,
+            false
             
         );
         lotteryHistory[lotteryId] = newLottery;
@@ -182,9 +183,10 @@ contract Lottery is Ownable {
     ) 
         external 
         onlyOwner() 
-    {
+    {   
+        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
 
-
+        require(lottery.closingTime <  block.timestamp);
         requestId_ = randomGenerator.getRandomNumber(_lotteryId, _seed);
         // Emits that random number has been requested
         emit RequestNumbers(_lotteryId, requestId_);
@@ -200,8 +202,10 @@ contract Lottery is Ownable {
     {
         
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-        uint16 sizeOfLottery_ = lottery.lotSize;
-        uint256 maxValidRange_ = participants[_lotteryId].length;
+        uint16 sizeOfLottery_ = 2;
+       // uint16 sizeOfLottery_ = lottery.lotSize;
+  //  uint256 maxValidRange_ = participants[_lotteryId].length;
+        uint256 maxValidRange_ = 5;
         lottery.winningNumbers = _split(_randomNumber, sizeOfLottery_,maxValidRange_);
     }
 
@@ -249,6 +253,7 @@ contract Lottery is Ownable {
 
     function finaliseLottery(uint256 _lotteryId) public onlyOwner(){
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
+        lottery.isFinalised = true;
         uint16 winningNumber;
         for(uint256 i = 0; i<lottery.lotSize; i++){
             winningNumber = lottery.winningNumbers[i];
@@ -257,6 +262,7 @@ contract Lottery is Ownable {
     }
 
     function redeemNFT(uint256 _lotteryId) public{
+        require(lotteryHistory[_lotteryId].isFinalised == true);
         uint256 winningNumber = participantToId[_lotteryId][msg.sender];
         require(winningParticipants[_lotteryId][winningNumber] == true);
 

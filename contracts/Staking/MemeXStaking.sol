@@ -64,15 +64,7 @@ contract PoolTokenWrapper {
 		_balances[toId][msg.sender] = _balances[toId][msg.sender].add(amount);
 	}
 
-	function _rescuePineapples(address account, uint256 id) internal {
-		uint256 amount = _balances[id][account];
 
-		_totalSupply = _totalSupply.sub(amount);
-		_poolBalances[id] = _poolBalances[id].sub(amount);
-		_accountBalances[msg.sender] = _accountBalances[msg.sender].sub(amount);
-		_balances[id][account] = _balances[id][account].sub(amount);
-		token.transfer(account, amount);
-	}
 }
 
 
@@ -123,10 +115,6 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
 		_;
 	}
 
-	modifier cardExists(uint256 pool, uint256 card) {
-		require(pools[pool].cards[card].points > 0, "card does not exists");
-		_;
-	}
 
 	constructor(
 		address _controller,

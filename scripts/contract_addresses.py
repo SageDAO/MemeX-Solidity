@@ -6,7 +6,7 @@ CONTRACTS = {
          
     },
      "rinkeby":{
-        "random_generator":"0x6D3f766ab674776D1f3DA10aC82a943eb9F8E950"
+        "random_generator":"0x213475917426ec3d450eb8FcEAE6A2818583B7Ad"
     },
      "kovan":{
         
