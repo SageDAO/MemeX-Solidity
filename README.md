@@ -14,13 +14,20 @@ If you want to interact with this account using wallets you can export the json 
 
 `brownie accounts export deployer <dest_path>`
 
+* remeber to get eth from faucets when deploying or interacting with contracts on a testnet
+
 ## Deploy contracts
-Deploy the MemeX and PINA tokens with:
+Deploy the MemeX token:
 
 `brownie run scripts/deploy_memex_token.py`
 
-`brownie run scripts/deploy_pina_token.py`
+Deploy the NFT contract:
 
 `brownie run scripts/deploy_memex.py`
 
-`brownie run scripts/deploy_pina_token.py`
+Deploy randomness contract:
+`brownie run scripts/deploy_randomness.py`
+
+Deploy the Lottery contract:
+
+
