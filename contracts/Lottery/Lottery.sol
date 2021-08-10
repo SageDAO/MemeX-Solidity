@@ -187,15 +187,22 @@ contract Lottery is Ownable {
         uint256 _randomNumber
     ) internal onlyRandomGenerator {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-        uint16 sizeOfLottery_ = 2;
-        // uint16 sizeOfLottery_ = lottery.lotSize;
-        //  uint256 maxValidRange_ = participants[_lotteryId].length;
-        uint256 maxValidRange_ = 5;
+        uint16 sizeOfLottery_ = lottery.lotSize;
+        uint256 maxValidRange_ = participants[_lotteryId].length;
         lottery.winningNumbers = _split(
             _randomNumber,
             sizeOfLottery_,
             maxValidRange_
         );
+    }
+
+    function cancelLottery(uint256 _lotteryId) public onlyOwner {
+        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
+        require(
+            lottery.status != Status.Completed,
+            "Lottery already completed"
+        );
+        lottery.status = Status.Canceled;
     }
 
     function buyOneTicket(uint256 _lotteryId) public {
@@ -210,6 +217,12 @@ contract Lottery is Ownable {
             lottery.startingTime < block.timestamp
         ) {
             lottery.status = Status.Open;
+        }
+        if (
+            lottery.status == Status.Open &&
+            lottery.closingTime < block.timestamp
+        ) {
+            lottery.status = Status.Closed;
         }
         require(lottery.status == Status.Open, "Lottery not open");
         _checkEnoughPina(msg.sender, _lotteryId);
