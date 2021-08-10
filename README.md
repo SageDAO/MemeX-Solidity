@@ -31,3 +31,11 @@ Deploy randomness contract:
 Deploy the Lottery contract:
 
 
+## How to Mint through Lottery Contract (redeem):
+
+Create a interface for ERC1155 Contract that has mint function in it.
+Declare an interface variable in Lottery Contract.
+Initialize interface variable with ERC1155 address.
+Call mint on ERC1155.
+
+Try to compile it. Test may not work right now.
