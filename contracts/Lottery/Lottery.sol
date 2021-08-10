@@ -19,7 +19,6 @@ contract Lottery is Ownable {
 
     // Address of the PINA token
     bytes32 internal requestId_;
-    uint256 public priceOfTicket;
 
     uint256 public poolId;
     // Address of the randomness generator
@@ -32,10 +31,6 @@ contract Lottery is Ownable {
     //lotteryid => participants
     mapping(uint256 => address[]) internal participants;
 
-    //lotteryId => user => pinaRemaining
-    mapping(uint256 => mapping(address => uint256)) internal pinaRemaining;
-
-    mapping(uint256 => mapping(address => bool)) internal pinaVisitedOnce;
     //lotteryId => participantId => participant address
     mapping(uint256 => mapping(uint256 => address)) participant;
 
@@ -56,14 +51,18 @@ contract Lottery is Ownable {
         uint256 lotteryID; // ID for lotto
         Status status; // Status for lotto
         uint16 lotSize; // number of NFTs on this lot
-        uint8 costPerTicket; // Cost per ticket in $PINA
+        uint256 costPerTicket; // Cost per ticket in $PINA
         uint256 startingTime; // Timestamp to start the lottery
         uint256 closingTime; // Timestamp for end of entries
         uint16[] winningNumbers; // The winning numbers
     }
 
     event RequestNumbers(uint256 lotteryId, bytes32 requestId);
-    event priceOfTokenSet(address operator, uint256 priceOfTicket);
+    event TicketCostChanged(
+        address operator,
+        uint256 lotteryId,
+        uint256 priceOfTicket
+    );
 
     //-------------------------------------------------------------------------
     // CONSTRUCTOR
@@ -74,26 +73,25 @@ contract Lottery is Ownable {
         pinaRewards = IRewards(_stakingContract);
     }
 
-    function setPriceOfToken(uint256 _price) public onlyOwner {
-        priceOfTicket = _price;
-        emit priceOfTokenSet(msg.sender, _price);
+    function setTicketCost(uint256 _price, uint256 _lotteryId)
+        public
+        onlyOwner
+    {
+        lotteryHistory[_lotteryId].costPerTicket = _price;
+        emit TicketCostChanged(msg.sender, _lotteryId, _price);
     }
 
     function setPoolId(uint256 _poolId) public onlyOwner {
         poolId = _poolId;
     }
 
-    function _updatePina(address _user, uint256 _lotteryId) internal {
-        if (pinaVisitedOnce[_lotteryId][_user] == false) {
-            pinaRemaining[_lotteryId][_user] = pinaRewards.earned(
-                _user,
-                poolId
-            );
-            pinaVisitedOnce[_lotteryId][_user] = true;
-        } else {
-            pinaRemaining[_lotteryId][_user] = pinaRemaining[_lotteryId][_user]
-                .sub(priceOfTicket);
-        }
+    // as the user can enter only once per lottery, it's enough to check if he has earned enough points
+    function _checkEnoughPina(address _user, uint256 _lotteryId) internal {
+        require(
+            pinaRewards.earned(_user, poolId) >=
+                lotteryHistory[_lotteryId].costPerTicket,
+            "Not enough PINAs to enter the lottery"
+        );
     }
 
     function setRandomGenerator(address _IRandomNumberGenerator)
@@ -113,19 +111,6 @@ contract Lottery is Ownable {
         returns (LotteryInfo storage)
     {
         return (lotteryHistory[_lotteryId]);
-    }
-
-    //-------------------------------------------------------------------------
-    // VIEW FUNCTIONS
-    //-------------------------------------------------------------------------
-
-    function costToBuyTickets(
-        uint256 _lotteryId,
-        uint8 _numberOfTickets,
-        address _address
-    ) external view returns (uint256 totalCost) {
-        uint256 ticketPrice = lotteryHistory[_lotteryId].costPerTicket;
-        totalCost = ticketPrice.mul(_numberOfTickets);
     }
 
     //-------------------------------------------------------------------------
@@ -190,6 +175,7 @@ contract Lottery is Ownable {
         if (lottery.status == Status.Open) {
             lottery.status == Status.Closed;
         }
+        require(lottery.status == Status.Closed);
         requestId_ = randomGenerator.getRandomNumber(_lotteryId, _seed);
         // Emits that random number has been requested
         emit RequestNumbers(_lotteryId, requestId_);
@@ -213,26 +199,26 @@ contract Lottery is Ownable {
     }
 
     function buyOneTicket(uint256 _lotteryId) public {
-        _updatePina(msg.sender, _lotteryId);
-        require(pinaRemaining[_lotteryId][msg.sender] >= priceOfTicket);
+        require(
+            participantToId[_lotteryId][msg.sender] == 0,
+            "Already bought ticket to this lottery"
+        );
+
+        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
+        if (
+            lottery.status == Status.Planned &&
+            lottery.startingTime < block.timestamp
+        ) {
+            lottery.status = Status.Open;
+        }
+        require(lottery.status == Status.Open, "Lottery not open");
+        _checkEnoughPina(msg.sender, _lotteryId);
 
         participants[_lotteryId].push(msg.sender);
 
         uint256 participantId = participants[_lotteryId].length - 1;
         participant[_lotteryId][participantId] = msg.sender;
         participantToId[_lotteryId][msg.sender] = participantId;
-    }
-
-    function buyMultipleTicket(uint256 _lotteryId, uint256 _numberOfTickets)
-        public
-    {
-        require(
-            pinaRemaining[_lotteryId][msg.sender] >=
-                priceOfTicket.mul(_numberOfTickets)
-        );
-        for (uint256 i = 0; i < _numberOfTickets; i++) {
-            buyOneTicket(_lotteryId);
-        }
     }
 
     function _split(
