@@ -17,7 +17,6 @@ import "../../interfaces/IRandomNumberGenerator.sol";
 contract Lottery is Ownable {
     using SafeMath for uint256;
 
-    // Address of the PINA token
     bytes32 internal requestId_;
 
     uint256 public poolId;
@@ -29,21 +28,24 @@ contract Lottery is Ownable {
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
 
     //lotteryid => participants
-    mapping(uint256 => address[]) internal participants;
-
-    //lotteryId => participantId => participant address
-    mapping(uint256 => mapping(uint256 => address)) participant;
-
-    mapping(uint256 => mapping(uint256 => bool)) winningParticipants;
+    mapping(uint256 => ParticipantInfo[]) internal participants;
 
     //lotteryId => participant address => participantId
     mapping(uint256 => mapping(address => uint256)) participantToId;
+
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
         Canceled, // A lottery that got canceled
         Open, // Entries are open
         Closed, // Entries are closed. Must be closed to draw numbers
         Completed // The lottery has been completed and the numbers drawn
+    }
+
+    struct ParticipantInfo {
+        address participantAddress;
+        bool winner;
+        uint16 prizeId;
+        bool prizeClaimed;
     }
 
     // Information about lotteries
@@ -54,7 +56,6 @@ contract Lottery is Ownable {
         uint256 costPerTicket; // Cost per ticket in $PINA
         uint256 startingTime; // Timestamp to start the lottery
         uint256 closingTime; // Timestamp for end of entries
-        uint16[] winningNumbers; // The winning numbers
     }
 
     event RequestNumbers(uint256 lotteryId, bytes32 requestId);
@@ -139,8 +140,6 @@ contract Lottery is Ownable {
         // Incrementing lottery ID
         lotteryCounter = lotteryCounter.add(1);
         lotteryId = lotteryCounter;
-        uint256 lotterySize = 2;
-        uint16[] memory winningNumbers = new uint16[](lotterySize);
         uint16[] memory boosters = new uint16[](0);
         Status lotteryStatus;
         if (_startingTime >= getCurrentTime()) {
@@ -155,8 +154,7 @@ contract Lottery is Ownable {
             _lotSize,
             _costPerTicket,
             _startingTime,
-            _closingTime,
-            winningNumbers
+            _closingTime
         );
         lotteryHistory[lotteryId] = newLottery;
     }
@@ -189,10 +187,11 @@ contract Lottery is Ownable {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         uint16 sizeOfLottery_ = lottery.lotSize;
         uint256 maxValidRange_ = participants[_lotteryId].length;
-        lottery.winningNumbers = _split(
+        _assignPrizes(
             _randomNumber,
             sizeOfLottery_,
-            maxValidRange_
+            maxValidRange_,
+            _lotteryId
         );
     }
 
@@ -227,21 +226,23 @@ contract Lottery is Ownable {
         require(lottery.status == Status.Open, "Lottery not open");
         _checkEnoughPina(msg.sender, _lotteryId);
 
-        participants[_lotteryId].push(msg.sender);
+        participants[_lotteryId].push(
+            ParticipantInfo(msg.sender, false, 0, false)
+        );
 
         uint256 participantId = participants[_lotteryId].length - 1;
-        participant[_lotteryId][participantId] = msg.sender;
         participantToId[_lotteryId][msg.sender] = participantId;
     }
 
-    function _split(
+    function _assignPrizes(
         uint256 _randomNumber,
         uint16 sizeOfLottery_,
-        uint256 maxValidRange_
-    ) internal view returns (uint16[] memory) {
+        uint256 maxValidRange_,
+        uint256 _lotteryId
+    ) internal {
         // Temporary storage for winning numbers
         uint16[] memory winningNumbers = new uint16[](sizeOfLottery_);
-        // Loops the size of the number of tickets in the lottery
+        // Loops the number of prizes in the lottery, assuming prizeId are (0, 1, 2, ... sizeOfLottery_ -1)
         for (uint256 i = 0; i < sizeOfLottery_; i++) {
             // Encodes the random number with its position in loop
             bytes32 hashOfRandom = keccak256(
@@ -250,11 +251,14 @@ contract Lottery is Ownable {
             // Casts random number hash into uint256
             uint256 numberRepresentation = uint256(hashOfRandom);
             // Sets the winning number position to a uint16 of random hash number
-            winningNumbers[i] = uint16(
+            uint16 winningNumber = uint16(
                 numberRepresentation.mod(maxValidRange_)
             );
+            // Changes the participant with id = winningNumber to be winner and sets the prizeId
+            participants[_lotteryId][winningNumber].winner = true;
+            participants[_lotteryId][winningNumber].prizeId = uint16(i);
+            // TODO: participant might already be winner, should pick another participant if so
         }
-        return winningNumbers;
     }
 
     function completeLottery(uint256 _lotteryId) public onlyOwner {
@@ -264,18 +268,23 @@ contract Lottery is Ownable {
             "Lottery already completed"
         );
         lottery.status = Status.Completed;
-        uint16 winningNumber;
-        for (uint256 i = 0; i < lottery.lotSize; i++) {
-            winningNumber = lottery.winningNumbers[i];
-            winningParticipants[_lotteryId][winningNumber] = true;
-        }
     }
 
-    function redeemNFT(uint256 _lotteryId) public {
+    function redeemNFT(uint256 _lotteryId, uint16 prizeId) public {
         require(lotteryHistory[_lotteryId].status == Status.Completed);
-        uint256 winningNumber = participantToId[_lotteryId][msg.sender];
-        require(winningParticipants[_lotteryId][winningNumber] == true);
+        uint256 participantId = participantToId[_lotteryId][msg.sender];
+        require(
+            participants[_lotteryId][participantId].winner == true &&
+                participants[_lotteryId][participantId].prizeId == prizeId &&
+                participants[_lotteryId][participantId].prizeClaimed == false
+        );
+        participants[_lotteryId][participantId].prizeClaimed = true;
 
-        //mint
+        // TODO: get MemeXNFT contract reference, do we need an interface?
+        // nftContract.mint(msg.sender,
+        // prizeId,
+        // 1,
+        //  "", // TODO: what data?
+        //_lotteryId);
     }
 }
