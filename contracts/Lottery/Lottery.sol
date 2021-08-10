@@ -6,13 +6,17 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 
-
 /// SSS: Things to think about:
 // Winning numbers should be generated based on reward points;
+
+// From last meeting I think we should have only the function to buy one ticket
+
+// i didn't understand the reason behind multiple staking pools
+// from what i understood the user could stake, get a few points and continue staking to participate on a next lottery (staking could remain the same for different lotteries)
+
 contract Lottery is Ownable {
     using SafeMath for uint256;
 
-    
     // Address of the PINA token
     bytes32 internal requestId_;
     uint256 public priceOfTicket;
@@ -22,16 +26,15 @@ contract Lottery is Ownable {
     IRandomNumberGenerator internal randomGenerator;
     IRewards public pinaRewards;
 
-
     uint256 private lotteryCounter;
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
-    
+
     //lotteryid => participants
     mapping(uint256 => address[]) internal participants;
 
     //lotteryId => user => pinaRemaining
     mapping(uint256 => mapping(address => uint256)) internal pinaRemaining;
-    
+
     mapping(uint256 => mapping(address => bool)) internal pinaVisitedOnce;
     //lotteryId => participantId => participant address
     mapping(uint256 => mapping(uint256 => address)) participant;
@@ -42,27 +45,22 @@ contract Lottery is Ownable {
     mapping(uint256 => mapping(address => uint256)) participantToId;
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
-        Canceled, // A planned lottery that got canceled before any tickets bought
-        Open, // The lottery is open for ticket purchases
-        Closed, // The lottery is no longer open for ticket purchases. Must be closed before requesting the RNG
-        Completed // The lottery has been closed and the numbers drawn
+        Canceled, // A lottery that got canceled
+        Open, // Entries are open
+        Closed, // Entries are closed. Must be closed to draw numbers
+        Completed // The lottery has been completed and the numbers drawn
     }
-
-    
 
     // Information about lotteries
     struct LotteryInfo {
         uint256 lotteryID; // ID for lotto
-        Status lotteryStatus; // Status for lotto
+        Status status; // Status for lotto
         uint16 lotSize; // number of NFTs on this lot
         uint8 costPerTicket; // Cost per ticket in $PINA
         uint256 startingTime; // Timestamp to start the lottery
         uint256 closingTime; // Timestamp for end of entries
         uint16[] winningNumbers; // The winning numbers
-        bool isFinalised;
     }
-    
-
 
     event RequestNumbers(uint256 lotteryId, bytes32 requestId);
     event priceOfTokenSet(address operator, uint256 priceOfTicket);
@@ -71,29 +69,37 @@ contract Lottery is Ownable {
     // CONSTRUCTOR
     //-------------------------------------------------------------------------
 
-    constructor( address _stakingContract) public {
+    constructor(address _stakingContract) public {
         poolId = 1;
         pinaRewards = IRewards(_stakingContract);
     }
 
-    function setPriceOfToken(uint256 _price) public onlyOwner(){
+    function setPriceOfToken(uint256 _price) public onlyOwner {
         priceOfTicket = _price;
         emit priceOfTokenSet(msg.sender, _price);
     }
 
-    function setPoolId(uint256 _poolId) public onlyOwner(){
+    function setPoolId(uint256 _poolId) public onlyOwner {
         poolId = _poolId;
     }
 
-    function _updatePina(address _user, uint256 _lotteryId) internal{
-        if(pinaVisitedOnce[_lotteryId][_user] == false){
-            pinaRemaining[_lotteryId][_user] = pinaRewards.earned(_user,poolId);
+    function _updatePina(address _user, uint256 _lotteryId) internal {
+        if (pinaVisitedOnce[_lotteryId][_user] == false) {
+            pinaRemaining[_lotteryId][_user] = pinaRewards.earned(
+                _user,
+                poolId
+            );
             pinaVisitedOnce[_lotteryId][_user] = true;
-        }else{
-            pinaRemaining[_lotteryId][_user] = pinaRemaining[_lotteryId][_user].sub(priceOfTicket);
+        } else {
+            pinaRemaining[_lotteryId][_user] = pinaRemaining[_lotteryId][_user]
+                .sub(priceOfTicket);
         }
     }
-    function setRandomGenerator(address _IRandomNumberGenerator) external onlyOwner {
+
+    function setRandomGenerator(address _IRandomNumberGenerator)
+        external
+        onlyOwner
+    {
         require(
             _IRandomNumberGenerator != address(0),
             "Contracts cannot be 0 address"
@@ -165,9 +171,7 @@ contract Lottery is Ownable {
             _costPerTicket,
             _startingTime,
             _closingTime,
-            winningNumbers,
-            false
-            
+            winningNumbers
         );
         lotteryHistory[lotteryId] = newLottery;
     }
@@ -176,17 +180,16 @@ contract Lottery is Ownable {
         return block.timestamp;
     }
 
-
-    function drawWinningNumbers(
-        uint256 _lotteryId, 
-        uint256 _seed
-    ) 
-        external 
-        onlyOwner() 
-    {   
+    function drawWinningNumbers(uint256 _lotteryId, uint256 _seed)
+        external
+        onlyOwner
+    {
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
 
-        require(lottery.closingTime <  block.timestamp);
+        require(lottery.closingTime < block.timestamp);
+        if (lottery.status == Status.Open) {
+            lottery.status == Status.Closed;
+        }
         requestId_ = randomGenerator.getRandomNumber(_lotteryId, _seed);
         // Emits that random number has been requested
         emit RequestNumbers(_lotteryId, requestId_);
@@ -194,75 +197,83 @@ contract Lottery is Ownable {
 
     function numbersDrawn(
         uint256 _lotteryId,
-        bytes32 _requestId, 
+        bytes32 _requestId,
         uint256 _randomNumber
-    ) 
-        internal
-        onlyRandomGenerator()
-    {
-        
+    ) internal onlyRandomGenerator {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         uint16 sizeOfLottery_ = 2;
-       // uint16 sizeOfLottery_ = lottery.lotSize;
-  //  uint256 maxValidRange_ = participants[_lotteryId].length;
+        // uint16 sizeOfLottery_ = lottery.lotSize;
+        //  uint256 maxValidRange_ = participants[_lotteryId].length;
         uint256 maxValidRange_ = 5;
-        lottery.winningNumbers = _split(_randomNumber, sizeOfLottery_,maxValidRange_);
+        lottery.winningNumbers = _split(
+            _randomNumber,
+            sizeOfLottery_,
+            maxValidRange_
+        );
     }
 
-    function buyOneTicket(uint256 _lotteryId) public{
+    function buyOneTicket(uint256 _lotteryId) public {
         _updatePina(msg.sender, _lotteryId);
         require(pinaRemaining[_lotteryId][msg.sender] >= priceOfTicket);
-        
+
         participants[_lotteryId].push(msg.sender);
 
         uint256 participantId = participants[_lotteryId].length - 1;
         participant[_lotteryId][participantId] = msg.sender;
         participantToId[_lotteryId][msg.sender] = participantId;
-        
     }
 
-    function buyMultipleTicket(uint256 _lotteryId, uint256 _numberOfTickets) public{
-        require(pinaRemaining[_lotteryId][msg.sender] >= priceOfTicket.mul(_numberOfTickets));
-        for(uint i = 0; i< _numberOfTickets; i++){
+    function buyMultipleTicket(uint256 _lotteryId, uint256 _numberOfTickets)
+        public
+    {
+        require(
+            pinaRemaining[_lotteryId][msg.sender] >=
+                priceOfTicket.mul(_numberOfTickets)
+        );
+        for (uint256 i = 0; i < _numberOfTickets; i++) {
             buyOneTicket(_lotteryId);
         }
     }
-    
+
     function _split(
         uint256 _randomNumber,
         uint16 sizeOfLottery_,
         uint256 maxValidRange_
-    ) 
-        internal
-        view 
-        returns(uint16[] memory) 
-    {
-        // Temparary storage for winning numbers
+    ) internal view returns (uint16[] memory) {
+        // Temporary storage for winning numbers
         uint16[] memory winningNumbers = new uint16[](sizeOfLottery_);
         // Loops the size of the number of tickets in the lottery
-        for(uint i = 0; i < sizeOfLottery_; i++){
+        for (uint256 i = 0; i < sizeOfLottery_; i++) {
             // Encodes the random number with its position in loop
-            bytes32 hashOfRandom = keccak256(abi.encodePacked(_randomNumber, i));
+            bytes32 hashOfRandom = keccak256(
+                abi.encodePacked(_randomNumber, i)
+            );
             // Casts random number hash into uint256
             uint256 numberRepresentation = uint256(hashOfRandom);
             // Sets the winning number position to a uint16 of random hash number
-            winningNumbers[i] = uint16(numberRepresentation.mod(maxValidRange_));
+            winningNumbers[i] = uint16(
+                numberRepresentation.mod(maxValidRange_)
+            );
         }
-    return winningNumbers;
+        return winningNumbers;
     }
 
-    function finaliseLottery(uint256 _lotteryId) public onlyOwner(){
+    function completeLottery(uint256 _lotteryId) public onlyOwner {
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
-        lottery.isFinalised = true;
+        require(
+            lottery.status != Status.Completed,
+            "Lottery already completed"
+        );
+        lottery.status = Status.Completed;
         uint16 winningNumber;
-        for(uint256 i = 0; i<lottery.lotSize; i++){
+        for (uint256 i = 0; i < lottery.lotSize; i++) {
             winningNumber = lottery.winningNumbers[i];
             winningParticipants[_lotteryId][winningNumber] = true;
         }
     }
 
-    function redeemNFT(uint256 _lotteryId) public{
-        require(lotteryHistory[_lotteryId].isFinalised == true);
+    function redeemNFT(uint256 _lotteryId) public {
+        require(lotteryHistory[_lotteryId].status == Status.Completed);
         uint256 winningNumber = participantToId[_lotteryId][msg.sender];
         require(winningParticipants[_lotteryId][winningNumber] == true);
 
