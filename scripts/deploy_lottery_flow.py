@@ -3,6 +3,13 @@ from scripts.contract_addresses import CONTRACTS
 from brownie import *
 from .contracts import *
 from settings import *
+
+def publish():
+    if network.show_active() == "development":
+        return False 
+    else:
+        return True
+
 def deploy_meme():
     deployer = accounts[0]
     #MemeX= contract name
@@ -11,7 +18,7 @@ def deploy_meme():
     meme_x_nft_address = CONTRACTS[network.show_active()]["meme_X_nft"]
     
     if meme_x_nft_address == "":
-        meme_x = MemeXNFT.deploy(_name,_symbol,{"from":accounts[0]})
+        meme_x = MemeXNFT.deploy(_name,_symbol,{"from":accounts[0]},publish_source=publish())
     else:
         meme_X = MemeXNFT.at(meme_x_nft_address)
 
@@ -24,7 +31,7 @@ def deploy_meme_token():
     owner = accounts[0]
     meme_x_token_address = CONTRACTS[network.show_active()]["meme_x_token"]
     if meme_x_token_address == "":
-        memeXToken = MemeXToken.deploy(_name, _symbol, _initialSupply, owner, {"from": owner})
+        memeXToken = MemeXToken.deploy(_name, _symbol, _initialSupply, owner, {"from": owner},publish_source=publish())
     else:
         memeXToken = MemeXToken.at(meme_x_token_address)
     
@@ -34,7 +41,7 @@ def deploy_staking(memeXToken):
     controller = accounts[0]
     staking_address = CONTRACTS[network.show_active()]["staking"]
     if staking_address == "":
-        staking = MemeXStaking.deploy(controller,memeXToken, {"from": accounts[0]})
+        staking = MemeXStaking.deploy(controller,memeXToken, {"from": accounts[0]},publish_source=publish())
     else: 
         staking = MemeXStaking.at(staking_address)
     
@@ -44,7 +51,7 @@ def deploy_lottery(staking):
     _stakingContract = staking
     lottery_address = CONTRACTS[network.show_active()]["lottery"]
     if lottery_address == "":
-        lottery = Lottery.deploy(_stakingContract,{"from":accounts[0]})
+        lottery = Lottery.deploy(_stakingContract,{"from":accounts[0]},publish_source=publish())
     else:
         lottery = Lottery.at(lottery_address)
     
