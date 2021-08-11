@@ -1,12 +1,11 @@
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./String.sol";
 
-//import "@openzeppelin/contracts/ownership/Ownable.sol";
-
-contract MemeXNFT is ERC1155("") {
+contract MemeXNFT is Ownable, ERC1155("") {
     using SafeMath for uint256;
     using Strings for string;
     string internal baseMetadataURI;
@@ -17,7 +16,6 @@ contract MemeXNFT is ERC1155("") {
     bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
     address internal lotteryContract;
 
-    address public owner;
     mapping(uint256 => uint256) tokenSupply;
 
     struct NFTInfo {
@@ -36,16 +34,21 @@ contract MemeXNFT is ERC1155("") {
     constructor(string memory _name, string memory _symbol) {
         name = _name;
         symbol = _symbol;
-        owner = msg.sender;
     }
 
-    // add owner
-    function setLotteryContract(address _lotteryContract) public {
-        require(owner == msg.sender);
+    function setLotteryContract(address _lotteryContract) public onlyOwner {
         require(lotteryContract != address(0));
         lotteryContract = _lotteryContract;
         address oldAddr = address(lotteryContract);
         emit LotteryContractUpdated(oldAddr, lotteryContract);
+    }
+
+    modifier onlyLottery() {
+        require(
+            msg.sender == address(lotteryContract),
+            "Only Lottery contract can call"
+        );
+        _;
     }
 
     ///@dev use this function to mint the tokens with lottery contract
@@ -55,13 +58,9 @@ contract MemeXNFT is ERC1155("") {
         uint256 _quantity,
         bytes memory _data,
         uint256 _lotteryId
-    ) public {
-        require(
-            msg.sender == lotteryContract,
-            "Only lottery contract can mint"
-        );
+    ) public onlyLottery {
         _mint(_to, _id, _quantity, _data);
-        creators[_id] = msg.sender;
+        creators[_id] = _to;
         nftInfo.push(NFTInfo(_to, true, _lotteryId));
     }
 
@@ -70,7 +69,7 @@ contract MemeXNFT is ERC1155("") {
         uint256[] memory _ids,
         uint256[] memory _quantities,
         bytes memory _data
-    ) public {
+    ) public onlyLottery {
         for (uint256 i = 0; i < _ids.length; i++) {
             uint256 _id = _ids[i];
             uint256 quantity = _quantities[i];
