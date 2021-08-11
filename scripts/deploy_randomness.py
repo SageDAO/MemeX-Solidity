@@ -25,5 +25,5 @@ def getRandomness():
 
 def main():
     load_accounts()
-  #  deploy_randomness()
-    getRandomness()
+    deploy_randomness()
+    #getRandomness()
