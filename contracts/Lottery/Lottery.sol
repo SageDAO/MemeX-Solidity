@@ -230,7 +230,7 @@ contract Lottery is Ownable {
         uint256 _lotteryId,
         bytes32 _requestId,
         uint256 _randomNumber
-    ) internal onlyRandomGenerator {
+    ) external onlyRandomGenerator {
         require(
             _lotteryId <= lotteryCounter.current(),
             "Lottery id does not exist"
