@@ -18,20 +18,18 @@ contract Lottery is Ownable {
     // Address of the randomness generator
     IRandomNumberGenerator internal randomGenerator;
     IRewards public pinaRewards;
-    // Address of the MemeXNFT contract
-   // IMemeXNFT public nftContract;
 
     uint256 private lotteryCounter;
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
 
-    //lotteryid => prizes
+    //lotteryid => prizeIds[]
     mapping(uint256 => uint256[]) internal prizes;
 
     //lotteryid => participants
     mapping(uint256 => ParticipantInfo[]) internal participants;
 
     //lotteryId => participant address => participantId
-    mapping(uint256 => mapping(address => uint16)) participantToId;
+    mapping(uint256 => mapping(address => uint256)) participantToId;
 
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
@@ -55,7 +53,7 @@ contract Lottery is Ownable {
         uint256 costPerTicket; // Cost per ticket in $PINA
         uint256 startingTime; // Timestamp to start the lottery
         uint256 closingTime; // Timestamp for end of entries
-        IMemeXNFT  nftContract;
+        IMemeXNFT nftContract;
     }
 
     event LotteryStatusChanged(uint256 _lotteryId, Status _status);
@@ -129,7 +127,6 @@ contract Lottery is Ownable {
         uint256 _startingTime,
         uint256 _closingTime,
         IMemeXNFT _nftContract
-
     ) public onlyOwner returns (uint256 lotteryId) {
         require(_costPerTicket != 0, "Ticket cost cannot be 0");
         require(
@@ -154,7 +151,6 @@ contract Lottery is Ownable {
             _startingTime,
             _closingTime,
             _nftContract
-
         );
         lotteryHistory[lotteryId] = newLottery;
     }
@@ -247,7 +243,7 @@ contract Lottery is Ownable {
     ) internal {
         // if there are less participants than prizes, reduce the number of prizes
         if (totalParticipants_ > numberOfPrizes_) {
-            numberOfPrizes_ = totalParticipants_;
+            numberOfPrizes_ = uint16(totalParticipants_);
         }
         // Loops through the prizes in the lottery
         for (uint16 i = 0; i < numberOfPrizes_; i++) {
@@ -277,7 +273,7 @@ contract Lottery is Ownable {
     {
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
         require(lottery.status == Status.Completed, "Lottery not completed");
-        uint16 participantId = participantToId[_lotteryId][msg.sender];
+        uint256 participantId = participantToId[_lotteryId][msg.sender];
         return participants[_lotteryId][participantId].winner;
     }
 
@@ -306,7 +302,7 @@ contract Lottery is Ownable {
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
         nftContract.mint(
             msg.sender,
-            _prizeId,
+            participants[_lotteryId][participantId].prizeId,
             1,
             "", // TODO: what data?
             _lotteryId
