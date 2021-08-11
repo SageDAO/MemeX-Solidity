@@ -56,6 +56,7 @@ contract Lottery is Ownable {
         IMemeXNFT nftContract;
     }
 
+    event PrizesChanged(uint256 _lotteryId, uint256 numberOfPrizes);
     event LotteryStatusChanged(uint256 _lotteryId, Status _status);
     event RequestNumbers(uint256 lotteryId, bytes32 requestId);
     event TicketCostChanged(
@@ -63,10 +64,6 @@ contract Lottery is Ownable {
         uint256 lotteryId,
         uint256 priceOfTicket
     );
-
-    //-------------------------------------------------------------------------
-    // CONSTRUCTOR
-    //-------------------------------------------------------------------------
 
     constructor(address _stakingContract) public {
         poolId = 1;
@@ -113,20 +110,29 @@ contract Lottery is Ownable {
         return (lotteryHistory[_lotteryId]);
     }
 
-    //-------------------------------------------------------------------------
-    // MODIFIERS
-    //-------------------------------------------------------------------------
-
     modifier onlyRandomGenerator() {
         require(msg.sender == address(randomGenerator), "Only RNG address");
         _;
+    }
+
+    function addPrizes(uint256 _lotteryId, uint256[] _prizeIds)
+        public
+        onlyOwner
+    {
+        require(_lotteryId <= lotteryCounter, "Lottery id does not exist");
+        require(_prizeIds.lenght > 0, "No prize ids");
+        for (uint256 i = 0; i < _prizeIds.length; i++) {
+            prizes[_lotteryId].push(prizeId);
+        }
+        emit PrizesChanged(_lotteryId, prizes[_lotteryId].length);
     }
 
     function createNewLottery(
         uint8 _costPerTicket,
         uint256 _startingTime,
         uint256 _closingTime,
-        IMemeXNFT _nftContract
+        IMemeXNFT _nftContract,
+        uint256[] _prizeIds
     ) public onlyOwner returns (uint256 lotteryId) {
         require(_costPerTicket != 0, "Ticket cost cannot be 0");
         require(
@@ -152,6 +158,8 @@ contract Lottery is Ownable {
             _closingTime,
             _nftContract
         );
+        prizes[_lotteryId] = _prizeIds;
+        emit PrizesChanged(_lotteryId, _prizeIds.length);
         lotteryHistory[lotteryId] = newLottery;
     }
 
@@ -163,6 +171,7 @@ contract Lottery is Ownable {
         external
         onlyOwner
     {
+        require(_lotteryId <= lotteryCounter, "Lottery id does not exist");
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
         require(prizes[_lotteryId].length != 0, "No prizes for this lottery");
         require(lottery.closingTime < block.timestamp);
@@ -201,6 +210,7 @@ contract Lottery is Ownable {
             "Lottery already completed"
         );
         lottery.status = Status.Canceled;
+        emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
     function buyOneTicket(uint256 _lotteryId) public {
