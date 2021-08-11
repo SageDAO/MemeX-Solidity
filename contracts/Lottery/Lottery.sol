@@ -30,7 +30,7 @@ contract Lottery is Ownable {
     mapping(uint256 => uint256[]) internal prizes;
 
     //lotteryid => address => participantInfo
-    mapping(uint256 => mapping(address => ParticipantInfo[]))
+    mapping(uint256 => mapping(address => ParticipantInfo))
         internal participants;
 
     //lotteryId => number => address (allows multiple numbers per participant)
@@ -64,7 +64,7 @@ contract Lottery is Ownable {
         Counters.Counter numbers;
         Counters.Counter participantsCount;
         uint256 boostCost;
-        uint256 lpBoost;
+        uint256 lpEntries;
     }
 
     event PrizesChanged(uint256 _lotteryId, uint256 numberOfPrizes);
@@ -103,6 +103,13 @@ contract Lottery is Ownable {
         poolId = _poolId;
     }
 
+    function _isLiquidityProvider(address _participant)
+        internal
+        returns (bool)
+    {
+        return pinaRewards.isLiquidityProvider(_participant);
+    }
+
     // as the user can enter only once per lottery, it's enough to check if he has earned enough points
     function _checkEnoughPina(address _user, uint256 _lotteryId) internal {
         require(
@@ -136,14 +143,17 @@ contract Lottery is Ownable {
         _;
     }
 
-    function addPrizes(uint256 _lotteryId, uint256[] _prizeIds)
+    function addPrizes(uint256 _lotteryId, uint256[] calldata _prizeIds)
         public
         onlyOwner
     {
-        require(_lotteryId <= lotteryCounter, "Lottery id does not exist");
-        require(_prizeIds.lenght > 0, "No prize ids");
+        require(
+            _lotteryId <= lotteryCounter.current(),
+            "Lottery id does not exist"
+        );
+        require(_prizeIds.length > 0, "No prize ids");
         for (uint256 i = 0; i < _prizeIds.length; i++) {
-            prizes[_lotteryId].push(prizeId);
+            prizes[_lotteryId].push(_prizeIds[i]);
         }
         emit PrizesChanged(_lotteryId, prizes[_lotteryId].length);
     }
@@ -153,9 +163,9 @@ contract Lottery is Ownable {
         uint256 _startingTime,
         uint256 _closingTime,
         IMemeXNFT _nftContract,
-        uint256[] _prizeIds,
+        uint256[] calldata _prizeIds,
         uint256 _boostCost,
-        uint8 _lpBoost
+        uint8 _lpEntries
     ) public onlyOwner returns (uint256 lotteryId) {
         require(_costPerTicket != 0, "Ticket cost cannot be 0");
         require(
@@ -182,10 +192,10 @@ contract Lottery is Ownable {
             Counters.Counter(0),
             Counters.Counter(0),
             _boostCost,
-            _lpBoost
+            _lpEntries
         );
-        prizes[_lotteryId] = _prizeIds;
-        emit PrizesChanged(_lotteryId, _prizeIds.length);
+        prizes[lotteryId] = _prizeIds;
+        emit PrizesChanged(lotteryId, _prizeIds.length);
         lotteryHistory[lotteryId] = newLottery;
     }
 
@@ -197,7 +207,10 @@ contract Lottery is Ownable {
         external
         onlyOwner
     {
-        require(_lotteryId <= lotteryCounter, "Lottery id does not exist");
+        require(
+            _lotteryId <= lotteryCounter.current(),
+            "Lottery id does not exist"
+        );
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
         require(prizes[_lotteryId].length != 0, "No prizes for this lottery");
         require(lottery.closingTime < block.timestamp);
@@ -218,9 +231,12 @@ contract Lottery is Ownable {
         bytes32 _requestId,
         uint256 _randomNumber
     ) internal onlyRandomGenerator {
-        require(_lotteryId <= lotteryCounter, "Lottery id does not exist");
+        require(
+            _lotteryId <= lotteryCounter.current(),
+            "Lottery id does not exist"
+        );
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-        require(lottery.Status == Status.Closed, "Lottery must be closed");
+        require(lottery.status == Status.Closed, "Lottery must be closed");
 
         uint16 numberOfPrizes_ = uint16(prizes[_lotteryId].length);
         uint256 totalParticipants_ = lottery.participantsCount.current();
@@ -242,9 +258,11 @@ contract Lottery is Ownable {
                 numberRepresentation.mod(totalParticipants_)
             );
             // defines the winner. If address already a winner will pick next number until a new winner is found
+            bool winnerFound = false;
             do {
-                bool winnerFound = false;
-                address winnerAddress = numbersToParticipant[winningNumber];
+                address winnerAddress = numbersToParticipant[_lotteryId][
+                    winningNumber
+                ];
                 if (participants[_lotteryId][winnerAddress].isWinner == true) {
                     winningNumber++;
                 } else {
@@ -272,11 +290,12 @@ contract Lottery is Ownable {
 
     function buyTicket(uint256 _lotteryId) public {
         require(
-            participants[_lotteryId][msg.sender] == 0,
+            participants[_lotteryId][msg.sender].participantAddress ==
+                address(0),
             "Already bought ticket to this lottery"
         );
 
-        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
+        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         if (
             lottery.status == Status.Planned &&
             lottery.startingTime < block.timestamp
@@ -304,7 +323,7 @@ contract Lottery is Ownable {
         lottery.participantsCount.increment();
         participants[_lotteryId][msg.sender] = newParticipant;
         if (newParticipant.isLiquidityProvider) {
-            for (uint8 i = 0; i < lpBoost; i++) {
+            for (uint8 i = 0; i < lottery.lpEntries; i++) {
                 assignNewNumberToParticipant(_lotteryId, msg.sender);
             }
         } else {
@@ -316,37 +335,53 @@ contract Lottery is Ownable {
         uint256 _lotteryId,
         address _participantAddress
     ) private {
-        require(_lotteryId <= lotteryCounter, "Lottery id does not exist");
+        require(
+            _lotteryId <= lotteryCounter.current(),
+            "Lottery id does not exist"
+        );
         ParticipantInfo memory participant = participants[_lotteryId][
-            _participant
+            _participantAddress
         ];
-        require(participant != 0, "Participant not found");
-        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
+        require(
+            participant.participantAddress != address(0),
+            "Participant not found"
+        );
+        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         numbersToParticipant[_lotteryId][
-            lottery.number.current()
+            lottery.numbers.current()
         ] = _participantAddress;
         lottery.numbers.increment();
         emit NumberAssigedToParticipant(
             _lotteryId,
-            lottery.number.current(),
+            lottery.numbers.current(),
             _participantAddress
         );
     }
 
     function boostParticipant(uint256 _lotteryId, address _participantAddress)
         public
+        payable
     {
-        require(_lotteryId <= lotteryCounter, "Lottery id does not exist");
+        require(
+            _lotteryId <= lotteryCounter.current(),
+            "Lottery id does not exist"
+        );
         ParticipantInfo memory participant = participants[_lotteryId][
             _participantAddress
         ];
-        require(participant != 0, "Participant not found");
+        require(
+            participant.participantAddress != address(0),
+            "Participant not found"
+        );
         require(
             participant.isBooster == false,
             "Participant already a booster"
         );
         // check if the transaction contains the boost cost
-        require(msg.value >= boostCost, "Not enough tokens to boost");
+        require(
+            msg.value >= lotteryHistory[_lotteryId].boostCost,
+            "Not enough tokens to boost"
+        );
 
         participant.isBooster = true;
         assignNewNumberToParticipant(_lotteryId, _participantAddress);
@@ -368,7 +403,9 @@ contract Lottery is Ownable {
 
     function redeemNFT(uint256 _lotteryId) public {
         require(lotteryHistory[_lotteryId].status == Status.Completed);
-        ParticipantInfo participant = participants[_lotteryId][msg.sender];
+        ParticipantInfo memory participant = participants[_lotteryId][
+            msg.sender
+        ];
         require(
             participant.isWinner == true && participant.prizeClaimed == false
         );
