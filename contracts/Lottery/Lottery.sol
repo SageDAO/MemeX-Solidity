@@ -2,6 +2,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
@@ -11,25 +12,29 @@ import "../../interfaces/IMemeXNFT.sol";
 // Winning numbers should be generated based on reward points;
 contract Lottery is Ownable {
     using SafeMath for uint256;
+    using Counters for Counters.Counter;
+
+    Counters.Counter private lotteryCounter;
 
     bytes32 internal requestId_;
 
     uint256 public poolId;
+
     // Address of the randomness generator
     IRandomNumberGenerator internal randomGenerator;
     IRewards public pinaRewards;
 
-    uint256 private lotteryCounter;
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
 
     //lotteryid => prizeIds[]
     mapping(uint256 => uint256[]) internal prizes;
 
-    //lotteryid => participants
-    mapping(uint256 => ParticipantInfo[]) internal participants;
+    //lotteryid => address => participantInfo
+    mapping(uint256 => mapping(address => ParticipantInfo[]))
+        internal participants;
 
-    //lotteryId => participant address => participantId
-    mapping(uint256 => mapping(address => uint256)) participantToId;
+    //lotteryId => number => address (allows multiple numbers per participant)
+    mapping(uint256 => mapping(uint256 => address)) numbersToParticipant;
 
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
@@ -41,7 +46,9 @@ contract Lottery is Ownable {
 
     struct ParticipantInfo {
         address participantAddress;
-        bool winner;
+        bool isLiquidityProvider;
+        bool isBooster;
+        bool isWinner;
         uint256 prizeId;
         bool prizeClaimed;
     }
@@ -54,15 +61,29 @@ contract Lottery is Ownable {
         uint256 startingTime; // Timestamp to start the lottery
         uint256 closingTime; // Timestamp for end of entries
         IMemeXNFT nftContract;
+        Counters.Counter numbers;
+        Counters.Counter participantsCount;
+        uint256 boostCost;
+        uint256 lpBoost;
     }
 
     event PrizesChanged(uint256 _lotteryId, uint256 numberOfPrizes);
     event LotteryStatusChanged(uint256 _lotteryId, Status _status);
     event RequestNumbers(uint256 lotteryId, bytes32 requestId);
+    event NewParticipant(
+        uint256 lotteryId,
+        address participantAddress,
+        uint16 amountOfNumbers
+    );
     event TicketCostChanged(
         address operator,
         uint256 lotteryId,
         uint256 priceOfTicket
+    );
+    event NumberAssigedToParticipant(
+        uint256 lotteryId,
+        uint256 number,
+        address participantAddress
     );
 
     constructor(address _stakingContract) public {
@@ -132,7 +153,9 @@ contract Lottery is Ownable {
         uint256 _startingTime,
         uint256 _closingTime,
         IMemeXNFT _nftContract,
-        uint256[] _prizeIds
+        uint256[] _prizeIds,
+        uint256 _boostCost,
+        uint8 _lpBoost
     ) public onlyOwner returns (uint256 lotteryId) {
         require(_costPerTicket != 0, "Ticket cost cannot be 0");
         require(
@@ -140,9 +163,8 @@ contract Lottery is Ownable {
             "Timestamps for lottery invalid"
         );
         // Incrementing lottery ID
-        lotteryCounter = lotteryCounter.add(1);
-        lotteryId = lotteryCounter;
-        uint16[] memory boosters = new uint16[](0);
+        lotteryCounter.increment();
+        lotteryId = lotteryCounter.current();
         Status lotteryStatus;
         if (_startingTime >= getCurrentTime()) {
             lotteryStatus = Status.Open;
@@ -156,7 +178,11 @@ contract Lottery is Ownable {
             _costPerTicket,
             _startingTime,
             _closingTime,
-            _nftContract
+            _nftContract,
+            Counters.Counter(0),
+            Counters.Counter(0),
+            _boostCost,
+            _lpBoost
         );
         prizes[_lotteryId] = _prizeIds;
         emit PrizesChanged(_lotteryId, _prizeIds.length);
@@ -192,15 +218,46 @@ contract Lottery is Ownable {
         bytes32 _requestId,
         uint256 _randomNumber
     ) internal onlyRandomGenerator {
+        require(_lotteryId <= lotteryCounter, "Lottery id does not exist");
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        require(lottery.Status == Status.Closed, "Lottery must be closed");
+
         uint16 numberOfPrizes_ = uint16(prizes[_lotteryId].length);
-        uint256 totalParticipants_ = participants[_lotteryId].length;
-        _assignPrizes(
-            _randomNumber,
-            numberOfPrizes_,
-            totalParticipants_,
-            _lotteryId
-        );
+        uint256 totalParticipants_ = lottery.participantsCount.current();
+
+        // if there are less participants than prizes, reduce the number of prizes
+        if (totalParticipants_ < numberOfPrizes_) {
+            numberOfPrizes_ = uint16(totalParticipants_);
+        }
+        // Loops through each prize
+        for (uint16 i = 0; i < numberOfPrizes_; i++) {
+            // Encodes the random number with its position in loop
+            bytes32 hashOfRandom = keccak256(
+                abi.encodePacked(_randomNumber, i)
+            );
+            // Casts random number hash into uint256
+            uint256 numberRepresentation = uint256(hashOfRandom);
+            // Sets the winning number position to a uint16 of random hash number
+            uint16 winningNumber = uint16(
+                numberRepresentation.mod(totalParticipants_)
+            );
+            // defines the winner. If address already a winner will pick next number until a new winner is found
+            do {
+                bool winnerFound = false;
+                address winnerAddress = numbersToParticipant[winningNumber];
+                if (participants[_lotteryId][winnerAddress].isWinner == true) {
+                    winningNumber++;
+                } else {
+                    participants[_lotteryId][winnerAddress].isWinner = true;
+                    participants[_lotteryId][winnerAddress].prizeId = prizes[
+                        _lotteryId
+                    ][i];
+                    winnerFound = true;
+                }
+            } while (winnerFound == false);
+        }
+        lottery.status = Status.Completed;
+        emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
     function cancelLottery(uint256 _lotteryId) public onlyOwner {
@@ -213,9 +270,9 @@ contract Lottery is Ownable {
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
-    function buyOneTicket(uint256 _lotteryId) public {
+    function buyTicket(uint256 _lotteryId) public {
         require(
-            participantToId[_lotteryId][msg.sender] == 0,
+            participants[_lotteryId][msg.sender] == 0,
             "Already bought ticket to this lottery"
         );
 
@@ -236,44 +293,63 @@ contract Lottery is Ownable {
         }
         require(lottery.status == Status.Open, "Lottery not open");
         _checkEnoughPina(msg.sender, _lotteryId);
-
-        participants[_lotteryId].push(
-            ParticipantInfo(msg.sender, false, 0, false)
+        ParticipantInfo memory newParticipant = ParticipantInfo(
+            msg.sender,
+            _isLiquidityProvider(msg.sender),
+            false,
+            false,
+            0,
+            false
         );
-
-        uint256 participantId = participants[_lotteryId].length - 1;
-        participantToId[_lotteryId][msg.sender] = participantId;
+        lottery.participantsCount.increment();
+        participants[_lotteryId][msg.sender] = newParticipant;
+        if (newParticipant.isLiquidityProvider) {
+            for (uint8 i = 0; i < lpBoost; i++) {
+                assignNewNumberToParticipant(_lotteryId, msg.sender);
+            }
+        } else {
+            assignNewNumberToParticipant(_lotteryId, msg.sender);
+        }
     }
 
-    function _assignPrizes(
-        uint256 _randomNumber,
-        uint16 numberOfPrizes_,
-        uint256 totalParticipants_,
-        uint256 _lotteryId
-    ) internal {
-        // if there are less participants than prizes, reduce the number of prizes
-        if (totalParticipants_ > numberOfPrizes_) {
-            numberOfPrizes_ = uint16(totalParticipants_);
-        }
-        // Loops through the prizes in the lottery
-        for (uint16 i = 0; i < numberOfPrizes_; i++) {
-            // Encodes the random number with its position in loop
-            bytes32 hashOfRandom = keccak256(
-                abi.encodePacked(_randomNumber, i)
-            );
-            // Casts random number hash into uint256
-            uint256 numberRepresentation = uint256(hashOfRandom);
-            // Sets the winning number position to a uint16 of random hash number
-            uint16 winningNumber = uint16(
-                numberRepresentation.mod(totalParticipants_)
-            );
-            // Changes the participant with id = winningNumber to be winner and sets the prizeId
-            participants[_lotteryId][winningNumber].winner = true;
-            participants[_lotteryId][winningNumber].prizeId = prizes[
-                _lotteryId
-            ][i];
-            // TODO: participant might already be winner, should pick another participant if so
-        }
+    function assignNewNumberToParticipant(
+        uint256 _lotteryId,
+        address _participantAddress
+    ) private {
+        require(_lotteryId <= lotteryCounter, "Lottery id does not exist");
+        ParticipantInfo memory participant = participants[_lotteryId][
+            _participant
+        ];
+        require(participant != 0, "Participant not found");
+        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
+        numbersToParticipant[_lotteryId][
+            lottery.number.current()
+        ] = _participantAddress;
+        lottery.numbers.increment();
+        emit NumberAssigedToParticipant(
+            _lotteryId,
+            lottery.number.current(),
+            _participantAddress
+        );
+    }
+
+    function boostParticipant(uint256 _lotteryId, address _participantAddress)
+        public
+    {
+        require(_lotteryId <= lotteryCounter, "Lottery id does not exist");
+        ParticipantInfo memory participant = participants[_lotteryId][
+            _participantAddress
+        ];
+        require(participant != 0, "Participant not found");
+        require(
+            participant.isBooster == false,
+            "Participant already a booster"
+        );
+        // check if the transaction contains the boost cost
+        require(msg.value >= boostCost, "Not enough tokens to boost");
+
+        participant.isBooster = true;
+        assignNewNumberToParticipant(_lotteryId, _participantAddress);
     }
 
     function isAddressWinner(uint256 _lotteryId, address _address)
@@ -283,36 +359,24 @@ contract Lottery is Ownable {
     {
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
         require(lottery.status == Status.Completed, "Lottery not completed");
-        uint256 participantId = participantToId[_lotteryId][msg.sender];
-        return participants[_lotteryId][participantId].winner;
+        return participants[_lotteryId][_address].isWinner;
     }
 
     function isCallerWinner(uint256 _lotteryId) public view returns (bool) {
         return isAddressWinner(_lotteryId, msg.sender);
     }
 
-    function completeLottery(uint256 _lotteryId) public onlyOwner {
-        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
-        require(
-            lottery.status != Status.Completed,
-            "Lottery already completed"
-        );
-        lottery.status = Status.Completed;
-        emit LotteryStatusChanged(_lotteryId, lottery.status);
-    }
-
     function redeemNFT(uint256 _lotteryId) public {
         require(lotteryHistory[_lotteryId].status == Status.Completed);
-        uint256 participantId = participantToId[_lotteryId][msg.sender];
+        ParticipantInfo participant = participants[_lotteryId][msg.sender];
         require(
-            participants[_lotteryId][participantId].winner == true &&
-                participants[_lotteryId][participantId].prizeClaimed == false
+            participant.isWinner == true && participant.prizeClaimed == false
         );
-        participants[_lotteryId][participantId].prizeClaimed = true;
+        participant.prizeClaimed = true;
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
         nftContract.mint(
             msg.sender,
-            participants[_lotteryId][participantId].prizeId,
+            participant.prizeId,
             1,
             "", // TODO: what data?
             _lotteryId

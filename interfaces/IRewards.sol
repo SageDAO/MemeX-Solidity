@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 interface IRewards {
     /**
-     * Requests randomness for a given lottery id
+     * Points earned by the player.
      */
-    function earned(address account, uint256 pool)
-        external
-        returns (uint256);
+    function earned(address account, uint256 pool) external returns (uint256);
+
+    function isLiquidityProvider(address account) external returns (bool);
 }
