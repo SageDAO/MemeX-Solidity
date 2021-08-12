@@ -12,6 +12,8 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
     address internal requester;
     uint256 public currentLotteryId;
 
+
+    event lotteryAddressChanged(address oldAddr, address newAddr);
     modifier onlyLottery() {
         require(msg.sender == lotteryAddr, "Lottery calls only");
         _;
@@ -29,6 +31,12 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
         lotteryAddr = _lotteryAddr;
     }
 
+    function setLotteryAddress(address _lotteryAddr) public onlyOwner{
+        require(lotteryAddr != address(0));
+        address oldAddr = lotteryAddr;
+        lotteryAddr = _lotteryAddr;
+        emit lotteryAddressChanged(oldAddr,_lotteryAddr);
+    }
     /**
      * Requests randomness
      */

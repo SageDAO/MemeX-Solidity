@@ -8,7 +8,7 @@ def publish():
     if network.show_active() == "development":
         return False
     else:
-        return False
+        return True
 
 
 def deploy_meme():
@@ -164,20 +164,20 @@ def main():
     staking = deploy_staking(memeXToken)
     lottery = deploy_lottery(staking)
 
-    # staking = create_pool(staking)
+   # staking = create_pool(staking)
 
-    # setRandomGenerator(lottery)
-    # staking = stake(staking, memeXToken)
+    setRandomGenerator(lottery)
+    staking = stake(staking, memeXToken)
 
-    #_lotteryId = create_lottery(lottery, memeNft)
-    # CHECK THIS AGAIN
+   # _lotteryId = create_lottery(lottery, memeNft)
+    #CHECK THIS AGAIN
     _lotteryId = 1  # starts from 1 now
-    # print(lottery.getLotteryInfo(_lotteryId))
-    #lottery = buy_tickets(_lotteryId, lottery)
-    #boost_participant(lottery, _lotteryId)
-    #print(lottery.isBooster(_lotteryId, accounts[0]))
-    # print("lottery ID..........",_lotteryId)
-    #lottery = execute_lottery(lottery, _lotteryId)
+   # print(lottery.getLotteryInfo(_lotteryId))
+   # lottery = buy_tickets(_lotteryId, lottery)
+   # boost_participant(lottery, _lotteryId)
+   # print(lottery.isBooster(_lotteryId, accounts[0]))
+   # print("lottery ID..........",_lotteryId)
+    lottery = execute_lottery(lottery, _lotteryId)
 
     print(lottery.isAddressWinner(_lotteryId,
           accounts[0], {"from": accounts[0]}))

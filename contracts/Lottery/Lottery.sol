@@ -8,8 +8,7 @@ import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 
-/// SSS: Things to think about:
-// Winning numbers should be generated based on reward points;
+/// SSS TODO: Add more events maybe??
 contract Lottery is Ownable {
     using SafeMath for uint256;
     using Counters for Counters.Counter;

@@ -16,6 +16,12 @@ def verify(contract_id, container):
 
 def main():
 
-    verify()
+    verify("random_generator", RandomNumberConsumer)
+    verify("meme_x_token", MemeXToken)
+    verify("meme_X_nft", MemeXNFT)
+    verify("staking", MemeXStaking)
+    verify("lottery", Lottery)
+    
+
    
 
