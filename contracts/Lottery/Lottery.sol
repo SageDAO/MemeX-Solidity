@@ -59,11 +59,11 @@ contract Lottery is Ownable {
         uint256 costPerTicket; // Cost per ticket in $PINA
         uint256 startingTime; // Timestamp to start the lottery
         uint256 closingTime; // Timestamp for end of entries
-        IMemeXNFT nftContract;
-        Counters.Counter numbers;
-        Counters.Counter participantsCount;
-        uint256 boostCost;
-        uint256 lpEntries;
+        IMemeXNFT nftContract; // reference to the NFT Contract
+        Counters.Counter numbers; // luck numbers assigned to participants (those will define winners)
+        Counters.Counter participantsCount; // number of participants
+        uint256 boostCost; // value in ETH to pay for a boost ticket (so far its a one time payment and would change if we adopt the Superfluid subscription logic)
+        uint256 lpEntries; // amount of numbers a liquidity provider will get
     }
 
     event ResponseReceived(bytes32 _requestId);
@@ -165,7 +165,8 @@ contract Lottery is Ownable {
         IMemeXNFT _nftContract,
         uint256[] calldata _prizeIds,
         uint256 _boostCost,
-        uint8 _lpEntries
+        uint8 _lpEntries,
+        string calldata _baseMetadataURI
     ) public onlyOwner returns (uint256 lotteryId) {
         // DISABLED FOR TESTS require(_costPerTicket != 0, "Ticket cost cannot be 0");
         require(
@@ -194,6 +195,8 @@ contract Lottery is Ownable {
             _boostCost,
             _lpEntries
         );
+        IMemeXNFT nftContract = _nftContract;
+        nftContract.setBaseMetadataURI(_baseMetadataURI);
         prizes[lotteryId] = _prizeIds;
         emit PrizesChanged(lotteryId, _prizeIds.length);
         lotteryHistory[lotteryId] = newLottery;
@@ -407,27 +410,36 @@ contract Lottery is Ownable {
     function isAddressWinner(uint256 _lotteryId, address _address)
         public
         view
-        returns (bool, uint256)
+        returns (
+            bool,
+            uint256,
+            bool
+        )
     {
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
         require(lottery.status == Status.Completed, "Lottery not completed");
         return (
             participants[_lotteryId][_address].isWinner,
-            participants[_lotteryId][_address].prizeId
+            participants[_lotteryId][_address].prizeId,
+            participants[_lotteryId][_address].prizeClaimed
         );
     }
 
     function isCallerWinner(uint256 _lotteryId)
         public
         view
-        returns (bool, uint256)
+        returns (
+            bool,
+            uint256,
+            bool
+        )
     {
         return isAddressWinner(_lotteryId, msg.sender);
     }
 
     function redeemNFT(uint256 _lotteryId) public {
         require(lotteryHistory[_lotteryId].status == Status.Completed);
-        ParticipantInfo memory participant = participants[_lotteryId][
+        ParticipantInfo storage participant = participants[_lotteryId][
             msg.sender
         ];
         require(
@@ -435,12 +447,11 @@ contract Lottery is Ownable {
         );
         participant.prizeClaimed = true;
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
-        nftContract.mint(
-            msg.sender,
-            participant.prizeId,
-            1,
-            "", // TODO: what data?
-            _lotteryId
-        );
+        nftContract.mint(msg.sender, participant.prizeId, 1, "", _lotteryId);
+    }
+
+    function withdraw(address payable _to, uint256 _amount) external onlyOwner {
+        require(_amount <= address(this).balance);
+        _to.transfer(_amount);
     }
 }

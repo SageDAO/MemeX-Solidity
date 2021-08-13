@@ -6,18 +6,11 @@ python3 -m pipx ensurepath
 pipx install eth-brownie
 ```
 
-Create a `deployer` account:
-
-`brownie accounts generate deployer`
-
-If you want to interact with this account using wallets you can export the json with:
-
-`brownie accounts export deployer <dest_path>`
-
-* remeber to get eth from faucets when deploying or interacting with contracts on a testnet
+When interacting with contracts on testnets you'll need an Infura API key:
+`export WEB3_INFURA_PROJECT_ID=<key>`
 
 ## Deploy contracts
-Deploy the MemeX token:
+To deploy all the contracts:
 
 `brownie run scripts/deploy_memex_token.py`
 

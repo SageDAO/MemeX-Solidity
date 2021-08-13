@@ -37,9 +37,9 @@ contract MemeXNFT is Ownable, ERC1155("") {
     }
 
     function setLotteryContract(address _lotteryContract) public onlyOwner {
-        require(lotteryContract != address(0));
-        lotteryContract = _lotteryContract;
+        require(_lotteryContract != address(0));
         address oldAddr = address(lotteryContract);
+        lotteryContract = _lotteryContract;
         emit LotteryContractUpdated(oldAddr, lotteryContract);
     }
 
@@ -78,13 +78,23 @@ contract MemeXNFT is Ownable, ERC1155("") {
         _mintBatch(_to, _ids, _quantities, _data);
     }
 
-    function _setBaseMetadataURI(string memory _newBaseMetadataURI) internal {
+    function setBaseMetadataURI(string memory _newBaseMetadataURI)
+        external
+        onlyLottery
+    {
         baseMetadataURI = _newBaseMetadataURI;
     }
 
     function uri(uint256 _id) public view override returns (string memory) {
         require(_exists(_id), "ERC721Tradable#uri: NONEXISTENT_TOKEN");
-        return Strings.strConcat(baseMetadataURI, Strings.uint2str(_id));
+        // returns <base_path>/<prizeId>.json
+        return
+            Strings.strConcat(
+                baseMetadataURI,
+                "/",
+                Strings.uint2str(_id),
+                ".json"
+            );
     }
 
     function getLotteryId(uint256 _tokenId) public view returns (uint256) {

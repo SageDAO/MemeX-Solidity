@@ -10,4 +10,6 @@ interface IMemeXNFT {
         bytes calldata _data,
         uint256 _lotteryId
     ) external;
+
+    function setBaseMetadataURI(string memory _newBaseMetadataURI) external;
 }

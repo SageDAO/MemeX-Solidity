@@ -8,14 +8,14 @@ def publish():
     if network.show_active() == "development":
         return False
     else:
-        return True
+        return False
 
 
 def deploy_meme():
     deployer = accounts[0]
     # MemeX= contract name
-    _name = "Try ERC1155"
-    _symbol = "TE"
+    _name = "MemeX NFTs"
+    _symbol = "MMXNFT"
     meme_x_nft_address = CONTRACTS[network.show_active()]["meme_X_nft"]
 
     if meme_x_nft_address == "":
@@ -29,13 +29,14 @@ def deploy_meme():
 
 def deploy_meme_token():
     _name = "MemeX"
-    _symbol = "Mem"
+    _symbol = "MemeX"
     _initialSupply = MEME_X_TOKEN
     owner = accounts[0]
     meme_x_token_address = CONTRACTS[network.show_active()]["meme_x_token"]
     if meme_x_token_address == "":
         memeXToken = MemeXToken.deploy(_name, _symbol, _initialSupply, owner, {
                                        "from": owner}, publish_source=publish())
+
     else:
         memeXToken = MemeXToken.at(meme_x_token_address)
 
@@ -121,7 +122,7 @@ def create_lottery(lottery, meme_x):
 
     _closingTime = chain.time() + 24 * 60 * 60
     _lotteryId = lottery.createNewLottery(
-        _costPerTicket, _startingTime, _closingTime, _nftContract, _prizeIds, 0, 0, {"from": accounts[0]})
+        _costPerTicket, _startingTime, _closingTime, _nftContract, _prizeIds, 0, 0, "https://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze.ipfs.dweb.link/", {"from": accounts[0]})
 
     return _lotteryId
 
@@ -135,7 +136,6 @@ def random_number_consumer():
 
 
 def execute_lottery(lottery, _lotteryId):
-
     lottery.drawWinningNumbers(_lotteryId, 0, {"from": accounts[0]})
     return lottery
 
@@ -151,32 +151,37 @@ def setRandomGenerator(lottery):
     return lottery
 
 
+def setLottery(memeNft):
+    lottery_address = CONTRACTS[network.show_active(
+    )]["lottery"]
+    memeNft.setLotteryContract(lottery_address,  {"from": accounts[0]})
+
+
 def boost_participant(lottery, _lotteryId):
     lottery.boostParticipant(_lotteryId, accounts[0], {"from": accounts[0]})
 
 
 def main():
     load_accounts()
-    _lotteryId = 0
 
-    memeNft = deploy_meme()
     memeXToken = deploy_meme_token()
     staking = deploy_staking(memeXToken)
     lottery = deploy_lottery(staking)
-
+    memeNft = deploy_meme()
    # staking = create_pool(staking)
 
-    setRandomGenerator(lottery)
-    staking = stake(staking, memeXToken)
+    # setRandomGenerator(lottery)
+    setLottery(memeNft)
+    #staking = stake(staking, memeXToken)
 
-   # _lotteryId = create_lottery(lottery, memeNft)
-    #CHECK THIS AGAIN
+    _lotteryId = create_lottery(lottery, memeNft)
+
     _lotteryId = 1  # starts from 1 now
-   # print(lottery.getLotteryInfo(_lotteryId))
-   # lottery = buy_tickets(_lotteryId, lottery)
-   # boost_participant(lottery, _lotteryId)
-   # print(lottery.isBooster(_lotteryId, accounts[0]))
-   # print("lottery ID..........",_lotteryId)
+    # print(lottery.getLotteryInfo(_lotteryId))
+    lottery = buy_tickets(_lotteryId, lottery)
+    # boost_participant(lottery, _lotteryId)
+    # print(lottery.isBooster(_lotteryId, accounts[0]))
+    # print("lottery ID..........",_lotteryId)
     lottery = execute_lottery(lottery, _lotteryId)
 
     print(lottery.isAddressWinner(_lotteryId,
