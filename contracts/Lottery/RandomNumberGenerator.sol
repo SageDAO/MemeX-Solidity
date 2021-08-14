@@ -8,21 +8,16 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
     bytes32 internal keyHash;
     uint256 internal fee;
     uint256 public randomResult;
-    address public lotteryAddr;
+    address internal lotteryAddr;
     address internal requester;
     uint256 public currentLotteryId;
 
+    event lotteryAddressChanged(address oldAddr, address newAddr);
     modifier onlyLottery() {
         require(msg.sender == lotteryAddr, "Lottery calls only");
         _;
     }
 
-    /**
-     * Network: Kovan
-     * Chainlink VRF Coordinator address: 0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9
-     * LINK token address:                0xa36085F69e2889c224210F603D836748e7dC0088
-     * Key Hash: 0x6c3699283bda56ad74f6b855546325b68d482e983852a7a82979cc4807b641f4
-     */
     constructor(
         address _vrfCoordinator,
         address _linkToken,
@@ -35,12 +30,19 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
         lotteryAddr = _lotteryAddr;
     }
 
+    function setLotteryAddress(address _lotteryAddr) public onlyOwner {
+        require(_lotteryAddr != address(0));
+        address oldAddr = lotteryAddr;
+        lotteryAddr = _lotteryAddr;
+        emit lotteryAddressChanged(oldAddr, _lotteryAddr);
+    }
+
     /**
      * Requests randomness
      */
-    //SSS: No need for userProvidedSeed i think;
     function getRandomNumber(uint256 lotteryId, uint256 userProvidedSeed)
         public
+        onlyLottery
         returns (bytes32 requestId)
     {
         require(
@@ -70,7 +72,7 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
     /**
      * Function to allow removing LINK from the contract
      */
-    function withdrawLink(uint256 ammount) external onlyOwner {
-        LINK.transfer(msg.sender, ammount);
+    function withdrawLink(uint256 amount) external onlyOwner {
+        LINK.transfer(msg.sender, amount);
     }
 }
