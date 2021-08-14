@@ -95,19 +95,28 @@ def meme_x(MemeXNFT):
     
 #     return meme_x
 
-def test_lottery(lottery, meme_x):
-    _nftContract = meme_x
-    # _nftContract = CONTRACTS[network.show_active()]["meme_X_nft"]
-    _prizeIds = list(range(1, 3))
-    _costPerTicket = 0
-    _startingTime = chain.time()
+# def test_lottery(lottery, meme_x):
+#     _nftContract = meme_x
+#     # _nftContract = CONTRACTS[network.show_active()]["meme_X_nft"]
+#     _prizeIds = list(range(1, 3))
+#     _costPerTicket = 0
+#     _startingTime = chain.time()
 
-    _closingTime = chain.time() + 24 * 60 * 60
-    _lotteryId = lottery.createNewLottery(
-        _costPerTicket, _startingTime, _closingTime, _nftContract, _prizeIds, 0, 0, "https://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze.ipfs.dweb.link/{id}.json", {"from": accounts[0]})
-    _lotteryId = print(lottery.getCurrentLotteryId())
-    _lotteryId = lottery.getCurrentLotteryId()
-    _nftContract.mint(accounts[0],1,1,"",_lotteryId, {"from":accounts[0]})
-    print(_nftContract.address)
+#     _closingTime = chain.time() + 24 * 60 * 60
+#     _lotteryId = lottery.createNewLottery(
+#         _costPerTicket, _startingTime, _closingTime, _nftContract, _prizeIds, 0, 0, "https://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze.ipfs.dweb.link/{id}.json", {"from": accounts[0]})
+#     _lotteryId = print(lottery.getCurrentLotteryId())
+#     _lotteryId = lottery.getCurrentLotteryId()
+#     _nftContract.mint(accounts[0],1,1,"",_lotteryId, {"from":accounts[0]})
+#     print(_nftContract.address)
     
-    print(lottery.redeemNFT(_lotteryId, {"from":accounts[0]}).return_value)
+#     print(lottery.redeemNFT(_lotteryId, {"from":accounts[0]}).return_value)
+
+def test_mint_nft(meme_x):
+    _nftContract = meme_x
+    _lotteryId = 1
+    _id = 1
+    _nftContract.mint(accounts[0],1,1,"",_lotteryId, {"from":accounts[0]})
+    _id = 1
+    _nftContract.setBaseMetadataURI("https://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze.ipfs.dweb.link/")
+    print(_nftContract.uri(_id))

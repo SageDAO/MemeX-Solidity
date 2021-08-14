@@ -182,13 +182,14 @@ def main():
 #    #staking = create_pool(staking)
     
 #     #staking = stake(staking, memeXToken)
-#     setLotteryHelper(memeNft, lottery)
-#     _lotteryId = create_lottery(lottery, memeNft)
+    setLotteryHelper(memeNft, lottery)
+    """ _lotteryId = create_lottery(lottery, memeNft)
 
     _lotteryId = lottery.getCurrentLotteryId()
-#     print(lottery.getLotteryInfo(_lotteryId))
-#     lottery = buy_tickets(_lotteryId, lottery)
-#     boost_participant(lottery, _lotteryId)
-#     print(lottery.isBooster(_lotteryId, accounts[0]))
-    #setLotteryAddressInGenerator(lottery)
+    print(lottery.getLotteryInfo(_lotteryId))
+    lottery = buy_tickets(_lotteryId, lottery)
+    boost_participant(lottery, _lotteryId)
+    print(lottery.isBooster(_lotteryId, accounts[0]))
+    setLotteryAddressInGenerator(lottery)   
     lottery = execute_lottery(lottery, _lotteryId)
+ """

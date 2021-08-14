@@ -8,7 +8,6 @@ import "./String.sol";
 contract MemeXNFT is Ownable, ERC1155 {
     using SafeMath for uint256;
     using Strings for string;
-    string internal baseMetadataURI;
     string public name;
     mapping(uint256 => address) public creators;
     // Contract symbol
@@ -33,9 +32,10 @@ contract MemeXNFT is Ownable, ERC1155 {
 
     constructor(string memory _name, string memory _symbol)
         ERC1155(
-            "https://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze.ipfs.dweb.link/{id}.json"
+            "ipfs://"
         )
     {
+        
         name = _name;
         symbol = _symbol;
     }
@@ -62,7 +62,7 @@ contract MemeXNFT is Ownable, ERC1155 {
         uint256 _quantity,
         bytes memory _data,
         uint256 _lotteryId
-    ) public onlyLottery {
+    ) public  {
         _mint(_to, _id, _quantity, _data);
         creators[_id] = _to;
         nftInfo.push(NFTInfo(_to, true, _lotteryId));
@@ -84,22 +84,24 @@ contract MemeXNFT is Ownable, ERC1155 {
 
     function setBaseMetadataURI(string memory _newBaseMetadataURI)
         external
-        onlyLottery
+        
     {
-        baseMetadataURI = _newBaseMetadataURI;
+        _setURI(_newBaseMetadataURI);
     }
 
-    // function uri(uint256 _id) public view override returns (string memory) {
-    //     require(_exists(_id), "ERC721Tradable#uri: NONEXISTENT_TOKEN");
-    //     // returns <base_path>/<prizeId>.json
-    //     return
-    //         Strings.strConcat(
-    //             baseMetadataURI,
-    //             "/",
-    //             Strings.uint2str(_id),
-    //             ".json"
-    //         );
-    // }
+/*     function uri(uint256 _id) public view override returns (string memory) {
+         require(_exists(_id), "ERC721Tradable#uri: NONEXISTENT_TOKEN");
+         // returns <base_path>/<prizeId>.json
+         return
+             Strings.strConcat(
+                 baseMetadataURI,
+                 "/",
+                 Strings.uint2str(_id),
+             ".json"
+            );
+     }
+ */
+     
 
     function getLotteryId(uint256 _tokenId) public view returns (uint256) {
         return nftInfo[_tokenId].lotteryId;

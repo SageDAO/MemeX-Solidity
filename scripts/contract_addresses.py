@@ -13,7 +13,7 @@ CONTRACTS = {
         # "lottery": "0xcC39D85fBe143b8137D76B6D0eB71b3caEF0FCA1"
         "random_generator": "0xc63343D411fd8ca6734b75E469D84B2Ec9f4159E",
         "meme_x_token": "0x74B69372A5022255091ed7CFFDA05A5B6aDa680e",
-        "meme_X_nft": "0x120d2df52F022453360f3ab224E1784A3735Aa8A",
+        "meme_X_nft": "0x33880393761b4039DF83B7FD40b8eD9d95bCc6Aa",
         "staking": "0x0880f3B15DF62D4f79339A4CdDf998e0b413B2aE",
         "lottery": "0x9d2fF90E180D9f25Bca12B2450E9aDE1050e954b"
     },
