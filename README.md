@@ -44,6 +44,6 @@ To simulate the entire lottery flow, including lottery creation, user entries, a
 
 Every call to the Chainlink oracle requires the lottery contract to have some LINK tokens. During tests use this [faucet](https://rinkeby.chain.link/) to refill if necessary.
 
-To query who were the winners make sure to allow some blocks to be mined as we need to wait for an answer from the randomness oracle:
+To make queries about the winners and mint their prizes please make sure to allow some blocks to be mined as we need to wait for an answer from the randomness oracle:
 
 `brownie run scripts/simulate_check_winners_and_mint_prize.py --network rinkeby`
