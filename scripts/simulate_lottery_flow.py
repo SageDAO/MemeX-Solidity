@@ -61,6 +61,7 @@ def deploy_lottery(staking):
     if lottery_address == "":
         lottery = Lottery.deploy(
             _stakingContract, {"from": accounts[0]}, publish_source=publish())
+        setRandomGenerator(lottery)
     else:
         lottery = Lottery.at(lottery_address)
 
@@ -122,7 +123,7 @@ def create_lottery(lottery, meme_x):
 
     _closingTime = chain.time() + 24 * 60 * 60
     _lotteryId = lottery.createNewLottery(
-        _costPerTicket, _startingTime, _closingTime, _nftContract, _prizeIds, 0, 0, "https://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze.ipfs.dweb.link/", {"from": accounts[0]})
+        _costPerTicket, _startingTime, _closingTime, _nftContract, _prizeIds, 0, 0, "https://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze.ipfs.dweb.link/{id}.json", {"from": accounts[0]})
 
     return _lotteryId
 
@@ -168,25 +169,15 @@ def main():
     staking = deploy_staking(memeXToken)
     lottery = deploy_lottery(staking)
     memeNft = deploy_meme()
-   # staking = create_pool(staking)
+    #staking = create_pool(staking)
 
-    # setRandomGenerator(lottery)
-    setLottery(memeNft)
     #staking = stake(staking, memeXToken)
 
     _lotteryId = create_lottery(lottery, memeNft)
 
-    _lotteryId = 1  # starts from 1 now
-    # print(lottery.getLotteryInfo(_lotteryId))
+    _lotteryId = lottery.getCurrentLotteryId()
+    print(lottery.getLotteryInfo(_lotteryId))
     lottery = buy_tickets(_lotteryId, lottery)
-    # boost_participant(lottery, _lotteryId)
-    # print(lottery.isBooster(_lotteryId, accounts[0]))
-    # print("lottery ID..........",_lotteryId)
+    boost_participant(lottery, _lotteryId)
+    print(lottery.isBooster(_lotteryId, accounts[0]))
     lottery = execute_lottery(lottery, _lotteryId)
-
-    print(lottery.isAddressWinner(_lotteryId,
-          accounts[0], {"from": accounts[0]}))
-    print(lottery.isAddressWinner(_lotteryId,
-          accounts[1], {"from": accounts[0]}))
-    print(lottery.isAddressWinner(_lotteryId,
-          accounts[2], {"from": accounts[0]}))

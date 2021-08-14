@@ -202,6 +202,10 @@ contract Lottery is Ownable {
         lotteryHistory[lotteryId] = newLottery;
     }
 
+    function getCurrentLotteryId() public view returns (uint256) {
+        return (lotteryCounter.current());
+    }
+
     function getCurrentTime() public view returns (uint256) {
         return block.timestamp;
     }

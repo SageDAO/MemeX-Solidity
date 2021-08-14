@@ -31,7 +31,7 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
     }
 
     function setLotteryAddress(address _lotteryAddr) public onlyOwner {
-        require(lotteryAddr != address(0));
+        require(_lotteryAddr != address(0));
         address oldAddr = lotteryAddr;
         lotteryAddr = _lotteryAddr;
         emit lotteryAddressChanged(oldAddr, _lotteryAddr);

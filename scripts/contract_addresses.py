@@ -5,19 +5,12 @@ CONTRACTS = {
     "mainnet": {
 
     },
-    # "rinkeby": {
-    #     "random_generator": "0x213475917426ec3d450eb8FcEAE6A2818583B7Ad",
-    #     "meme_x_token": "0x6F0f134C0d183dbC2BD75643F3aEfE5d517db0ac",
-    #     "meme_X_nft": "0xf18cA4d0a680Cc611a805C5E39E5F1421B9845A3",
-    #     "staking": "0xEf1b7eF26490374a737f99444dC53045BADa772c",
-    #     "lottery": "0x0aBC8BbeD14BED90480234b196A9664E840b03cf"
-    # },
     "rinkeby": {
-        "random_generator": "0x213475917426ec3d450eb8FcEAE6A2818583B7Ad",
-        "meme_x_token": "0xA7F4F122c46D8D0b6A0e5238F03Fdb1501Ab524a",
-        "meme_X_nft": "0xfFd91C199c6f706B21d2B9A2E1d5B660cA1A8f86",
-        "staking": "0x0Ea6192D2f46eB17954c8BaBcE233D53C1742B3A",
-        "lottery": "0xdF4eF8582ECa18ee834532814cD949Cd148e7775"
+        "random_generator": "0xc63343D411fd8ca6734b75E469D84B2Ec9f4159E",
+        "meme_x_token": "0x9BcaB64E74eBcA40ab2E55791Df7bCF2408b56a7",
+        "meme_X_nft": "0x50791D33076747F9c109193704bb750eB4Be0a7c",
+        "staking": "0x6bc60d21d939BA92963bF9c6E251CD831ccad84c",
+        "lottery": "0xcC39D85fBe143b8137D76B6D0eB71b3caEF0FCA1"
     },
     "kovan": {
 

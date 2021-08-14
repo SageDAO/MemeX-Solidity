@@ -1,5 +1,19 @@
+# MemeX Contracts
+
+## Overview
+
+MemeX is currently based on five contracts:
+
+* MemeX Token: ERC-20 compatible Token
+* MemeX NFT: ERC-1155 compatible Non Fungible Tokens
+* Lottery: Manages all the lottery logic, defines random winners for our prizes and manages boost payments (subscription to increase the user odds). Next iteration would integrate with Superfluid stream payments
+* Stake: manages the MemeX token staking process awards the users with PINAs, which on this iteration are points needed to enter the lottery. A future iteration will evolve PINA into an ERC-20 token)
+* RandomNumberGenerator (RNG): adopts the power of Chainlink VRF (Verifiable Random Function) oracle as a verifiable source of randomness to draw our lottery numbers.
+
 ## Setup instructions
-Install brownie
+
+We are using brownie as the development framework.
+To install brownie:
 ```
 python3 -m pip install --user pipx
 python3 -m pipx ensurepath
@@ -7,31 +21,29 @@ pipx install eth-brownie
 ```
 
 When interacting with contracts on testnets you'll need an Infura API key:
+
 `export WEB3_INFURA_PROJECT_ID=<key>`
 
+To publish the contract code on deployment a Etherscan key is required:
+
+`export ETHERSCAN_TOKEN=<key>`
+
 ## Deploy contracts
-To deploy all the contracts:
 
-`brownie run scripts/deploy_memex_token.py`
+To deploy all the contracts to the Rinkeby testnet:
 
-Deploy the NFT contract:
+`brownie run scripts/deploy_contracts.py --network rinkeby`
 
-`brownie run scripts/deploy_memex.py`
+The `contract_addresses.py` file contains the addresses of the already deployed contracts. If a contract address is in the file, the scripts would interact with the deployed contract, otherwhise a new contract will be deployed.
 
-Deploy randomness contract:
-`brownie run scripts/deploy_randomness.py`
+The scripts folder contains multiple functions to interact with the deployed contracts. 
 
-Deploy the Lottery contract:
+Every call to the Chainlink oracle requires the lottery contract to have some LINK. During tests use this [faucet](https://rinkeby.chain.link/) to refill if necessary.
 
+To simulate the entire lottery flow, including lottery creation, user entries, and drawing numbers:
 
-## How to Mint through Lottery Contract (redeem):
+`brownie run scripts/simulate_lottery_flow.py --network rinkeby`
 
-Create a interface for ERC1155 Contract that has mint function in it.
+To check the winners (make sure to allow some blocks to be mined before checking for winners as we need to wait for an answer from the randomness oracle)
 
-Declare an interface variable in Lottery Contract.
-
-Initialize interface variable with ERC1155 address.
-
-Call mint on ERC1155.
-
-Try to compile it. Test may not work right now.
+`brownie run scripts/simulate_check_winners_and_mint_prize.py --network rinkeby`
