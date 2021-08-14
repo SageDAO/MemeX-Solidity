@@ -33,19 +33,20 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
         keyHash = _keyHash;
         fee = _fee;
         lotteryAddr = _lotteryAddr;
-        
     }
 
     /**
      * Requests randomness
      */
-     //SSS: No need for userProvidedSeed i think;
-    function getRandomNumber(uint256 lotteryId, uint256 userProvidedSeed) 
-                public returns  (bytes32 requestId) {
+    //SSS: No need for userProvidedSeed i think;
+    function getRandomNumber(uint256 lotteryId, uint256 userProvidedSeed)
+        public
+        returns (bytes32 requestId)
+    {
         require(
             LINK.balanceOf(address(this)) >= fee,
             "Not enough LINK - fill contract"
-        ) ;
+        );
         requester = msg.sender;
         currentLotteryId = lotteryId;
         return requestRandomness(keyHash, fee);
@@ -57,7 +58,7 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
     function fulfillRandomness(bytes32 requestId, uint256 randomness)
         internal
         override
-    {   
+    {
         ILottery(requester).numbersDrawn(
             currentLotteryId,
             requestId,

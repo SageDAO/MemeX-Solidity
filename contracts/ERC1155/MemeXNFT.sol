@@ -5,10 +5,9 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./String.sol";
 
-contract MemeXNFT is Ownable, ERC1155("") {
+contract MemeXNFT is Ownable, ERC1155 {
     using SafeMath for uint256;
     using Strings for string;
-    string internal baseMetadataURI;
     string public name;
     mapping(uint256 => address) public creators;
     // Contract symbol
@@ -31,15 +30,20 @@ contract MemeXNFT is Ownable, ERC1155("") {
         address newLotteryContract
     );
 
-    constructor(string memory _name, string memory _symbol) {
+    constructor(string memory _name, string memory _symbol)
+        ERC1155(
+            "ipfs://"
+        )
+    {
+        
         name = _name;
         symbol = _symbol;
     }
 
     function setLotteryContract(address _lotteryContract) public onlyOwner {
-        require(lotteryContract != address(0));
-        lotteryContract = _lotteryContract;
+        require(_lotteryContract != address(0));
         address oldAddr = address(lotteryContract);
+        lotteryContract = _lotteryContract;
         emit LotteryContractUpdated(oldAddr, lotteryContract);
     }
 
@@ -58,7 +62,7 @@ contract MemeXNFT is Ownable, ERC1155("") {
         uint256 _quantity,
         bytes memory _data,
         uint256 _lotteryId
-    ) public onlyLottery {
+    ) public  onlyLottery{
         _mint(_to, _id, _quantity, _data);
         creators[_id] = _to;
         nftInfo.push(NFTInfo(_to, true, _lotteryId));
@@ -78,17 +82,34 @@ contract MemeXNFT is Ownable, ERC1155("") {
         _mintBatch(_to, _ids, _quantities, _data);
     }
 
-    function _setBaseMetadataURI(string memory _newBaseMetadataURI) internal {
-        baseMetadataURI = _newBaseMetadataURI;
+    function setBaseMetadataURI(string memory _newBaseMetadataURI)
+        external
+        onlyLottery
+        
+    {
+        _setURI(_newBaseMetadataURI);
     }
 
-    function uri(uint256 _id) public view override returns (string memory) {
-        require(_exists(_id), "ERC721Tradable#uri: NONEXISTENT_TOKEN");
-        return Strings.strConcat(baseMetadataURI, Strings.uint2str(_id));
-    }
+/*     function uri(uint256 _id) public view override returns (string memory) {
+         require(_exists(_id), "ERC721Tradable#uri: NONEXISTENT_TOKEN");
+         // returns <base_path>/<prizeId>.json
+         return
+             Strings.strConcat(
+                 baseMetadataURI,
+                 "/",
+                 Strings.uint2str(_id),
+             ".json"
+            );
+     }
+ */
+     
 
     function getLotteryId(uint256 _tokenId) public view returns (uint256) {
         return nftInfo[_tokenId].lotteryId;
+    }
+
+    function getNFTInfo(uint256 _tokenId) public view returns (NFTInfo memory) {
+        return nftInfo[_tokenId];
     }
 
     function _exists(uint256 _id) internal view returns (bool) {
