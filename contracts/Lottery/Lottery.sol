@@ -288,7 +288,7 @@ contract Lottery is Ownable {
     }
 
     function cancelLottery(uint256 _lotteryId) public onlyOwner {
-        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
+        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(
             lottery.status != Status.Completed,
             "Lottery already completed"
@@ -348,7 +348,7 @@ contract Lottery is Ownable {
             _lotteryId <= lotteryCounter.current(),
             "Lottery id does not exist"
         );
-        ParticipantInfo memory participant = participants[_lotteryId][
+        ParticipantInfo storage participant = participants[_lotteryId][
             _participantAddress
         ];
         require(
@@ -442,12 +442,14 @@ contract Lottery is Ownable {
     }
 
     function redeemNFT(uint256 _lotteryId) public {
-        require(lotteryHistory[_lotteryId].status == Status.Completed);
+        require(lotteryHistory[_lotteryId].status == Status.Completed,
+         "Status Not Completed");
         ParticipantInfo storage participant = participants[_lotteryId][
             msg.sender
         ];
         require(
-            participant.isWinner == true && participant.prizeClaimed == false
+            participant.isWinner == true && participant.prizeClaimed == false,
+             "participant is not winner or prize is already claimed"
         );
         participant.prizeClaimed = true;
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;

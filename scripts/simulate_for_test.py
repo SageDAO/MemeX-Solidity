@@ -157,20 +157,10 @@ def setLottery(memeNft):
     )]["lottery"]
     memeNft.setLotteryContract(lottery_address,  {"from": accounts[0]})
 
-def setLotteryHelper(memeNft,lottery):
-    
-    memeNft.setLotteryContract(lottery.address,  {"from": accounts[0]})
-
 
 def boost_participant(lottery, _lotteryId):
     lottery.boostParticipant(_lotteryId, accounts[0], {"from": accounts[0]})
 
-def setLotteryAddressInGenerator(lottery):
-    random_number_address = CONTRACTS[network.show_active(
-    )]["random_generator"]
-
-    random_number_generator = RandomNumberConsumer.at(random_number_address)
-    random_number_generator.setLotteryAddress(lottery.address, {"from": accounts[0]})
 
 def main():
     load_accounts()
@@ -178,17 +168,38 @@ def main():
     memeXToken = deploy_meme_token()
     staking = deploy_staking(memeXToken)
     lottery = deploy_lottery(staking)
-    memeNft = deploy_meme()
-#    #staking = create_pool(staking)
     
-#     #staking = stake(staking, memeXToken)
-#     setLotteryHelper(memeNft, lottery)
-#     _lotteryId = create_lottery(lottery, memeNft)
+    memeNft = deploy_meme()
+    memeNft.setLotteryContract(lottery,  {"from": accounts[0]})
+    staking = create_pool(staking)
+
+    staking = stake(staking, memeXToken)
+
+    _lotteryId = create_lottery(lottery, memeNft)
 
     _lotteryId = lottery.getCurrentLotteryId()
-#     print(lottery.getLotteryInfo(_lotteryId))
-#     lottery = buy_tickets(_lotteryId, lottery)
-#     boost_participant(lottery, _lotteryId)
-#     print(lottery.isBooster(_lotteryId, accounts[0]))
-    #setLotteryAddressInGenerator(lottery)
+    print(lottery.getLotteryInfo(_lotteryId))
+    lottery = buy_tickets(_lotteryId, lottery)
+    boost_participant(lottery, _lotteryId)
+    print(lottery.isBooster(_lotteryId, accounts[0]))
     lottery = execute_lottery(lottery, _lotteryId)
+    
+
+    for account in accounts:
+        (isWinner, prizeId, claimed) = lottery.isAddressWinner(_lotteryId, account)
+        if isWinner:  # if they are winners, print the prizeId
+            print(
+                f"{account} is a winner of prize {prizeId}! Minted: {claimed}")
+            print("Minting prize...")
+            lottery.redeemNFT(_lotteryId, {'from': account})
+
+    for account in accounts:
+        (isWinner, prizeId, claimed) = lottery.isAddressWinner(_lotteryId, account)
+        if isWinner:  # if they are winners, print the prizeId
+            print(
+                f"{account} is a winner of prize {prizeId}! Minted: {claimed}")
+            #uri = (nftContract.uri(prizeId))
+            # replace the occurences of {id} inside uri with the prizeId
+           # uri = uri.replace("{id}", str(prizeId))
+            #print(f"Prize URL: {uri}")
+           # print(nftContract.balanceOf(account, prizeId))
