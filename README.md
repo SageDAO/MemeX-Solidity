@@ -30,7 +30,7 @@ To publish the contract code on deployment a Etherscan key is required:
 
 ## Deploy contracts
 
-To deploy all the contracts to the Rinkeby testnet:
+To deploy all the contracts to the Rinkeby testnet and update their references to each other (only needs to run once):
 
 `brownie run scripts/deploy_contracts.py --network rinkeby`
 
@@ -40,7 +40,7 @@ The scripts folder contains multiple functions to interact with the deployed con
 
 Every call to the Chainlink oracle requires the lottery contract to have some LINK. During tests use this [faucet](https://rinkeby.chain.link/) to refill if necessary.
 
-To simulate the entire lottery flow, including lottery creation, user entries, and drawing numbers:
+To simulate the entire lottery flow, including lottery creation, user entries, and drawing numbers (can be executed multiple times to create different lotteries):
 
 `brownie run scripts/simulate_lottery_flow.py --network rinkeby`
 

@@ -18,23 +18,24 @@ def main():
     nftContract = MemeXNFT.at(nftAddress)
 
     _lotteryId = lottery.getCurrentLotteryId()
-    print(_lotteryId)
+    print(f"\nChecking results for lottery #{_lotteryId}:\n")
     # iterate over all accounts and check if they are winners
     for account in accounts:
         (isWinner, prizeId, claimed) = lottery.isAddressWinner(_lotteryId, account)
         if isWinner:  # if they are winners, print the prizeId
             print(
-                f"{account} is a winner of prize {prizeId}! Minted: {claimed}")
-            print("Minting prize...")
-            lottery.redeemNFT(_lotteryId, {'from': account})
+                f"\n{account} is a winner of prize #{prizeId}! Minted: {claimed}\n")
+            if not claimed:
+                print("Minting prize...\n")
+                lottery.redeemNFT(_lotteryId, {'from': account})
 
+    print("\nAfter minting, lets query again to check if the prizes were updated...\n")
     for account in accounts:
         (isWinner, prizeId, claimed) = lottery.isAddressWinner(_lotteryId, account)
         if isWinner:  # if they are winners, print the prizeId
             print(
-                f"{account} is a winner of prize {prizeId}! Minted: {claimed}")
+                f"\n{account} won prize #{prizeId} and now minted: {claimed}\n")
             uri = (nftContract.uri(prizeId))
             # replace the occurences of {id} inside uri with the prizeId
             uri = uri.replace("{id}", str(prizeId))
-            print(f"Prize URL: {uri}")
-            print(nftContract.balanceOf(account, prizeId))
+            print(f"\nPrize Metadata URL: {uri}\n")

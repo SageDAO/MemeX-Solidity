@@ -54,10 +54,8 @@ def deploy_staking(memeXToken):
     return staking
 
 
-def setRandomGenerator(lottery):
-    random_number_address = CONTRACTS[network.show_active(
-    )]["random_generator"]
-    lottery.setRandomGenerator(random_number_address,  {"from": accounts[0]})
+def setRandomGenerator(lottery, rng):
+    lottery.setRandomGenerator(rng.address,  {"from": accounts[0]})
     return lottery
 
 
@@ -94,11 +92,47 @@ def deploy_randomness():
     return randomness
 
 
-def setLottery(memeNft, randomness):
-    lottery_address = CONTRACTS[network.show_active(
-    )]["lottery"]
-    memeNft.setLotteryContract(lottery_address,  {"from": accounts[0]})
-    randomness.setLotteryAddress(lottery_address,  {"from": accounts[0]})
+def setLottery(lottery, memeNft, randomness):
+    memeNft.setLotteryContract(lottery.address,  {"from": accounts[0]})
+    randomness.setLotteryAddress(lottery.address,  {"from": accounts[0]})
+
+
+def create_pool(staking):
+    _id = 1
+    _periodStart = chain.time()
+    _maxStake = 5 * TENPOW18
+    _rewardRate = 11574074074000
+    _controllerShare = 0
+
+    staking.createPool(_id,
+                       _periodStart,
+                       _maxStake,
+                       _rewardRate,
+                       _controllerShare,
+                       accounts[1],
+                       {"from": accounts[0]})
+
+    return staking
+
+
+def stake(staking, memeXToken):
+    _id = 1
+    _staker = accounts[3]
+    memeXToken.transfer(_staker, 20 * TENPOW18, {"from": accounts[0]})
+    memeXToken.approve(staking, 10 * TENPOW18, {"from": _staker})
+    staking.stake(_id, 2 * TENPOW18, {"from": _staker})
+
+    _staker = accounts[1]
+    memeXToken.transfer(_staker, 20 * TENPOW18, {"from": accounts[0]})
+    memeXToken.approve(staking, 10 * TENPOW18, {"from": _staker})
+    staking.stake(_id, 2 * TENPOW18, {"from": _staker})
+
+    _staker = accounts[2]
+    memeXToken.transfer(_staker, 20 * TENPOW18, {"from": accounts[0]})
+    memeXToken.approve(staking, 10 * TENPOW18, {"from": _staker})
+    staking.stake(_id, 2 * TENPOW18, {"from": _staker})
+
+    return staking
 
 
 def main():
@@ -110,5 +144,9 @@ def main():
     lottery = deploy_lottery(staking)
     memeNft = deploy_meme()
 
-    setLottery(memeNft, randomness)
-    setRandomGenerator(lottery)
+    setLottery(lottery, memeNft, randomness)
+    setRandomGenerator(lottery, randomness)
+
+    staking = create_pool(staking)
+
+    staking = stake(staking, memeXToken)

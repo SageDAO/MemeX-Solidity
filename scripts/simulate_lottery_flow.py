@@ -68,44 +68,6 @@ def deploy_lottery(staking):
     return lottery
 
 
-def create_pool(staking):
-    _id = 1
-    _periodStart = chain.time()
-    _maxStake = 5 * TENPOW18
-    _rewardRate = 11574074074000
-    _controllerShare = 0
-
-    staking.createPool(_id,
-                       _periodStart,
-                       _maxStake,
-                       _rewardRate,
-                       _controllerShare,
-                       accounts[1],
-                       {"from": accounts[0]})
-
-    return staking
-
-
-def stake(staking, memeXToken):
-    _id = 1
-    _staker = accounts[3]
-    memeXToken.transfer(_staker, 20 * TENPOW18, {"from": accounts[0]})
-    memeXToken.approve(staking, 10 * TENPOW18, {"from": _staker})
-    staking.stake(_id, 2 * TENPOW18, {"from": _staker})
-
-    _staker = accounts[1]
-    memeXToken.transfer(_staker, 20 * TENPOW18,{"from":accounts[0]})
-    memeXToken.approve(staking, 10 * TENPOW18,{"from":_staker})
-    staking.stake(_id, 2 * TENPOW18, {"from": _staker})
-
-    _staker = accounts[2]
-    memeXToken.transfer(_staker, 20 * TENPOW18,{"from":accounts[0]})
-    memeXToken.approve(staking, 10 * TENPOW18,{"from":_staker})
-    staking.stake(_id, 2 * TENPOW18, {"from": _staker})
-
-    return staking
-
-
 def buy_tickets(_lotteryId, lottery):
     lottery.buyTicket(_lotteryId, {"from": accounts[0]})
     lottery.buyTicket(_lotteryId, {"from": accounts[1]})
@@ -117,7 +79,7 @@ def create_lottery(lottery, meme_x):
     # staking = stake(staking, memeXToken)
     _nftContract = meme_x
     # _nftContract = CONTRACTS[network.show_active()]["meme_X_nft"]
-    _prizeIds = list(range(1, 3))
+    _prizeIds = list(range(0, 2))
     _costPerTicket = 0
     _startingTime = chain.time()
 
@@ -157,20 +119,24 @@ def setLottery(memeNft):
     )]["lottery"]
     memeNft.setLotteryContract(lottery_address,  {"from": accounts[0]})
 
-def setLotteryHelper(memeNft,lottery):
-    
+
+def setLotteryHelper(memeNft, lottery):
+
     memeNft.setLotteryContract(lottery.address,  {"from": accounts[0]})
 
 
 def boost_participant(lottery, _lotteryId):
     lottery.boostParticipant(_lotteryId, accounts[0], {"from": accounts[0]})
 
+
 def setLotteryAddressInGenerator(lottery):
     random_number_address = CONTRACTS[network.show_active(
     )]["random_generator"]
 
     random_number_generator = RandomNumberConsumer.at(random_number_address)
-    random_number_generator.setLotteryAddress(lottery.address, {"from": accounts[0]})
+    random_number_generator.setLotteryAddress(
+        lottery.address, {"from": accounts[0]})
+
 
 def main():
     load_accounts()
@@ -179,16 +145,25 @@ def main():
     staking = deploy_staking(memeXToken)
     lottery = deploy_lottery(staking)
     memeNft = deploy_meme()
-    staking = create_pool(staking)
-    
-    staking = stake(staking, memeXToken)
-    setLotteryHelper(memeNft, lottery)
+
     _lotteryId = create_lottery(lottery, memeNft)
 
     _lotteryId = lottery.getCurrentLotteryId()
-    print(lottery.getLotteryInfo(_lotteryId))
+
+    info = lottery.getLotteryInfo(_lotteryId)
+    print(
+        f"\nSuccessfuly created lottery with id #{_lotteryId}. Lottery is open for entries!\n")
+
     lottery = buy_tickets(_lotteryId, lottery)
+
+    print(
+        f"\nLottery #{_lotteryId} has {lottery.getNumberOfParticipants(_lotteryId)} participants!\n")
+
     boost_participant(lottery, _lotteryId)
-    print(lottery.isBooster(_lotteryId, accounts[0]))
-    setLotteryAddressInGenerator(lottery)   
+    if (lottery.isBooster(_lotteryId, accounts[0])):
+        print(
+            f"\nAccount {accounts[0]} is boosting his odds on this lottery!\n")
+
     lottery = execute_lottery(lottery, _lotteryId)
+
+    print("\nA verifiable random number request was made to the Chainlink VRF (Verifiable Random Function) oracle.\n Please allow some blocks to be mined before checking results.")

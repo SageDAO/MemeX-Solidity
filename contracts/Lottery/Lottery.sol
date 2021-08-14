@@ -138,6 +138,14 @@ contract Lottery is Ownable {
         return (lotteryHistory[_lotteryId]);
     }
 
+    function getNumberOfParticipants(uint256 _lotteryId)
+        public
+        view
+        returns (uint256)
+    {
+        return lotteryHistory[_lotteryId].participantsCount.current();
+    }
+
     modifier onlyRandomGenerator() {
         require(msg.sender == address(randomGenerator), "Only RNG address");
         _;
@@ -442,14 +450,16 @@ contract Lottery is Ownable {
     }
 
     function redeemNFT(uint256 _lotteryId) public {
-        require(lotteryHistory[_lotteryId].status == Status.Completed,
-         "Status Not Completed");
+        require(
+            lotteryHistory[_lotteryId].status == Status.Completed,
+            "Status Not Completed"
+        );
         ParticipantInfo storage participant = participants[_lotteryId][
             msg.sender
         ];
         require(
             participant.isWinner == true && participant.prizeClaimed == false,
-             "participant is not winner or prize is already claimed"
+            "participant is not winner or prize is already claimed"
         );
         participant.prizeClaimed = true;
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
