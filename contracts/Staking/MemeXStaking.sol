@@ -73,24 +73,19 @@ contract PoolTokenWrapper {
 contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
     using SafeMath for uint256;
 
-    struct Card {
-        uint256 points;
-        uint256 releaseTime;
-        uint256 mintFee;
-    }
+
 
     struct Pool {
         uint256 periodStart;
         uint256 maxStake;
         uint256 rewardRate; // 11574074074000, 1 point per day per staked MEME
-        uint256 feesCollected;
-        uint256 spentPineapples;
         uint256 controllerShare;
         address artist;
         mapping(address => uint256) lastUpdateTime;
         mapping(address => uint256) points;
-        mapping(uint256 => Card) cards;
+        
     }
+
 
     address public controller;
     address public rescuer;
@@ -105,13 +100,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         uint256 rewardRate,
         uint256 maxStake
     );
-    event CardAdded(
-        uint256 poolId,
-        uint256 cardId,
-        uint256 points,
-        uint256 mintFee,
-        uint256 releaseTime
-    );
+  
     event Staked(address indexed user, uint256 poolId, uint256 amount);
     event Withdrawn(address indexed user, uint256 poolId, uint256 amount);
     event Transferred(
@@ -141,29 +130,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         controller = _controller;
     }
 
-    function cardMintFee(uint256 pool, uint256 card)
-        public
-        view
-        returns (uint256)
-    {
-        return pools[pool].cards[card].mintFee;
-    }
 
-    function cardReleaseTime(uint256 pool, uint256 card)
-        public
-        view
-        returns (uint256)
-    {
-        return pools[pool].cards[card].releaseTime;
-    }
-
-    function cardPoints(uint256 pool, uint256 card)
-        public
-        view
-        returns (uint256)
-    {
-        return pools[pool].cards[card].points;
-    }
 
     function earned(address account, uint256 pool)
         public
@@ -238,13 +205,8 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         emit Transferred(msg.sender, fromPool, toPool, amount);
     }
 
-    function transferAll(uint256 fromPool, uint256 toPool) external {
-        transfer(fromPool, toPool, balanceOf(msg.sender, fromPool));
-    }
 
-    function exit(uint256 pool) external {
-        withdraw(pool, balanceOf(msg.sender, pool));
-    }
+
 
     function setArtist(uint256 pool, address artist) public onlyOwner {
         uint256 amount = pendingWithdrawals[artist];
@@ -276,19 +238,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         pools[pool].controllerShare = _controllerShare;
     }
 
-    function addCard(
-        uint256 pool,
-        uint256 id,
-        uint256 points,
-        uint256 mintFee,
-        uint256 releaseTime
-    ) public onlyOwner poolExists(pool) {
-        Card storage c = pools[pool].cards[id];
-        c.points = points;
-        c.releaseTime = releaseTime;
-        c.mintFee = mintFee;
-        emit CardAdded(pool, id, points, mintFee, releaseTime);
-    }
+    
 
     function createPool(
         uint256 id,
