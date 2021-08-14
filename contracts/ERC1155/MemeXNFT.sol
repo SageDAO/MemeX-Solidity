@@ -62,7 +62,7 @@ contract MemeXNFT is Ownable, ERC1155 {
         uint256 _quantity,
         bytes memory _data,
         uint256 _lotteryId
-    ) public  {
+    ) public  onlyLottery{
         _mint(_to, _id, _quantity, _data);
         creators[_id] = _to;
         nftInfo.push(NFTInfo(_to, true, _lotteryId));
@@ -84,6 +84,7 @@ contract MemeXNFT is Ownable, ERC1155 {
 
     function setBaseMetadataURI(string memory _newBaseMetadataURI)
         external
+        onlyLottery
         
     {
         _setURI(_newBaseMetadataURI);
