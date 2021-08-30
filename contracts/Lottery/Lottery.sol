@@ -47,7 +47,6 @@ contract Lottery is Ownable {
         address participantAddress;
         bool isLiquidityProvider;
         bool isBooster;
-        bool isWinner;
         uint256 prizeId;
         bool prizeClaimed;
     }
@@ -64,6 +63,9 @@ contract Lottery is Ownable {
         Counters.Counter participantsCount; // number of participants
         uint256 boostCost; // value in ETH to pay for a boost ticket (so far its a one time payment and would change if we adopt the Superfluid subscription logic)
         uint256 lpEntries; // amount of numbers a liquidity provider will get
+        // optional prize for all non-winners
+        // IMPORTANT: WE SHOULD NOT USE A PRIZE ID = 0 OR IT WOULD BE USED EVEN WHEN WE DON'T SET THIS FIELD
+        uint256 prizeIdNonWinners;
     }
 
     event ResponseReceived(bytes32 _requestId);
@@ -174,7 +176,8 @@ contract Lottery is Ownable {
         uint256[] calldata _prizeIds,
         uint256 _boostCost,
         uint8 _lpEntries,
-        string calldata _baseMetadataURI
+        string calldata _baseMetadataURI,
+        uint256 _prizeIdNonWinners
     ) public onlyOwner returns (uint256 lotteryId) {
         // DISABLED FOR TESTS require(_costPerTicket != 0, "Ticket cost cannot be 0");
         require(
@@ -201,7 +204,8 @@ contract Lottery is Ownable {
             Counters.Counter(0),
             Counters.Counter(0),
             _boostCost,
-            _lpEntries
+            _lpEntries,
+            _prizeIdNonWinners
         );
         IMemeXNFT nftContract = _nftContract;
         nftContract.setBaseMetadataURI(_baseMetadataURI);
@@ -279,14 +283,17 @@ contract Lottery is Ownable {
                 address winnerAddress = numbersToParticipant[_lotteryId][
                     winningNumber
                 ];
-                if (participants[_lotteryId][winnerAddress].isWinner == true) {
+                ParticipantInfo storage participant = participants[_lotteryId][
+                    winnerAddress
+                ];
+                if (
+                    participant.prizeId != 0 &&
+                    participant.prizeId != lottery.prizeIdNonWinners
+                ) {
                     // If address is already a winner pick the next number until a new winner is found
                     winningNumber++;
                 } else {
-                    participants[_lotteryId][winnerAddress].isWinner = true;
-                    participants[_lotteryId][winnerAddress].prizeId = prizes[
-                        _lotteryId
-                    ][i];
+                    participant.prizeId = prizes[_lotteryId][i];
                     winnerFound = true;
                 }
             } while (winnerFound == false);
@@ -333,8 +340,7 @@ contract Lottery is Ownable {
             msg.sender,
             _isLiquidityProvider(msg.sender),
             false,
-            false,
-            0,
+            lottery.prizeIdNonWinners, // all participants will start with default prize, if any
             false
         );
         lottery.participantsCount.increment();
@@ -430,10 +436,11 @@ contract Lottery is Ownable {
     {
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
         require(lottery.status == Status.Completed, "Lottery not completed");
+        ParticipantInfo memory participant = participants[_lotteryId][_address];
         return (
-            participants[_lotteryId][_address].isWinner,
-            participants[_lotteryId][_address].prizeId,
-            participants[_lotteryId][_address].prizeClaimed
+            participant.prizeId != 0,
+            participant.prizeId,
+            participant.prizeClaimed
         );
     }
 
@@ -449,6 +456,15 @@ contract Lottery is Ownable {
         return isAddressWinner(_lotteryId, msg.sender);
     }
 
+    function getDefaultPrizeId(uint256 _lotteryId)
+        public
+        view
+        returns (uint256)
+    {
+        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
+        return lottery.prizeIdNonWinners;
+    }
+
     function redeemNFT(uint256 _lotteryId) public {
         require(
             lotteryHistory[_lotteryId].status == Status.Completed,
@@ -457,10 +473,8 @@ contract Lottery is Ownable {
         ParticipantInfo storage participant = participants[_lotteryId][
             msg.sender
         ];
-        require(
-            participant.isWinner == true && participant.prizeClaimed == false,
-            "participant is not winner or prize is already claimed"
-        );
+        require(!participant.prizeClaimed, "Participant already claimed prize");
+        require(participant.prizeId != 0, "Participant is not a winner");
         participant.prizeClaimed = true;
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
         nftContract.mint(msg.sender, participant.prizeId, 1, "", _lotteryId);

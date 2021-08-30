@@ -10,7 +10,7 @@ CONTRACTS = {
         "meme_x_token": "0x74B69372A5022255091ed7CFFDA05A5B6aDa680e",
         "meme_X_nft": "0x1Db4f8E30f62711BadF4379b054cB89C5404768A",
         "staking": "0xAEAae1d78DB210A73b05554840CF6BF22fCbb27e",
-        "lottery": "0xaB38Cb50158b603f402eD150D0655b36C0E3E167"
+        "lottery": "0x848ADECE2Ed13Ad97F37461901d69cf1516981eB"
 
     },
     "kovan": {

@@ -30,12 +30,7 @@ contract MemeXNFT is Ownable, ERC1155 {
         address newLotteryContract
     );
 
-    constructor(string memory _name, string memory _symbol)
-        ERC1155(
-            "ipfs://"
-        )
-    {
-        
+    constructor(string memory _name, string memory _symbol) ERC1155("ipfs://") {
         name = _name;
         symbol = _symbol;
     }
@@ -62,7 +57,7 @@ contract MemeXNFT is Ownable, ERC1155 {
         uint256 _quantity,
         bytes memory _data,
         uint256 _lotteryId
-    ) public  onlyLottery{
+    ) public onlyLottery {
         _mint(_to, _id, _quantity, _data);
         creators[_id] = _to;
         nftInfo.push(NFTInfo(_to, true, _lotteryId));
@@ -85,24 +80,9 @@ contract MemeXNFT is Ownable, ERC1155 {
     function setBaseMetadataURI(string memory _newBaseMetadataURI)
         external
         onlyLottery
-        
     {
         _setURI(_newBaseMetadataURI);
     }
-
-/*     function uri(uint256 _id) public view override returns (string memory) {
-         require(_exists(_id), "ERC721Tradable#uri: NONEXISTENT_TOKEN");
-         // returns <base_path>/<prizeId>.json
-         return
-             Strings.strConcat(
-                 baseMetadataURI,
-                 "/",
-                 Strings.uint2str(_id),
-             ".json"
-            );
-     }
- */
-     
 
     function getLotteryId(uint256 _tokenId) public view returns (uint256) {
         return nftInfo[_tokenId].lotteryId;

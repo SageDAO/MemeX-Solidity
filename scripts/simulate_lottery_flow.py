@@ -79,13 +79,13 @@ def create_lottery(lottery, meme_x):
     # staking = stake(staking, memeXToken)
     _nftContract = meme_x
     # _nftContract = CONTRACTS[network.show_active()]["meme_X_nft"]
-    _prizeIds = list(range(0, 2))
+    _prizeIds = list(range(1, 2))
     _costPerTicket = 0
     _startingTime = chain.time()
 
     _closingTime = chain.time() + 24 * 60 * 60
     _lotteryId = lottery.createNewLottery(
-        _costPerTicket, _startingTime, _closingTime, _nftContract, _prizeIds, 0, 0, "https://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze.ipfs.dweb.link/{id}.json", {"from": accounts[0]})
+        _costPerTicket, _startingTime, _closingTime, _nftContract, _prizeIds, 0, 0, "https://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze.ipfs.dweb.link/{id}.json", 2, {"from": accounts[0]})
 
     return _lotteryId
 

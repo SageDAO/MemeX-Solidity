@@ -18,6 +18,7 @@ def main():
     nftContract = MemeXNFT.at(nftAddress)
 
     _lotteryId = lottery.getCurrentLotteryId()
+    prizeIdNonWinners = lottery.getDefaultPrizeId(_lotteryId)
     print(f"\nChecking results for lottery #{_lotteryId}:\n")
     # iterate over all accounts and check if they are winners
     for account in accounts:
