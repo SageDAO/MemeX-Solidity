@@ -30,9 +30,14 @@ contract MemeXNFT is Ownable, ERC1155 {
         address newLotteryContract
     );
 
-    constructor(string memory _name, string memory _symbol) ERC1155("ipfs://") {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        address _lotteryContract
+    ) ERC1155("ipfs://") {
         name = _name;
         symbol = _symbol;
+        lotteryContract = _lotteryContract;
     }
 
     function setLotteryContract(address _lotteryContract) public onlyOwner {
