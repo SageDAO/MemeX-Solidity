@@ -20,19 +20,27 @@ async function main() {
     // iterate over json content
     for (const drop of json_content) {
         if (drop.metadata.lotteryId == null) {
-            //deploy new NFT contract for the new drop
+            //deploy a new NFT contract for each new drop
             const NFT = await hre.ethers.getContractFactory("MemeXNFT");
-            const nftContract = await NFT.deploy(drop.metadata.dropName, "MMXNFT");
+            const nftContract = await NFT.deploy(drop.metadata.dropName, "MMXNFT", lotteryAddress);
             await nftContract.deployed();
             console.log("New NFT contract deployed to:", nftContract.address);
-            nftContract.setLotteryContract(lotteryAddress, { gasLimit: 4000000, });
 
-            // create new lottery and update metadata lotteryId
+            // create new lottery and update metadata with lotteryId
             drop.metadata.lotteryId = (await lottery.getCurrentLotteryId()).toNumber() + 1;
+            console.log("Creating new lottery with #id: " + drop.metadata.lotteryId);
             try {
-                await lottery.createNewLottery(drop.metadata.costPerTicket, drop.metadata.startTime, drop.metadata.endTime,
-                    nftContract.address, drop.prizeIds, 0, 0,
-                    drop.metadata.metadataBasePath, 0,
+                // TODO: align with Daniel so that the json provides all these fields
+                await lottery.createNewLottery(
+                    drop.metadata.costPerTicket,
+                    drop.metadata.startTime,
+                    drop.metadata.endTime,
+                    nftContract.address,
+                    drop.prizeIds,
+                    drop.metadata.boostCost,
+                    drop.metadata.liquidityProviderMultiplier,
+                    drop.metadata.metadataBasePath,
+                    drop.metadata.defaultPrizeId,
                     {
                         gasLimit: 4000000,
                     });
@@ -41,9 +49,9 @@ async function main() {
                 return;
             }
         }
-        console.log("Created new lottery with #id: " + drop.metadata.lotteryId);
     }
-    const output_line = JSON.stringify(json_content, null, 2) + "\n";
+    // generate the output file with update json content
+    const output_line = JSON.stringify(json_content, null, 2);
     fs.writeSync(output_file, output_line);
 }
 

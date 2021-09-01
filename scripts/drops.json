@@ -48,6 +48,9 @@
             "endTime": 1628973289000,
             "artistName": "anArtist",
             "dropName": "anArtistDrop",
+            "boostCost": 1,
+            "liquidityProviderMultiplier": 15,
+            "defaultPrizeId": 1,
             "metadataBasePath": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link",
             "nft1": {
                 "name": "Japanese town at night",
@@ -128,6 +131,9 @@
             "endTime": 1628690556000,
             "artistName": "dtoc",
             "dropName": "dtoc-drop",
+            "boostCost": 1,
+            "liquidityProviderMultiplier": 15,
+            "defaultPrizeId": 1,
             "metadataBasePath": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link",
             "nft1": {
                 "name": "Japanese town at night",
@@ -190,6 +196,9 @@
             "endTime": 1628690556000,
             "artistName": "dtoc",
             "dropName": "dtoc-drop2",
+            "boostCost": 1,
+            "liquidityProviderMultiplier": 15,
+            "defaultPrizeId": 1,
             "metadataBasePath": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link",
             "nft1": {
                 "name": "Japanese town at night",
@@ -246,6 +255,9 @@
             "endTime": 1629146089000,
             "artistName": "otherArtist",
             "dropName": "otherArtistDrop",
+            "boostCost": 1,
+            "liquidityProviderMultiplier": 15,
+            "defaultPrizeId": 1,
             "metadataBasePath": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link",
             "nft1": {
                 "name": "Japanese town at night",
