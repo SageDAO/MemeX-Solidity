@@ -1,5 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
 require('hardhat-deploy');
+const { alchemy_key, deployer_pk } = require('./secrets.json');
 
 const fs = require("fs");
 
@@ -10,23 +11,14 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
   }
 });
 
-function loadApiKey(file) {
-  try {
-    return fs.readFileSync(file, 'utf-8');
-  } catch (err) {
-    console.log('Unable to load api key', err);
-    return "";
-  }
-}
-
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
   networks: {
     rinkeby: {
-      url: `https://eth-rinkeby.alchemyapi.io/v2/${loadApiKey('keys.txt')}`,
-      accounts: [`55a24ceff28920d9fe1d9c2ac20be0424b8b1aec43912345bc6991e43eb12312`],
+      url: `https://eth-rinkeby.alchemyapi.io/v2/${alchemy_key}`,
+      accounts: [`${deployer_pk}`],
     },
   },
   solidity: {
