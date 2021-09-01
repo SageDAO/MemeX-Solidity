@@ -2,5 +2,5 @@
 node_modules
 artifacts/
 cache/
-keys.txt
+secrets.json
 
