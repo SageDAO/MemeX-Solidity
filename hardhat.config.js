@@ -2,7 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require('hardhat-deploy');
 
-const { alchemy_key, deployer_pk, etherscan_key } = require('./secrets.json');
+const { alchemy_key, deployer_pk, etherscan_key, account1, account2 } = require('./secrets.json');
 
 const fs = require("fs");
 
@@ -20,7 +20,7 @@ module.exports = {
   networks: {
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${alchemy_key}`,
-      accounts: [`${deployer_pk}`],
+      accounts: [`${deployer_pk}`, `${account1}`, `${account2}`],
     },
   },
   etherscan: {
