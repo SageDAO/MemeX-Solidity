@@ -74,12 +74,12 @@ async function main() {
   stake = await getStakingContract()
   lottery = await getLotteryContract()
   nft = await getNFTContract();
-  // tx = await createLottery(lottery, nft)
-  // const receipt = await tx.wait();
+  tx = await createLottery(lottery, nft)
+  const receipt = await tx.wait();
   lotteryId = (await lottery.getCurrentLotteryId()).toNumber();
-  // await buyTickets(lotteryId, lottery);
-  // tx = await lottery.boostParticipant(lotteryId, accounts[1].address, { gasLimit: 4000000 });
-  // await tx.wait();
+  await buyTickets(lotteryId, lottery);
+  tx = await lottery.boostParticipant(lotteryId, accounts[1].address, { gasLimit: 4000000 });
+  await tx.wait();
   tx = await lottery.drawWinningNumbers(lotteryId, 0, { gasLimit: 4000000 });
   await tx.wait()
 }
