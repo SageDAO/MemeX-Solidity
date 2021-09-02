@@ -7,6 +7,8 @@ const { lotteryAddress } = require('../contracts.json');
 
 const file_name = process.argv.slice(2)[0];
 
+const timer = ms => new Promise(res => setTimeout(res, ms));
+
 async function main() {
     await hre.run('compile');
 
@@ -48,6 +50,12 @@ async function main() {
                 console.log(err);
                 return;
             }
+            // wait 30 seconds so the etherscan index can be updated, then verify the contract code
+            await timer(30000);
+            await hre.run("verify:verify", {
+                address: nftContract.address,
+                constructorArguments: [drop.metadata.dropName, "MMXNFT", lotteryAddress],
+            });
         }
     }
     // generate the output file with updated json content

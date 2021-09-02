@@ -9,7 +9,7 @@ const hre = require("hardhat");
 const CONTRACTS = require('../contracts.js')
 //TODO: CHECK HOW TO INITIALIZE Token Supply
 
-deploy_MemeXToken = async (deployer) => {
+deployMemeXToken = async (deployer) => {
   
   const MemeToken = await hre.ethers.getContractFactory("MemeXToken");
   const token = await MemeToken.deploy("MEMEX", "MemeX", 1000000, deployer.address);
@@ -18,7 +18,7 @@ deploy_MemeXToken = async (deployer) => {
   return token
 }
 
-deploy_Staking = async (deployer,token) => {
+deployStaking = async (deployer,token) => {
   const Staking = await hre.ethers.getContractFactory("MemeXStaking");
   const stake = await Staking.deploy(token.address, deployer.address);
   await stake.deployed();
@@ -26,7 +26,7 @@ deploy_Staking = async (deployer,token) => {
   return stake
 }
 
-deploy_Lottery = async (deployer) => {
+deployLottery = async (deployer) => {
   const Lottery = await hre.ethers.getContractFactory("Lottery");
   const lottery = await Lottery.deploy(stake.address);
   await lottery.deployed();
@@ -34,7 +34,7 @@ deploy_Lottery = async (deployer) => {
   return lottery
 }
 
-set_RandomGenerator = async (lottery,rng) => {
+setRandomGenerator = async (lottery,rng) => {
   const Lottery = await ethers.getContractFactory("Lottery");
   lottery = await Lottery.attach(lottery);
   try{
@@ -46,7 +46,7 @@ set_RandomGenerator = async (lottery,rng) => {
   return lottery
 }
 
-deploy_Randomness = async () => {
+deployRandomness = async () => {
   
   rand_address = CONTRACTS[hre.network.name]["randomnessAddress"]
   const Randomness = await hre.ethers.getContractFactory("RandomNumberConsumer");
@@ -83,10 +83,10 @@ async function main() {
   //await hre.run('compile');
   
   const deployer = await ethers.getSigner();
-  token = await deploy_MemeXToken(deployer)
-  stake = await deploy_Staking(deployer,token)
-  lottery = await deploy_Lottery(deployer)
-  randomness = await deploy_Randomness()
+  token = await deployMemeXToken(deployer)
+  stake = await deployStaking(deployer,token)
+  lottery = await deployLottery(deployer)
+  randomness = await deployRandomness()
 }
 
 // We recommend this pattern to be able to use async/await everywhere
