@@ -82,7 +82,7 @@ contract Lottery is Ownable {
         uint256 lotteryId,
         uint256 priceOfTicket
     );
-    event NumberAssigedToParticipant(
+    event NumberAssignedToParticipant(
         uint256 lotteryId,
         uint256 number,
         address participantAddress
@@ -373,7 +373,7 @@ contract Lottery is Ownable {
         numbersToParticipant[_lotteryId][
             lottery.numbers.current()
         ] = _participantAddress;
-        emit NumberAssigedToParticipant(
+        emit NumberAssignedToParticipant(
             _lotteryId,
             lottery.numbers.current(),
             _participantAddress

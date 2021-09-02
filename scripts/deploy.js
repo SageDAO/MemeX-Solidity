@@ -9,37 +9,72 @@ const hre = require("hardhat");
 const CONTRACTS = require('../contracts.js')
 //TODO: CHECK HOW TO INITIALIZE Token Supply
 
+const timer = ms => new Promise(res => setTimeout(res, ms));
+
 deployMemeXToken = async (deployer) => {
-  
+  token_address = CONTRACTS[hre.network.name]["tokenAddress"]
   const MemeToken = await hre.ethers.getContractFactory("MemeXToken");
-  const token = await MemeToken.deploy("MEMEX", "MemeX", 1000000, deployer.address);
-  await token.deployed();
-  console.log("Token deployed to:", token.address);
+  if (token_address == "") {
+    const token = await MemeToken.deploy("MEMEX", "MemeX", 1000000, deployer.address);
+    await token.deployed();
+    console.log("Token deployed to:", token.address);
+  } else {
+    token = await MemeToken.attach(token_address);
+  }
   return token
 }
 
-deployStaking = async (deployer,token) => {
+deployStaking = async (deployer, token) => {
+  staking_address = CONTRACTS[hre.network.name]["stakingAddress"]
   const Staking = await hre.ethers.getContractFactory("MemeXStaking");
-  const stake = await Staking.deploy(token.address, deployer.address);
-  await stake.deployed();
-  console.log("Staking deployed to:", stake.address);
+  if (staking_address == "") {
+    const stake = await Staking.deploy(token.address, deployer.address);
+    await stake.deployed();
+    console.log("Staking deployed to:", stake.address);
+  } else {
+    stake = await Staking.attach(staking_address);
+  }
   return stake
 }
 
-deployLottery = async (deployer) => {
+deployNFT = async (lottery) => {
+  nft_address = CONTRACTS[hre.network.name]["nftAddress"]
+  const Nft = await hre.ethers.getContractFactory("MemeXNFT");
+  if (nft_address == "") {
+    nft = await Nft.deploy("MMXNFT", "MMXNFT", lottery);
+    await nft.deployed();
+    console.log("NFT deployed to:", nft.address);
+  } else {
+    nft = await Nft.attach(nft_address);
+  }
+  return nft
+}
+
+deployLottery = async () => {
+  lottery_address = CONTRACTS[hre.network.name]["lotteryAddress"]
   const Lottery = await hre.ethers.getContractFactory("Lottery");
-  const lottery = await Lottery.deploy(stake.address);
-  await lottery.deployed();
-  console.log("Lottery deployed to:", lottery.address);
+  if (lottery_address == "") {
+    lottery = await Lottery.deploy(stake.address);
+    await lottery.deployed();
+    console.log("Lottery deployed to:", lottery.address);
+    await timer(30000);
+    await hre.run("verify:verify", {
+      address: lottery.address,
+      constructorArguments: [stake.address],
+    });
+  } else {
+    lottery = await Lottery.attach(lottery_address);
+  }
   return lottery
 }
 
-setRandomGenerator = async (lottery,rng) => {
+setRandomGenerator = async (lottery) => {
+  console.log(`Setting ${lottery} on RNG`);
   const Lottery = await ethers.getContractFactory("Lottery");
   lottery = await Lottery.attach(lottery);
-  try{
-    lottery.setRandomGenerator(CONTRACTS[hre.network]["randomnessAddress"], {gasLimit: 4000000})
-  }catch (err) {
+  try {
+    await lottery.setRandomGenerator(CONTRACTS[hre.network]["randomnessAddress"], { gasLimit: 4000000 })
+  } catch (err) {
     console.log(err);
     return;
   }
@@ -47,32 +82,44 @@ setRandomGenerator = async (lottery,rng) => {
 }
 
 deployRandomness = async () => {
-  
+
   rand_address = CONTRACTS[hre.network.name]["randomnessAddress"]
   const Randomness = await hre.ethers.getContractFactory("RandomNumberConsumer");
-  if (rand_address == ""){
-        _vrfCoordinator = "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B"
-        _linkToken = "0x01BE23585060835E02B77ef475b0Cc51aA1e0709"
-        _lotteryAddr = "0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9"
-        _keyHash = "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311"
-        _fee = 1
-         randomness = await Randomness.deploy(_vrfCoordinator,
-          _linkToken,
-          _lotteryAddr,
-          _keyHash,
-          _fee)
-    }
+  if (rand_address == "") {
+    _vrfCoordinator = "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B"
+    _linkToken = "0x01BE23585060835E02B77ef475b0Cc51aA1e0709"
+    _lotteryAddr = CONTRACTS[hre.network.name]["lotteryAddress"]
+    _keyHash = "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311"
+    _fee = 1
+    randomness = await Randomness.deploy(_vrfCoordinator,
+      _linkToken,
+      _lotteryAddr,
+      _keyHash,
+      _fee)
+    console.log("Randomness deployed to:", randomness.address);
+    await timer(30000);
+    await hre.run("verify:verify", {
+      address: randomness.address,
+      constructorArguments: [_vrfCoordinator,
+        _linkToken,
+        _lotteryAddr,
+        _keyHash,
+        _fee],
+    });
+  }
   else {
-     randomness =await Randomness.attach(rand_address)
+    randomness = await Randomness.attach(rand_address)
   }
 
   return randomness
 }
 
-setLottery = async (lottery, memeNft, randomness) => {
-  await memeNft.setLotteryContract(lottery)
-  await randomness.setLotteryAddress(lottery)
-} 
+setLottery = async (lottery, randomness) => {
+  console.log(`Setting ${lottery.address} on randomness ${randomness.address}`)
+  tx = await randomness.setLotteryAddress(lottery.address)
+  receipt = await tx.wait()
+  console.log(receipt)
+}
 
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -81,12 +128,15 @@ async function main() {
   // If this script is run directly using `node` you may want to call compile
   // manually to make sure everything is compiled
   //await hre.run('compile');
-  
+
   const deployer = await ethers.getSigner();
   token = await deployMemeXToken(deployer)
-  stake = await deployStaking(deployer,token)
-  lottery = await deployLottery(deployer)
+  stake = await deployStaking(deployer, token)
+  lottery = await deployLottery()
+  nft = await deployNFT(lottery.address);
   randomness = await deployRandomness()
+  setLottery(lottery, randomness);
+  setRandomGenerator(lottery.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
