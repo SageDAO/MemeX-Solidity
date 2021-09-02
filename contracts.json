@@ -1,7 +1,7 @@
 {
-    "lotteryAddress": "0xe5048AcbA248d1749dAB3baE70F9dE946BEEa3bd",
-    "tokenAddress": "0x4EF30FfF9bAacb28d79d98282A6f3931835FB2e4",
+    "lotteryAddress": "0xBf910936d57673B5c3e3185578B4335B41fbb8F5",
+    "tokenAddress": "0x8BebE6ee6a2f20269F322F90Ee34FE022E64Cd3e",
     "nftAddress": "0xA83bBFfBFD4C7FAAA9CE4fe679E7900765DFC586",
     "randomnessAddress": "",
-    "stakingAddress": ""
+    "stakingAddress": "0x00986DAf2CcAa854f2e65fE1d536b0E2388c91e0"
 }

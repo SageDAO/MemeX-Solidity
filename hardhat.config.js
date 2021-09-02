@@ -1,6 +1,8 @@
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-etherscan");
 require('hardhat-deploy');
-const { alchemy_key, deployer_pk } = require('./secrets.json');
+
+const { alchemy_key, deployer_pk, etherscan_key } = require('./secrets.json');
 
 const fs = require("fs");
 
@@ -20,6 +22,9 @@ module.exports = {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${alchemy_key}`,
       accounts: [`${deployer_pk}`],
     },
+  },
+  etherscan: {
+    apiKey: etherscan_key,
   },
   solidity: {
     compilers: [

@@ -50,7 +50,7 @@ async function main() {
             }
         }
     }
-    // generate the output file with update json content
+    // generate the output file with updated json content
     const output_line = JSON.stringify(json_content, null, 2);
     fs.writeSync(output_file, output_line);
 }

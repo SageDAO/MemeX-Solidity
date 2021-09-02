@@ -6,7 +6,7 @@
 
 const { ethers } = require("hardhat");
 const hre = require("hardhat");
-const deployer = ethers.getSigner().address;
+
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
   // line interface.
@@ -14,15 +14,14 @@ async function main() {
   // If this script is run directly using `node` you may want to call compile
   // manually to make sure everything is compiled
   //await hre.run('compile');
-
-
+  const deployer = await ethers.getSigner();
   const MemeToken = await hre.ethers.getContractFactory("MemeXToken");
-  const token = await MemeToken.deploy("MEMEX", "MemeX", 1000000, deployer);
+  const token = await MemeToken.deploy("MEMEX", "MemeX", 1000000, deployer.address);
   await token.deployed();
   console.log("Token deployed to:", token.address);
 
   const Staking = await hre.ethers.getContractFactory("MemeXStaking");
-  const stake = await Staking.deploy(token.address, deployer);
+  const stake = await Staking.deploy(token.address, deployer.address);
   await stake.deployed();
   console.log("Staking deployed to:", stake.address);
 
