@@ -12,6 +12,13 @@ CONTRACTS= {
         "nftAddress": "",
         "randomnessAddress": "0xc63343D411fd8ca6734b75E469D84B2Ec9f4159E",
         "stakingAddress": ""
+    },
+    "hardhat":{
+        "lotteryAddress": "",
+        "tokenAddress": "",
+        "nftAddress": "",
+        "randomnessAddress": "",
+        "stakingAddress": ""
     }
     }
 
