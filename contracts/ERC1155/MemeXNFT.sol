@@ -3,21 +3,23 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "./String.sol";
+import "../Access/MemeXAccessControls.sol";
 
 
-//TODO: Refractor the code to align with requirements
-//TODO: Think if we want another contract that inherits from this
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
+
 //TODO: Find out what proxy registry address is and implement it if required
 //TODO: Add Access Control
-contract MemeXNFT is Ownable, ERC1155 {
+//TODO: Add Lottery as admin?
+//TODO: Add Max Supply! IMP
+contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
     using SafeMath for uint256;
     using Strings for string;
 
-    uint256 private _currentTokenID = 0;
 
     string public name;
-    mapping(uint256 => address) public creators;
+    mapping(uint256 => address) public creator;
     // Contract symbol
     string public symbol;
     address internal lotteryContract;
@@ -25,18 +27,26 @@ contract MemeXNFT is Ownable, ERC1155 {
 
     mapping(uint256 => uint256) tokenSupply;
 
-   
+   function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControl, ERC1155) returns (bool) {
+        return
+            interfaceId == type(IERC1155).interfaceId ||
+            interfaceId == type(IERC1155MetadataURI).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
 
     event LotteryContractUpdated(
         address oldLotteryContract,
         address newLotteryContract
     );
 
-    event CreatorUpdated(address oldCreator, address newCreator);
+    
+    function totalSupply(uint256 _id) public view returns (uint256) {
+		return tokenSupply[_id];
+	}
 
 
     modifier creatorOnly(uint256 _id) {
-        require(creators[_id] == msg.sender, "ERC1155Tradable#creatorOnly: ONLY_CREATOR_ALLOWED");
+        require(creator[_id] == msg.sender, "MemeXNFT: Creator Only");
     _   ;
     }
 
@@ -83,19 +93,19 @@ contract MemeXNFT is Ownable, ERC1155 {
     */
     function create(
         address _initialOwner,
+        uint256 _id,
         uint256 _initialSupply,
         string calldata _uri,
         bytes calldata _data
     ) external onlyLottery returns (uint256) {
-        uint256 _id = _getNextTokenID();
-        _incrementTokenTypeId();
-        creators[_id] = msg.sender;
+        require(!_exists(_id),"Token Id Already exists");
+        creator[_id] = msg.sender;
 
         if (bytes(_uri).length > 0) {
             emit URI(_uri, _id);
         }
 
-        _mint(_initialOwner, _id, _initialSupply, _data);
+        if (_initialSupply != 0) _mint(_initialOwner, _id, _initialSupply, _data);
         tokenSupply[_id] = _initialSupply;
         return _id;
 
@@ -114,7 +124,8 @@ contract MemeXNFT is Ownable, ERC1155 {
         uint256 _id,
         uint256 _quantity,
         bytes memory _data
-    ) public creatorOnly(_id) {
+    ) public {
+        require(hasMinterRole(msg.sender), "ERC1155.mint: Only address having minter role can mint");
         _mint(_to, _id, _quantity, _data);
         tokenSupply[_id] = tokenSupply[_id].add(_quantity);
     }   
@@ -124,11 +135,11 @@ contract MemeXNFT is Ownable, ERC1155 {
         uint256[] memory _ids,
         uint256[] memory _quantities,
         bytes memory _data
-    ) public onlyLottery {
+    ) public {
+        require(hasMinterRole(msg.sender), "ERC1155.mint: Only address having minter role can mint");
         require(_ids.length == _quantities.length, "MemeXNFT.batchMint: ids and quantities should be equal");
         for (uint256 i = 0; i < _ids.length; i++) {
             uint256 _id = _ids[i];
-            require(creators[_id] == msg.sender, "MemeXNFT.batchMint: Only creators are allowed to batch mint");
             uint256 quantity = _quantities[i];
             tokenSupply[_id] += quantity;
         }
@@ -136,33 +147,18 @@ contract MemeXNFT is Ownable, ERC1155 {
     }
 
 
-    function setCreator(
-        address _to,
-        uint256[] memory _ids
-    ) public {
-        require(_to != address(0), "MemeXNFT.setCreator: _to Cannot be null");
-        for (uint256 i = 0; i < _ids.length; i++) {
-        uint256 id = _ids[i];
-        _setCreator(_to, id);
-    }
-  }
 
 
-    function _getNextTokenID() private view returns (uint256) {
-        return _currentTokenID.add(1);
-    }
+    ///SSS: Dont need this
+    // function _getNextTokenID() private view returns (uint256) {
+    //     return _currentTokenID.add(1);
+    // }
 
-    function _incrementTokenTypeId() private  {
-        _currentTokenID++;
-    }
+    // function _incrementTokenTypeId() private  {
+    //     _currentTokenID++;
+    // }
 
 
-    function _setCreator(address _to, uint256 _id) internal creatorOnly(_id){   
-        require(creators[_id] == msg.sender, "MemeXNFT._setCreator: Only creators are allowed to change creator");
-        creators[_id] = _to;
-        address oldCreator = msg.sender;
-        emit CreatorUpdated(oldCreator, creators[_id]);
-    }
 
 
     function setBaseMetadataURI(string memory _newBaseMetadataURI)
@@ -173,6 +169,6 @@ contract MemeXNFT is Ownable, ERC1155 {
 
    
     function _exists(uint256 _id) internal view returns (bool) {
-        return creators[_id] != address(0);
+        return creator[_id] != address(0);
     }
 }
