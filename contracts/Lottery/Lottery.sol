@@ -222,10 +222,7 @@ contract Lottery is Ownable {
         return block.timestamp;
     }
 
-    function drawWinningNumbers(uint256 _lotteryId, uint256 _seed)
-        external
-        onlyOwner
-    {
+    function drawWinningNumbers(uint256 _lotteryId) external onlyOwner {
         require(
             _lotteryId <= lotteryCounter.current(),
             "Lottery id does not exist"
@@ -240,7 +237,7 @@ contract Lottery is Ownable {
             lottery.status == Status.Closed,
             "Must be closed prior to draw"
         );
-        requestId_ = randomGenerator.getRandomNumber(_lotteryId, _seed);
+        requestId_ = randomGenerator.getRandomNumber(_lotteryId);
         // Emits that random number has been requested
         emit RequestNumbers(_lotteryId, requestId_);
     }

@@ -12,7 +12,8 @@ buyTickets = async (_lotteryId, lottery) => {
   const [...accounts] = await ethers.getSigners();
   await lottery.connect(accounts[0]).buyTicket(_lotteryId)
   await lottery.connect(accounts[1]).buyTicket(_lotteryId)
-  await lottery.connect(accounts[2]).buyTicket(_lotteryId)
+  tx = await lottery.connect(accounts[2]).buyTicket(_lotteryId)
+  receipt = await tx.wait();
 }
 
 createLottery = async (lottery, memeX) => {
@@ -80,7 +81,7 @@ async function main() {
   await buyTickets(lotteryId, lottery);
   tx = await lottery.boostParticipant(lotteryId, accounts[1].address, { gasLimit: 4000000 });
   await tx.wait();
-  tx = await lottery.drawWinningNumbers(lotteryId, 0, { gasLimit: 4000000 });
+  tx = await lottery.drawWinningNumbers(lotteryId, { gasLimit: 4000000 });
   await tx.wait()
 }
 

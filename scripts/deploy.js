@@ -68,19 +68,6 @@ deployLottery = async () => {
   return lottery
 }
 
-setRandomGenerator = async (lottery) => {
-  console.log(`Setting ${lottery} on RNG`);
-  const Lottery = await ethers.getContractFactory("Lottery");
-  lottery = await Lottery.attach(lottery);
-  try {
-    await lottery.setRandomGenerator(CONTRACTS[hre.network]["randomnessAddress"], { gasLimit: 4000000 })
-  } catch (err) {
-    console.log(err);
-    return;
-  }
-  return lottery
-}
-
 deployRandomness = async () => {
 
   rand_address = CONTRACTS[hre.network.name]["randomnessAddress"]
@@ -90,14 +77,14 @@ deployRandomness = async () => {
     _linkToken = "0x01BE23585060835E02B77ef475b0Cc51aA1e0709"
     _lotteryAddr = CONTRACTS[hre.network.name]["lotteryAddress"]
     _keyHash = "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311"
-    _fee = 1
+    _fee = hre.ethers.BigNumber.from("100000000000000000") // 0.1 LINK
     randomness = await Randomness.deploy(_vrfCoordinator,
       _linkToken,
       _lotteryAddr,
       _keyHash,
       _fee)
     console.log("Randomness deployed to:", randomness.address);
-    await timer(30000);
+    await timer(60000);
     await hre.run("verify:verify", {
       address: randomness.address,
       constructorArguments: [_vrfCoordinator,
@@ -116,9 +103,17 @@ deployRandomness = async () => {
 
 setLottery = async (lottery, randomness) => {
   console.log(`Setting ${lottery.address} on randomness ${randomness.address}`)
-  tx = await randomness.setLotteryAddress(lottery.address)
-  receipt = await tx.wait()
-  console.log(receipt)
+  await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
+  //receipt = await tx.wait()
+  //console.log(receipt)
+}
+
+setRandomGenerator = async (lottery, rng) => {
+  console.log(`Setting ${rng} on lottery ${lottery.address}`);
+  await lottery.setRandomGenerator(rng, { gasLimit: 4000000 });
+  // console.log(tx);
+  // receipt = await tx.wait();
+  // console.log(receipt);
 }
 
 async function main() {
@@ -136,7 +131,7 @@ async function main() {
   nft = await deployNFT(lottery.address);
   randomness = await deployRandomness()
   setLottery(lottery, randomness);
-  setRandomGenerator(lottery.address);
+  setRandomGenerator(lottery, randomness.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
