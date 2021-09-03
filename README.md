@@ -24,13 +24,9 @@ We store the Alchemy API key and the deployer account private key on the `secret
 
 {
     "alchemy_key": "<api_key>",
-    "deployer_pk": "<pk>"
+    "deployer_pk": "<pk>",
+    "etherscan_key": "<etherscan_api_key>"
 }
-
-
-An Etherscan key is required if you wish to publish the contracts code on deployment:
-
-`export ETHERSCAN_TOKEN=<key>`
 
 ## Deploy contracts
 
