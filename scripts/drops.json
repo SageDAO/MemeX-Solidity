@@ -1,0 +1,285 @@
+[
+    {
+        "nfts": [
+            {
+                "path": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link/nft1.png",
+                "fileName": "nft1.png",
+                "name": "nft1",
+                "rarity": "1000 Editions | 90% Chance"
+            },
+            {
+                "path": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link/nft2.png",
+                "fileName": "nft2.png",
+                "name": "nft2",
+                "rarity": "100 Editions | 9% Chance"
+            },
+            {
+                "path": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link/nft3.png",
+                "fileName": "nft3.png",
+                "name": "nft3",
+                "rarity": "50 Editions | 4% Chance"
+            },
+            {
+                "path": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link/nft4.png",
+                "fileName": "nft4.png",
+                "name": "nft4",
+                "rarity": "10 Editions | 1% Chance"
+            },
+            {
+                "path": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link/nft5.png",
+                "fileName": "nft5.png",
+                "name": "nft5",
+                "rarity": "2 Editions | .02% chance"
+            }
+        ],
+        "car": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link/anArtistDrop.car",
+        "banner": {
+            "path": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link/banner.png",
+            "fileName": "banner.png",
+            "name": "banner"
+        },
+        "metaDataPath": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link/metadata.json",
+        "metadata": {
+            "status": "planned",
+            "entryFee": 1,
+            "lotSize": 2,
+            "costPerTicket": 1,
+            "startTime": 1628886889000,
+            "endTime": 1628973289000,
+            "artistName": "anArtist",
+            "dropName": "anArtistDrop",
+            "boostCost": 1,
+            "liquidityProviderMultiplier": 15,
+            "defaultPrizeId": 1,
+            "metadataBasePath": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link",
+            "nft1": {
+                "name": "Japanese town at night",
+                "description": "A Japanese town at night",
+                "rarity": "1000 Editions | 90% Chance"
+            },
+            "nft2": {
+                "name": "Starry Sky",
+                "description": "A vast starry sky",
+                "rarity": "100 Editions | 9% Chance"
+            },
+            "nft3": {
+                "name": "Iris",
+                "description": "A picture of someone's iris",
+                "rarity": "50 Editions | 4% Chance"
+            },
+            "nft4": {
+                "name": "Yummies",
+                "description": "An assortment of yummy snacks",
+                "rarity": "10 Editions | 1% Chance"
+            },
+            "nft5": {
+                "name": "Oh Deerie",
+                "description": "A Deer or an antelope?",
+                "rarity": "2 Editions | .02% chance"
+            }
+        },
+        "prizeMetadataCid": "bafybeiboc5qqyi6glq2xyk4bro6c47c2n7vvozt2uhqmmhypu3ilhhvz24",
+        "prizeIds": [
+            0,
+            1,
+            2,
+            3,
+            4
+        ]
+    },
+    {
+        "nfts": [
+            {
+                "path": "https://bafybeianyzbam6e2vvm54kfjr2ylweipnhzr3hu6tcja72555wvapzlsn4.ipfs.dweb.link/nft1.png",
+                "fileName": "nft1.png",
+                "name": "nft1",
+                "rarity": "1000 Editions | 90% Chance"
+            },
+            {
+                "path": "https://bafybeianyzbam6e2vvm54kfjr2ylweipnhzr3hu6tcja72555wvapzlsn4.ipfs.dweb.link/nft2.png",
+                "fileName": "nft2.png",
+                "name": "nft2",
+                "rarity": "100 Editions | 9% Chance"
+            },
+            {
+                "path": "https://bafybeianyzbam6e2vvm54kfjr2ylweipnhzr3hu6tcja72555wvapzlsn4.ipfs.dweb.link/nft3.png",
+                "fileName": "nft3.png",
+                "name": "nft3",
+                "rarity": "50 Editions | 4% Chance"
+            },
+            {
+                "path": "https://bafybeianyzbam6e2vvm54kfjr2ylweipnhzr3hu6tcja72555wvapzlsn4.ipfs.dweb.link/nft4.png",
+                "fileName": "nft4.png",
+                "name": "nft4",
+                "rarity": "10 Editions | 1% Chance"
+            }
+        ],
+        "banner": {
+            "path": "https://bafybeianyzbam6e2vvm54kfjr2ylweipnhzr3hu6tcja72555wvapzlsn4.ipfs.dweb.link/banner.png",
+            "fileName": "banner.png",
+            "name": "banner"
+        },
+        "car": "https://bafybeianyzbam6e2vvm54kfjr2ylweipnhzr3hu6tcja72555wvapzlsn4.ipfs.dweb.link/dtoc-drop.car",
+        "metaDataPath": "https://bafybeianyzbam6e2vvm54kfjr2ylweipnhzr3hu6tcja72555wvapzlsn4.ipfs.dweb.link/metadata.json",
+        "metadata": {
+            "status": "planned",
+            "entryFee": 1,
+            "lotteryId": 123,
+            "lotSize": 2,
+            "costPerTicket": 1,
+            "startTime": 1628604156000,
+            "endTime": 1628690556000,
+            "artistName": "dtoc",
+            "dropName": "dtoc-drop",
+            "boostCost": 1,
+            "liquidityProviderMultiplier": 15,
+            "defaultPrizeId": 1,
+            "metadataBasePath": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link",
+            "nft1": {
+                "name": "Japanese town at night",
+                "description": "A Japanese town at night",
+                "rarity": "1000 Editions | 90% Chance"
+            },
+            "nft2": {
+                "name": "Starry Sky",
+                "description": "A vast starry sky",
+                "rarity": "100 Editions | 9% Chance"
+            },
+            "nft3": {
+                "name": "Iris",
+                "description": "A picture of someone's iris",
+                "rarity": "50 Editions | 4% Chance"
+            },
+            "nft4": {
+                "name": "Yummies",
+                "description": "An assortment of yummy snacks",
+                "rarity": "10 Editions | 1% Chance"
+            }
+        },
+        "prizeMetadataCid": "bafybeigjq4sinupreb6ggtnjaqmcmj3c6pfppmmsaq2rx2k7tj53jzbira",
+        "prizeIds": [
+            0,
+            1,
+            2,
+            3
+        ]
+    },
+    {
+        "nfts": [
+            {
+                "path": "https://bafybeib4axkioyrflkvb3hwl4n4appkuzwqcsvwstpirvgm5ulnwrnkgky.ipfs.dweb.link/nft1.png",
+                "fileName": "nft1.png",
+                "name": "nft1",
+                "rarity": "1000 Editions | 90% Chance"
+            },
+            {
+                "path": "https://bafybeib4axkioyrflkvb3hwl4n4appkuzwqcsvwstpirvgm5ulnwrnkgky.ipfs.dweb.link/nft2.png",
+                "fileName": "nft2.png",
+                "name": "nft2",
+                "rarity": "100 Editions | 9% Chance"
+            }
+        ],
+        "banner": {
+            "path": "https://bafybeib4axkioyrflkvb3hwl4n4appkuzwqcsvwstpirvgm5ulnwrnkgky.ipfs.dweb.link/banner.png",
+            "fileName": "banner.png",
+            "name": "banner"
+        },
+        "car": "https://bafybeib4axkioyrflkvb3hwl4n4appkuzwqcsvwstpirvgm5ulnwrnkgky.ipfs.dweb.link/dtoc-drop2.car",
+        "metaDataPath": "https://bafybeib4axkioyrflkvb3hwl4n4appkuzwqcsvwstpirvgm5ulnwrnkgky.ipfs.dweb.link/metadata.json",
+        "metadata": {
+            "status": "planned",
+            "entryFee": 1,
+            "lotteryId": 123,
+            "lotSize": 2,
+            "costPerTicket": 1,
+            "startTime": 1628604156000,
+            "endTime": 1628690556000,
+            "artistName": "dtoc",
+            "dropName": "dtoc-drop2",
+            "boostCost": 1,
+            "liquidityProviderMultiplier": 15,
+            "defaultPrizeId": 1,
+            "metadataBasePath": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link",
+            "nft1": {
+                "name": "Japanese town at night",
+                "description": "A Japanese town at night",
+                "rarity": "1000 Editions | 90% Chance"
+            },
+            "nft2": {
+                "name": "Starry Sky",
+                "description": "A vast starry sky",
+                "rarity": "100 Editions | 9% Chance"
+            }
+        },
+        "prizeMetadataCid": "bafybeievnzzpil4ri5bt6sunkddvggzuqizol3yylgav4vasovla2lvonu",
+        "prizeIds": [
+            0,
+            1
+        ]
+    },
+    {
+        "nfts": [
+            {
+                "path": "https://bafybeihnd534ag35dpncfewl5t244f2deo6whgzjww26lo6pqrrse4iby4.ipfs.dweb.link/nft1.png",
+                "fileName": "nft1.png",
+                "name": "nft1",
+                "rarity": "1000 Editions | 90% Chance"
+            },
+            {
+                "path": "https://bafybeihnd534ag35dpncfewl5t244f2deo6whgzjww26lo6pqrrse4iby4.ipfs.dweb.link/nft2.png",
+                "fileName": "nft2.png",
+                "name": "nft2",
+                "rarity": "100 Editions | 9% Chance"
+            },
+            {
+                "path": "https://bafybeihnd534ag35dpncfewl5t244f2deo6whgzjww26lo6pqrrse4iby4.ipfs.dweb.link/nft3.png",
+                "fileName": "nft3.png",
+                "name": "nft3",
+                "rarity": "50 Editions | 4% Chance"
+            }
+        ],
+        "banner": {
+            "path": "https://bafybeihnd534ag35dpncfewl5t244f2deo6whgzjww26lo6pqrrse4iby4.ipfs.dweb.link/banner.png",
+            "fileName": "banner.png",
+            "name": "banner"
+        },
+        "metaDataPath": "https://bafybeihnd534ag35dpncfewl5t244f2deo6whgzjww26lo6pqrrse4iby4.ipfs.dweb.link/metadata.json",
+        "car": "https://bafybeihnd534ag35dpncfewl5t244f2deo6whgzjww26lo6pqrrse4iby4.ipfs.dweb.link/otherArtistDrop.car",
+        "metadata": {
+            "status": "planned",
+            "entryFee": 1,
+            "lotteryId": 123,
+            "lotSize": 2,
+            "costPerTicket": 1,
+            "startTime": 1628604156000,
+            "endTime": 1629146089000,
+            "artistName": "otherArtist",
+            "dropName": "otherArtistDrop",
+            "boostCost": 1,
+            "liquidityProviderMultiplier": 15,
+            "defaultPrizeId": 1,
+            "metadataBasePath": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link",
+            "nft1": {
+                "name": "Japanese town at night",
+                "description": "A Japanese town at night",
+                "rarity": "1000 Editions | 90% Chance"
+            },
+            "nft2": {
+                "name": "Starry Sky",
+                "description": "A vast starry sky",
+                "rarity": "100 Editions | 9% Chance"
+            },
+            "nft3": {
+                "name": "Iris",
+                "description": "A picture of someone's iris",
+                "rarity": "50 Editions | 4% Chance"
+            }
+        },
+        "prizeMetadataCid": "bafybeiaf4xd6nbjfp26uz5xsnq4ksm7xfiqgmcjikigfcm7stvdr3wlvaq",
+        "prizeIds": [
+            0,
+            1,
+            2
+        ]
+    }
+]

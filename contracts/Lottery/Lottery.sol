@@ -62,10 +62,10 @@ contract Lottery is Ownable {
         Counters.Counter numbers; // luck numbers assigned to participants (those will define winners)
         Counters.Counter participantsCount; // number of participants
         uint256 boostCost; // value in ETH to pay for a boost ticket (so far its a one time payment and would change if we adopt the Superfluid subscription logic)
-        uint256 lpEntries; // amount of numbers a liquidity provider will get
-        // optional prize for all non-winners
+        uint256 liquidityProviderMultiplier; // a multiplier to boost the odds of liquidity providers
+        // optional prize that every participant would win if they don't get better prizes
         // IMPORTANT: WE SHOULD NOT USE A PRIZE ID = 0 OR IT WOULD BE USED EVEN WHEN WE DON'T SET THIS FIELD
-        uint256 prizeIdNonWinners;
+        uint256 defaultPrizeId;
     }
 
     event ResponseReceived(bytes32 _requestId);
@@ -82,7 +82,7 @@ contract Lottery is Ownable {
         uint256 lotteryId,
         uint256 priceOfTicket
     );
-    event NumberAssigedToParticipant(
+    event NumberAssignedToParticipant(
         uint256 lotteryId,
         uint256 number,
         address participantAddress
@@ -175,9 +175,9 @@ contract Lottery is Ownable {
         IMemeXNFT _nftContract,
         uint256[] calldata _prizeIds,
         uint256 _boostCost,
-        uint8 _lpEntries,
+        uint8 _liquidityProviderMultiplier,
         string calldata _baseMetadataURI,
-        uint256 _prizeIdNonWinners
+        uint256 _defaultPrizeId
     ) public onlyOwner returns (uint256 lotteryId) {
         // DISABLED FOR TESTS require(_costPerTicket != 0, "Ticket cost cannot be 0");
         require(
@@ -204,8 +204,8 @@ contract Lottery is Ownable {
             Counters.Counter(0),
             Counters.Counter(0),
             _boostCost,
-            _lpEntries,
-            _prizeIdNonWinners
+            _liquidityProviderMultiplier,
+            _defaultPrizeId
         );
         IMemeXNFT nftContract = _nftContract;
         nftContract.setBaseMetadataURI(_baseMetadataURI);
@@ -222,10 +222,7 @@ contract Lottery is Ownable {
         return block.timestamp;
     }
 
-    function drawWinningNumbers(uint256 _lotteryId, uint256 _seed)
-        external
-        onlyOwner
-    {
+    function drawWinningNumbers(uint256 _lotteryId) external onlyOwner {
         require(
             _lotteryId <= lotteryCounter.current(),
             "Lottery id does not exist"
@@ -240,7 +237,7 @@ contract Lottery is Ownable {
             lottery.status == Status.Closed,
             "Must be closed prior to draw"
         );
-        requestId_ = randomGenerator.getRandomNumber(_lotteryId, _seed);
+        requestId_ = randomGenerator.getRandomNumber(_lotteryId);
         // Emits that random number has been requested
         emit RequestNumbers(_lotteryId, requestId_);
     }
@@ -288,7 +285,7 @@ contract Lottery is Ownable {
                 ];
                 if (
                     participant.prizeId != 0 &&
-                    participant.prizeId != lottery.prizeIdNonWinners
+                    participant.prizeId != lottery.defaultPrizeId
                 ) {
                     // If address is already a winner pick the next number until a new winner is found
                     winningNumber++;
@@ -340,13 +337,13 @@ contract Lottery is Ownable {
             msg.sender,
             _isLiquidityProvider(msg.sender),
             false,
-            lottery.prizeIdNonWinners, // all participants will start with default prize, if any
+            lottery.defaultPrizeId, // all participants will start with default prize, if any
             false
         );
         lottery.participantsCount.increment();
         participants[_lotteryId][msg.sender] = newParticipant;
         if (newParticipant.isLiquidityProvider) {
-            for (uint8 i = 0; i < lottery.lpEntries; i++) {
+            for (uint8 i = 0; i < lottery.liquidityProviderMultiplier; i++) {
                 assignNewNumberToParticipant(_lotteryId, msg.sender);
             }
         } else {
@@ -373,7 +370,7 @@ contract Lottery is Ownable {
         numbersToParticipant[_lotteryId][
             lottery.numbers.current()
         ] = _participantAddress;
-        emit NumberAssigedToParticipant(
+        emit NumberAssignedToParticipant(
             _lotteryId,
             lottery.numbers.current(),
             _participantAddress
@@ -462,7 +459,7 @@ contract Lottery is Ownable {
         returns (uint256)
     {
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
-        return lottery.prizeIdNonWinners;
+        return lottery.defaultPrizeId;
     }
 
     function redeemNFT(uint256 _lotteryId) public {

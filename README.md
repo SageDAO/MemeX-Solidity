@@ -12,17 +12,21 @@ MemeX is currently based on five contracts:
 
 ## Setup instructions
 
-We are using brownie as the development framework.
-To install brownie:
+We are using hardhat as the development framework.
+To install hardhat:
 ```
-python3 -m pip install --user pipx
-python3 -m pipx ensurepath
-pipx install eth-brownie
+npm install --save-dev hardhat
 ```
 
-When interacting with contracts on testnets you'll need an Infura API key:
+When interacting with contracts on testnets you'll need an Alchemy API key: (Alchemy is preferred over Infura as they have archive nodes on the free tier).
 
-`export WEB3_INFURA_PROJECT_ID=<key>`
+We store the Alchemy API key and the deployer account private key on the `secrets.json` file:
+
+{
+    "alchemy_key": "<api_key>",
+    "deployer_pk": "<pk>"
+}
+
 
 An Etherscan key is required if you wish to publish the contracts code on deployment:
 
@@ -32,18 +36,32 @@ An Etherscan key is required if you wish to publish the contracts code on deploy
 
 To deploy all the contracts to the Rinkeby testnet and update their references to each other (only needs to run once):
 
-`brownie run scripts/deploy_contracts.py --network rinkeby`
+`npx hardhat run scripts/deploy.js --network rinkeby`
 
-The `contract_addresses.py` file contains the addresses of the already deployed contracts. If a contract address is in this file, the scripts would interact with the deployed contract, otherwhise a new contract will be deployed.
+
+The `contracts.json` file contains the addresses of the already deployed contracts. If a contract address is in this file, the scripts would interact with the deployed contract, otherwhise a new contract will be deployed.
+
+## Creating lotteries from drops
+
+Executing the script
+
+`node scripts/create_lotteries_from_json.js <path_to_drops_json_file>`
+
+will deploy a new NFT contract and create a new lottery for each new drop, updating the json with the created lotteryId.
+
+## E2E Tests
 
 The scripts folder contains multiple functions to interact with the deployed contracts. 
 
 To simulate the entire lottery flow, including lottery creation, user entries, and drawing numbers (can be executed multiple times to create different lotteries):
 
-`brownie run scripts/simulate_lottery_flow.py --network rinkeby`
+```
+export HARDHAT_NETWORK=rinkeby
+node scripts/simulate_lottery_flow.js 
+```
 
 Every call to the Chainlink oracle requires the lottery contract to have some LINK tokens. During tests use this [faucet](https://rinkeby.chain.link/) to refill if necessary.
 
 To make queries about the winners and mint their prizes please make sure to allow some blocks to be mined as we need to wait for an answer from the randomness oracle:
 
-`brownie run scripts/simulate_check_winners_and_mint_prize.py --network rinkeby`
+`node scripts/simulate_check_winners.js`
