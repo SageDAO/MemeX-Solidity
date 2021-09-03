@@ -130,8 +130,8 @@ async function main() {
   lottery = await deployLottery()
   nft = await deployNFT(lottery.address);
   randomness = await deployRandomness()
-  setLottery(lottery, randomness);
-  setRandomGenerator(lottery, randomness.address);
+  await setLottery(lottery, randomness);
+  await setRandomGenerator(lottery, randomness.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
