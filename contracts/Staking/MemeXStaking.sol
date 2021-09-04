@@ -255,7 +255,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         IRewards rewardToken,
         uint256 controllerShare,
         address artist
-    ) public onlyOwner returns (uint256) {
+    ) public onlyOwner {
         require(pools[id].rewardRate == 0, "pool exists");
 
         Pool storage p = pools[id];
@@ -263,6 +263,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         p.periodStart = periodStart;
         p.maxStake = maxStake;
         p.rewardRate = rewardRate;
+        p.rewardToken = rewardToken;
         p.controllerShare = controllerShare;
         p.artist = artist;
 
