@@ -21,7 +21,7 @@ contract Lottery is Ownable {
 
     // Address of the randomness generator
     IRandomNumberGenerator internal randomGenerator;
-    IRewards public pinaRewards;
+    IRewards public pinaToken;
 
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
 
@@ -88,9 +88,9 @@ contract Lottery is Ownable {
         address participantAddress
     );
 
-    constructor(address _stakingContract) public {
+    constructor(address _pinaContract) public {
         poolId = 1;
-        pinaRewards = IRewards(_stakingContract);
+        pinaToken = IRewards(_pinaContract);
     }
 
     function setTicketCost(uint256 _price, uint256 _lotteryId)
@@ -105,20 +105,20 @@ contract Lottery is Ownable {
         poolId = _poolId;
     }
 
-    function _isLiquidityProvider(address _participant)
-        internal
-        returns (bool)
-    {
-        return pinaRewards.isLiquidityProvider(_participant);
-    }
+    // function _isLiquidityProvider(address _participant)
+    //     internal
+    //     returns (bool)
+    // {
+    //     return pinaRewards.isLiquidityProvider(_participant);
+    // }
 
-    // as the user can enter only once per lottery, it's enough to check if he has earned enough points
-    function _checkEnoughPina(address _user, uint256 _lotteryId) internal {
+    function _burnPinas(address _user, uint256 _lotteryId) internal {
         require(
-            pinaRewards.earned(_user, poolId) >=
+            pinaToken.balanceOf(_user) >=
                 lotteryHistory[_lotteryId].costPerTicket,
             "Not enough PINAs to enter the lottery"
         );
+        pinaToken.burnPinas(_user, lotteryHistory[_lotteryId].costPerTicket);
     }
 
     function setRandomGenerator(address _IRandomNumberGenerator)
@@ -332,10 +332,10 @@ contract Lottery is Ownable {
             emit LotteryStatusChanged(_lotteryId, lottery.status);
         }
         require(lottery.status == Status.Open, "Lottery not open");
-        _checkEnoughPina(msg.sender, _lotteryId);
+        _burnPinas(msg.sender, _lotteryId);
         ParticipantInfo memory newParticipant = ParticipantInfo(
             msg.sender,
-            _isLiquidityProvider(msg.sender),
+            false, //_isLiquidityProvider(msg.sender),
             false,
             lottery.defaultPrizeId, // all participants will start with default prize, if any
             false

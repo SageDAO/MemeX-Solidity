@@ -4,6 +4,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../../interfaces/IERC1155.sol";
 import "./Pausable.sol";
+import "../../interfaces/IRewards.sol";
 
 contract PoolTokenWrapper {
     using SafeMath for uint256;
@@ -73,19 +74,16 @@ contract PoolTokenWrapper {
 contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
     using SafeMath for uint256;
 
-
-
     struct Pool {
         uint256 periodStart;
         uint256 maxStake;
-        uint256 rewardRate; // 11574074074000, 1 point per day per staked MEME
+        uint256 rewardRate; // 11574074074000, 1 PINA per day per staked MEME
+        IRewards rewardToken;
         uint256 controllerShare;
         address artist;
         mapping(address => uint256) lastUpdateTime;
-        mapping(address => uint256) points;
-        
+        mapping(address => uint256) pinasToWithdraw;
     }
-
 
     address public controller;
     address public rescuer;
@@ -98,9 +96,10 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         address artist,
         uint256 periodStart,
         uint256 rewardRate,
+        IRewards rewardToken,
         uint256 maxStake
     );
-  
+
     event Staked(address indexed user, uint256 poolId, uint256 amount);
     event Withdrawn(address indexed user, uint256 poolId, uint256 amount);
     event Transferred(
@@ -112,7 +111,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
 
     modifier updateReward(address account, uint256 id) {
         if (account != address(0)) {
-            pools[id].points[account] = earned(account, id);
+            pools[id].pinasToWithdraw[account] = earned(account, id);
             pools[id].lastUpdateTime[account] = block.timestamp;
         }
         _;
@@ -130,7 +129,20 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         controller = _controller;
     }
 
-
+    function withdrawPinas(
+        address account,
+        uint256 pool,
+        uint256 amount
+    ) public {
+        require(
+            pools[pool].pinasToWithdraw[account] >= amount,
+            "not enough pinas to withdraw"
+        );
+        pools[pool].pinasToWithdraw[account] = pools[pool]
+            .pinasToWithdraw[account]
+            .sub(amount);
+        pools[pool].rewardToken.mintPinas(account, amount);
+    }
 
     function earned(address account, uint256 pool)
         public
@@ -143,7 +155,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
             balanceOf(account, pool)
                 .mul(blockTime.sub(p.lastUpdateTime[account]).mul(p.rewardRate))
                 .div(1e8)
-                .add(p.points[account]);
+                .add(p.pinasToWithdraw[account]);
     }
 
     // override PoolTokenWrapper's stake() function
@@ -166,7 +178,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         emit Staked(msg.sender, pool, amount);
     }
 
-    // override PoolTokenWrapper's withdraw() function
+    // override PoolTokenWrapper's \draw() function
     function withdraw(uint256 pool, uint256 amount)
         public
         override
@@ -205,9 +217,6 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         emit Transferred(msg.sender, fromPool, toPool, amount);
     }
 
-
-
-
     function setArtist(uint256 pool, address artist) public onlyOwner {
         uint256 amount = pendingWithdrawals[artist];
         pendingWithdrawals[artist] = 0;
@@ -238,13 +247,12 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         pools[pool].controllerShare = _controllerShare;
     }
 
-    
-
     function createPool(
         uint256 id,
         uint256 periodStart,
         uint256 maxStake,
         uint256 rewardRate,
+        IRewards rewardToken,
         uint256 controllerShare,
         address artist
     ) public onlyOwner returns (uint256) {
@@ -258,7 +266,14 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         p.controllerShare = controllerShare;
         p.artist = artist;
 
-        emit PoolAdded(id, artist, periodStart, rewardRate, maxStake);
+        emit PoolAdded(
+            id,
+            artist,
+            periodStart,
+            rewardRate,
+            rewardToken,
+            maxStake
+        );
     }
 
     function withdrawFee() public {

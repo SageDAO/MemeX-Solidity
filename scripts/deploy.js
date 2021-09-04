@@ -15,12 +15,13 @@ deployMemeXToken = async (deployer) => {
   token_address = CONTRACTS[hre.network.name]["tokenAddress"]
   const MemeToken = await hre.ethers.getContractFactory("MemeXToken");
   if (token_address == "") {
-    const token = await MemeToken.deploy("MEMEX", "MemeX", 1000000, deployer.address);
+    token = await MemeToken.deploy("MEMEX", "MemeX", 1000000, deployer.address);
     await token.deployed();
     console.log("Token deployed to:", token.address);
     await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
     await hre.run("verify:verify", {
       address: token.address,
+      contract: "contracts/Token/TokenMemeX.sol:MemeXToken",
       constructorArguments: ["MEMEX", "MemeX", 1000000, deployer.address],
     });
   } else {
@@ -29,11 +30,31 @@ deployMemeXToken = async (deployer) => {
   return token
 }
 
+deployPinaToken = async (deployer, lottery, stake) => {
+  pina_address = CONTRACTS[hre.network.name]["pinaAddress"]
+  const PinaToken = await hre.ethers.getContractFactory("PinaToken");
+  if (pina_address == "") {
+    token = await PinaToken.deploy("PINA", "Pina", 0,
+      deployer.address, stake.address, lottery.address);
+    await token.deployed();
+    console.log("Pina token deployed to:", token.address);
+    await timer(30000); // wait so the etherscan index can be updated, then verify the contract code
+    await hre.run("verify:verify", {
+      address: token.address,
+      constructorArguments: ["PINA", "Pina", 0,
+        deployer.address, stake.address, lottery.address],
+    });
+  } else {
+    token = await PinaToken.attach(pina_address);
+  }
+  return token
+}
+
 deployStaking = async (deployer, token) => {
   staking_address = CONTRACTS[hre.network.name]["stakingAddress"]
   const Staking = await hre.ethers.getContractFactory("MemeXStaking");
   if (staking_address == "") {
-    const stake = await Staking.deploy(token.address, deployer.address);
+    stake = await Staking.deploy(token.address, deployer.address);
     await stake.deployed();
     console.log("Staking deployed to:", stake.address);
     await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
@@ -138,6 +159,7 @@ async function main() {
   token = await deployMemeXToken(deployer);
   stake = await deployStaking(deployer, token);
   lottery = await deployLottery();
+  pina = await deployPinaToken(deployer, lottery, stake);
   nft = await deployNFT(lottery.address);
   randomness = await deployRandomness();
   await setLottery(lottery, randomness);
