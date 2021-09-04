@@ -56,7 +56,7 @@ export HARDHAT_NETWORK=rinkeby
 node scripts/simulate_lottery_flow.js 
 ```
 
-Every call to the Chainlink oracle requires the lottery contract to have some LINK tokens. During tests use this [faucet](https://rinkeby.chain.link/) to refill if necessary.
+Every call to the Chainlink oracle requires the randomness contract to have some LINK tokens. During tests use this [faucet](https://rinkeby.chain.link/) to refill if necessary.
 
 To make queries about the winners and mint their prizes please make sure to allow some blocks to be mined as we need to wait for an answer from the randomness oracle:
 
