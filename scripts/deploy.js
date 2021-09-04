@@ -18,6 +18,11 @@ deployMemeXToken = async (deployer) => {
     const token = await MemeToken.deploy("MEMEX", "MemeX", 1000000, deployer.address);
     await token.deployed();
     console.log("Token deployed to:", token.address);
+    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    await hre.run("verify:verify", {
+      address: token.address,
+      constructorArguments: ["MEMEX", "MemeX", 1000000, deployer.address],
+    });
   } else {
     token = await MemeToken.attach(token_address);
   }
@@ -31,6 +36,11 @@ deployStaking = async (deployer, token) => {
     const stake = await Staking.deploy(token.address, deployer.address);
     await stake.deployed();
     console.log("Staking deployed to:", stake.address);
+    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    await hre.run("verify:verify", {
+      address: stake.address,
+      constructorArguments: [token.address, deployer.address],
+    });
   } else {
     stake = await Staking.attach(staking_address);
   }
@@ -44,6 +54,11 @@ deployNFT = async (lottery) => {
     nft = await Nft.deploy("MMXNFT", "MMXNFT", lottery);
     await nft.deployed();
     console.log("NFT deployed to:", nft.address);
+    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    await hre.run("verify:verify", {
+      address: nft.address,
+      constructorArguments: ["MMXNFT", "MMXNFT", lottery],
+    });
   } else {
     nft = await Nft.attach(nft_address);
   }
@@ -57,7 +72,7 @@ deployLottery = async () => {
     lottery = await Lottery.deploy(stake.address);
     await lottery.deployed();
     console.log("Lottery deployed to:", lottery.address);
-    await timer(30000);
+    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
     await hre.run("verify:verify", {
       address: lottery.address,
       constructorArguments: [stake.address],
@@ -84,7 +99,7 @@ deployRandomness = async () => {
       _keyHash,
       _fee)
     console.log("Randomness deployed to:", randomness.address);
-    await timer(60000);
+    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
     await hre.run("verify:verify", {
       address: randomness.address,
       constructorArguments: [_vrfCoordinator,
@@ -104,16 +119,11 @@ deployRandomness = async () => {
 setLottery = async (lottery, randomness) => {
   console.log(`Setting ${lottery.address} on randomness ${randomness.address}`)
   await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
-  //receipt = await tx.wait()
-  //console.log(receipt)
 }
 
 setRandomGenerator = async (lottery, rng) => {
   console.log(`Setting ${rng} on lottery ${lottery.address}`);
   await lottery.setRandomGenerator(rng, { gasLimit: 4000000 });
-  // console.log(tx);
-  // receipt = await tx.wait();
-  // console.log(receipt);
 }
 
 async function main() {
@@ -125,11 +135,11 @@ async function main() {
   //await hre.run('compile');
 
   const deployer = await ethers.getSigner();
-  token = await deployMemeXToken(deployer)
-  stake = await deployStaking(deployer, token)
-  lottery = await deployLottery()
+  token = await deployMemeXToken(deployer);
+  stake = await deployStaking(deployer, token);
+  lottery = await deployLottery();
   nft = await deployNFT(lottery.address);
-  randomness = await deployRandomness()
+  randomness = await deployRandomness();
   await setLottery(lottery, randomness);
   await setRandomGenerator(lottery, randomness.address);
 }
