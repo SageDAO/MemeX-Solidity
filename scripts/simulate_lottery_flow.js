@@ -24,8 +24,8 @@ createLottery = async (lottery, memeX) => {
   _costPerTicket = 0
 
 
-  //Research How to get current Time and Block in Hardhat
-  var timestamp = Number(new Date());
+  const latestBlock = await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
+  timestamp = latestBlock.timestamp;
   _startingTime = timestamp
   _closingTime = timestamp + 24 * 60 * 60
   lotteryId = lottery.createNewLottery(
