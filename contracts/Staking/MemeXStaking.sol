@@ -129,19 +129,17 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         controller = _controller;
     }
 
-    function withdrawPinas(
-        address account,
-        uint256 pool,
-        uint256 amount
-    ) public {
+    function withdrawPinas(address account, uint256 pool)
+        public
+        updateReward(msg.sender, pool)
+    {
         require(
-            pools[pool].pinasToWithdraw[account] >= amount,
-            "not enough pinas to withdraw"
+            pools[pool].pinasToWithdraw[account] > 0,
+            "no pinas to withdraw"
         );
-        pools[pool].pinasToWithdraw[account] = pools[pool]
-            .pinasToWithdraw[account]
-            .sub(amount);
-        pools[pool].rewardToken.mintPinas(account, amount);
+        uint256 pinas = pools[pool].pinasToWithdraw[account];
+        pools[pool].pinasToWithdraw[account] = 0;
+        pools[pool].rewardToken.mintPinas(account, pinas);
     }
 
     function earned(address account, uint256 pool)

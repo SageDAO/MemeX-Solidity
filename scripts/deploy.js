@@ -60,7 +60,7 @@ deployStaking = async (deployer, token) => {
     await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
     await hre.run("verify:verify", {
       address: stake.address,
-      constructorArguments: [token.address, deployer.address],
+      constructorArguments: [deployer.address, token.address],
     });
   } else {
     stake = await Staking.attach(staking_address);
@@ -151,14 +151,14 @@ stakeFunds = async (accounts, stake, token) => {
   await token.transfer(accounts[1].address, ethers.BigNumber.from("10000000000000000000"), { gasLimit: 4000000 });
   await token.connect(accounts[1]).approve(stake.address, ethers.BigNumber.from("10000000000000000000"), { gasLimit: 4000000 });
   await token.approve(stake.address, ethers.BigNumber.from("10000000000000000000"), { gasLimit: 4000000 });
-  await stake.stake(3, ethers.BigNumber.from("5000000000000000000"), { gasLimit: 4000000 });
+  await stake.stake(1, ethers.BigNumber.from("5000000000000000000"), { gasLimit: 4000000 });
 }
 
 createPool = async (stake, pinaToken, deployer) => {
   const latestBlock = await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
   ts = latestBlock.timestamp;
   await stake.createPool(
-    3,
+    1,
     ts,
     ethers.BigNumber.from("5000000000000000000"),
     11574074074000, // reward rate
@@ -183,8 +183,8 @@ async function main() {
   pina = await deployPinaToken(deployer, lottery, stake);
   nft = await deployNFT(lottery.address);
   randomness = await deployRandomness();
-  //await setLottery(lottery, randomness);
-  //await setRandomGenerator(lottery, randomness.address);
+  await setLottery(lottery, randomness);
+  await setRandomGenerator(lottery, randomness.address);
   await createPool(stake, pina, deployer);
   await stakeFunds(accounts, stake, token);
 }
