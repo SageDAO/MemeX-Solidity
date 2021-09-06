@@ -10,9 +10,9 @@ const CONTRACTS = require('../contracts.js')
 
 buyTickets = async (_lotteryId, lottery) => {
   const [...accounts] = await ethers.getSigners();
-  await lottery.connect(accounts[0]).buyTicket(_lotteryId)
-  await lottery.connect(accounts[1]).buyTicket(_lotteryId)
-  tx = await lottery.connect(accounts[2]).buyTicket(_lotteryId)
+  tx = await lottery.connect(accounts[0]).buyTicket(_lotteryId)
+  //await lottery.connect(accounts[1]).buyTicket(_lotteryId)
+  //tx = await lottery.connect(accounts[2]).buyTicket(_lotteryId)
   receipt = await tx.wait();
 }
 
@@ -21,7 +21,7 @@ createLottery = async (lottery, memeX) => {
   deployer = accounts[0]
   _nftContract = memeX.address
   _prizeIds = [1, 2]
-  _costPerTicket = 0
+  _costPerTicket = ethers.BigNumber.from("1000000000000000000");
 
 
   const latestBlock = await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
@@ -46,9 +46,9 @@ createLottery = async (lottery, memeX) => {
 }
 
 getStakingContract = async () => {
-  rand_address = CONTRACTS[hre.network.name]["randomnessAddress"]
-  const Randomness = await hre.ethers.getContractFactory("RandomNumberConsumer");
-  return await Randomness.attach(rand_address);
+  stake_address = CONTRACTS[hre.network.name]["stakingAddress"]
+  const Staking = await hre.ethers.getContractFactory("MemeXStaking");
+  return await Staking.attach(stake_address);
 }
 
 getLotteryContract = async () => {
@@ -75,12 +75,22 @@ async function main() {
   stake = await getStakingContract()
   lottery = await getLotteryContract()
   nft = await getNFTContract();
+
+  console.log("Creating new lottery");
   tx = await createLottery(lottery, nft)
   const receipt = await tx.wait();
   lotteryId = (await lottery.getCurrentLotteryId()).toNumber();
+
+  console.log("withdraw pinas from stake contract");
+  await stake.withdrawPinas(deployer, 2);
+
+  console.log("buying tickets");
   await buyTickets(lotteryId, lottery);
-  tx = await lottery.boostParticipant(lotteryId, accounts[1].address, { gasLimit: 4000000 });
+
+  tx = await lottery.boostParticipant(lotteryId, accounts[0].address, { gasLimit: 4000000 });
   await tx.wait();
+
+  console.log("Requesting random seed from oracle")
   tx = await lottery.drawWinningNumbers(lotteryId, { gasLimit: 4000000 });
   await tx.wait()
 }

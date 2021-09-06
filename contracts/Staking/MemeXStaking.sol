@@ -77,7 +77,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
     struct Pool {
         uint256 periodStart;
         uint256 maxStake;
-        uint256 rewardRate; // 11574074074000, 1 PINA per day per staked MEME
+        uint256 rewardRate;
         IRewards rewardToken;
         uint256 controllerShare;
         address artist;

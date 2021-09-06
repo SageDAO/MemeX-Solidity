@@ -24,6 +24,7 @@ async function main() {
     const [...accounts] = await ethers.getSigners();
     lottery = await getLotteryContract()
     lotteryId = (await lottery.getCurrentLotteryId()).toNumber();
+    console.log(`Checking winners for lottery #id: ${lotteryId}`);
     for (account in accounts) {
         account_address = accounts[account].address;
         [isWinner, prizeId, claimed] = await lottery.isAddressWinner(lotteryId, account_address);

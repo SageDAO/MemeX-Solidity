@@ -1,8 +1,8 @@
 CONTRACTS = {
     "rinkeby": {
-        "lotteryAddress": "0xeB0Ce6Bfaaf612a33B07B7f4042a4174A49550a2",
+        "lotteryAddress": "0xe49ee16Afe4853c2C14F7a9CBe5B7BD6Da15E980",
         "tokenAddress": "0xefD5C859ae4c569177aafEF578eEC99885460146",
-        "pinaAddress": "0xf221E1C7Af2B7688B0089739132A178bB254c9be",
+        "pinaAddress": "0x2Da76A63d8b6D51dc29141524A18E0c28c74C340",
         "nftAddress": "0x8410645aeD27109c10e60088C1fD939aFeAE7203",
         "randomnessAddress": "0x53245f76B812b115764C26F1BA1B8CC02695834C",
         "stakingAddress": "0xCf27592806980801a8B7d2Ed9283A18F80968DA3"

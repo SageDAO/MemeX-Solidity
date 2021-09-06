@@ -169,7 +169,7 @@ contract Lottery is Ownable {
     }
 
     function createNewLottery(
-        uint8 _costPerTicket,
+        uint256 _costPerTicket,
         uint256 _startingTime,
         uint256 _closingTime,
         IMemeXNFT _nftContract,

@@ -13,11 +13,9 @@ contract PinaToken is ERC20Burnable, Ownable {
         string memory symbol,
         uint256 initialSupply,
         address owner,
-        address _stakeContract,
-        address _lotteryContract
+        address _stakeContract
     ) ERC20(name, symbol) {
         stakeContract = _stakeContract;
-        lotteryContract = _lotteryContract;
         if (initialSupply != 0) {
             _mint(owner, initialSupply);
         }
