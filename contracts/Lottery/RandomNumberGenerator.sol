@@ -37,10 +37,14 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
         emit lotteryAddressChanged(oldAddr, _lotteryAddr);
     }
 
+    function getLotteryAddress() public view returns (address) {
+        return lotteryAddr;
+    }
+
     /**
      * Requests randomness
      */
-    function getRandomNumber(uint256 lotteryId, uint256 userProvidedSeed)
+    function getRandomNumber(uint256 lotteryId)
         public
         onlyLottery
         returns (bytes32 requestId)

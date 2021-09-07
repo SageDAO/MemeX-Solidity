@@ -24,13 +24,9 @@ We store the Alchemy API key and the deployer account private key on the `secret
 
 {
     "alchemy_key": "<api_key>",
-    "deployer_pk": "<pk>"
+    "deployer_pk": "<pk>",
+    "etherscan_key": "<etherscan_api_key>"
 }
-
-
-An Etherscan key is required if you wish to publish the contracts code on deployment:
-
-`export ETHERSCAN_TOKEN=<key>`
 
 ## Deploy contracts
 
@@ -60,7 +56,7 @@ export HARDHAT_NETWORK=rinkeby
 node scripts/simulate_lottery_flow.js 
 ```
 
-Every call to the Chainlink oracle requires the lottery contract to have some LINK tokens. During tests use this [faucet](https://rinkeby.chain.link/) to refill if necessary.
+Every call to the Chainlink oracle requires the randomness contract to have some LINK tokens. During tests use this [faucet](https://rinkeby.chain.link/) to refill if necessary.
 
 To make queries about the winners and mint their prizes please make sure to allow some blocks to be mined as we need to wait for an answer from the randomness oracle:
 

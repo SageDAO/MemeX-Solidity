@@ -1,6 +1,5 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
-require('hardhat-deploy');
 
 const { alchemy_key, deployer_pk, etherscan_key, account1, account2 } = require('./secrets.json');
 
@@ -30,10 +29,6 @@ module.exports = {
     compilers: [
       {
         version: "0.8.0",
-      },
-      {
-        version: "0.6.12",
-        settings: {},
       },
     ],
   },
