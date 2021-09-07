@@ -6,7 +6,7 @@ import "../../interfaces/IMemeXNFT.sol";
 import "../Access/MemeXAccessControls.sol";
 
 contract MemeXNFTFactory is CloneFactory, MemeXAccessControls{
-//TODO TEMPLATE ID
+//TODO: Add Fees
 //TODO : ACCESS CONTROL
     bool public locked;
 

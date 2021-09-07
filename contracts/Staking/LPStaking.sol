@@ -6,6 +6,8 @@ import "../../interfaces/IERC1155.sol";
 import "./Pausable.sol";
 import "../../interfaces/IRewards.sol";
 
+//TODO: Check if rewards are coming out correct
+//TODO: Calculate how to setup pools so that rewards align with the requirement
 contract PoolTokenWrapper {
     using SafeMath for uint256;
     IERC20 public token;
@@ -144,6 +146,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         emit WithdrawnPinas(account, pool, pinas);
     }
 
+   
     function earned(address account, uint256 pool)
         public
         view
@@ -151,6 +154,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
     {
         Pool storage p = pools[pool];
         uint256 blockTime = block.timestamp;
+         ///SSS: Do we need p.pinasToWithdraw?
         return
             balanceOf(account, pool)
             .div(1e18) // divide by the decimals of the token used
@@ -217,6 +221,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         emit Transferred(msg.sender, fromPool, toPool, amount);
     }
 
+    ///@dev Sets artist of a pool
     function setArtist(uint256 pool, address artist) public onlyOwner {
         uint256 amount = pendingWithdrawals[artist];
         pendingWithdrawals[artist] = 0;
@@ -226,6 +231,7 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         emit UpdatedArtist(pool, artist);
     }
 
+    ///@dev Sets controller of the staker
     function setController(address _controller) public onlyOwner {
         uint256 amount = pendingWithdrawals[controller];
         pendingWithdrawals[controller] = 0;

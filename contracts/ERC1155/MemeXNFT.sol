@@ -9,10 +9,10 @@ import "../Access/MemeXAccessControls.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
 
-//TODO: Find out what proxy registry address is and implement it if required
-//TODO: Add Access Control
-//TODO: Add Lottery as admin?
-//TODO: Add Max Supply! IMP
+//TODO: Find out what proxy registry address is and implement it if required:ASK ET
+//TODO: Add Access Control:DONE
+//TODO: Add Lottery as admin?: Think
+//TODO: Add Max Supply! IMP:DONE
 contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
     using SafeMath for uint256;
     using Strings for string;
@@ -26,6 +26,7 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
     bool private initialized;
 
     mapping(uint256 => uint256) tokenSupply;
+    mapping(uint256 => uint256) public tokenMaxSupply;
 
    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControl, ERC1155) returns (bool) {
         return
@@ -95,9 +96,11 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         address _initialOwner,
         uint256 _id,
         uint256 _initialSupply,
+        uint256 _maxSupply,
         string calldata _uri,
         bytes calldata _data
     ) external onlyLottery returns (uint256) {
+        require(_initialSupply <= _maxSupply, "Initial supply cannot be more than max supply");
         require(!_exists(_id),"Token Id Already exists");
         creator[_id] = msg.sender;
 
@@ -107,6 +110,7 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
 
         if (_initialSupply != 0) _mint(_initialOwner, _id, _initialSupply, _data);
         tokenSupply[_id] = _initialSupply;
+        tokenMaxSupply[_id] = _maxSupply;
         return _id;
 
     }
@@ -126,6 +130,8 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         bytes memory _data
     ) public {
         require(hasMinterRole(msg.sender), "ERC1155.mint: Only address having minter role can mint");
+        uint256 tokenId = _id;
+		require(tokenSupply[tokenId] < tokenMaxSupply[tokenId], "Max supply reached");
         _mint(_to, _id, _quantity, _data);
         tokenSupply[_id] = tokenSupply[_id].add(_quantity);
     }   
@@ -137,9 +143,12 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         bytes memory _data
     ) public {
         require(hasMinterRole(msg.sender), "ERC1155.mint: Only address having minter role can mint");
+        
         require(_ids.length == _quantities.length, "MemeXNFT.batchMint: ids and quantities should be equal");
         for (uint256 i = 0; i < _ids.length; i++) {
             uint256 _id = _ids[i];
+            //SSS: Check if batch is required
+            require(tokenSupply[_id] < tokenMaxSupply[_id], "Max supply reached");
             uint256 quantity = _quantities[i];
             tokenSupply[_id] += quantity;
         }
