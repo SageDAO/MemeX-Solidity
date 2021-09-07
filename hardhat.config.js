@@ -1,5 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
+require("@nomiclabs/hardhat-truffle4");
 
 const { alchemy_key, deployer_pk, etherscan_key, account1, account2 } = require('./secrets.json');
 

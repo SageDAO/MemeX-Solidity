@@ -56,7 +56,7 @@ contract MemeXNFTFactory is CloneFactory, MemeXAccessControls{
     }
 
 
-    function addMemeXNFTTemplate(address _template) public{
+    function addMemeXNFTTemplate(address _template) public returns (uint256){
         //Add Access Control
         require(hasOperatorRole(msg.sender)
                  || hasAdminRole(msg.sender),"addMemeXNFTemplate: Must be operator or admin");
@@ -65,6 +65,7 @@ contract MemeXNFTFactory is CloneFactory, MemeXAccessControls{
         MemeXNFTTemplates[MemeXNFTTemplateId] = _template;
         templateToId[_template] = MemeXNFTTemplateId;
         emit TemplateAdded(_template, MemeXNFTTemplateId);
+        return MemeXNFTTemplateId;
     }
 
     function removeMemeXNFTTemplate(uint256 _templateId) public {
