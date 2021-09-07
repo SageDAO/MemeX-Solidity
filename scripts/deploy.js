@@ -11,6 +11,8 @@ const CONTRACTS = require('../contracts.js')
 
 const timer = ms => new Promise(res => setTimeout(res, ms));
 
+const TEN_POW_18 = ethers.BigNumber.from(10 ** 18);
+
 deployMemeXToken = async (deployer) => {
   token_address = CONTRACTS[hre.network.name]["tokenAddress"]
   const MemeToken = await hre.ethers.getContractFactory("MemeXToken");
@@ -50,13 +52,13 @@ deployPinaToken = async (deployer, stake) => {
   return pinaToken
 }
 
-deployStaking = async (deployer, token) => {
-  staking_address = CONTRACTS[hre.network.name]["stakingAddress"]
+deployStakeToken = async (deployer, token) => {
+  staking_address = CONTRACTS[hre.network.name]["stakeTokenAddress"]
   const Staking = await hre.ethers.getContractFactory("MemeXStaking");
   if (staking_address == "") {
     stake = await Staking.deploy(deployer.address, token.address);
     await stake.deployed();
-    console.log("Staking deployed to:", stake.address);
+    console.log("StakeToken deployed to:", stake.address);
     await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
     await hre.run("verify:verify", {
       address: stake.address,
@@ -113,7 +115,7 @@ deployRandomness = async () => {
     _linkToken = "0x01BE23585060835E02B77ef475b0Cc51aA1e0709"
     _lotteryAddr = CONTRACTS[hre.network.name]["lotteryAddress"]
     _keyHash = "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311"
-    _fee = hre.ethers.BigNumber.from("100000000000000000") // 0.1 LINK
+    _fee = 0.1 * TEN_POW_18; // 0.1 LINK
     randomness = await Randomness.deploy(_vrfCoordinator,
       _linkToken,
       _lotteryAddr,
@@ -155,14 +157,14 @@ setRandomGenerator = async (lottery, rng) => {
 }
 
 stakeFunds = async (accounts, stake, token) => {
-  await token.transfer(accounts[1].address, ethers.BigNumber.from("10000000000000000000"), { gasLimit: 4000000 });
-  await token.connect(accounts[1]).approve(stake.address, ethers.BigNumber.from("10000000000000000000"), { gasLimit: 4000000 });
-  await token.approve(stake.address, ethers.BigNumber.from("10000000000000000000"), { gasLimit: 4000000 });
-  await stake.stake(2, ethers.BigNumber.from("5000000000000000000"), { gasLimit: 4000000 });
+  await token.transfer(accounts[1].address, 10 * TEN_POW_18, { gasLimit: 4000000 });
+  await token.connect(accounts[1]).approve(stake.address, 10 * TEN_POW_18, { gasLimit: 4000000 });
+  await token.approve(stake.address, 10 * TEN_POW_18, { gasLimit: 4000000 });
+  await stake.stake(2, 5 * TEN_POW_18, { gasLimit: 4000000 });
 }
 
 createPool = async (stake, pinaToken, deployer) => {
-  res = await stake.pools(2);
+  res = await stake.pools(1);
   if (res.maxStake > 0) {
     console.log("Pool already exists");
     return;
@@ -170,11 +172,11 @@ createPool = async (stake, pinaToken, deployer) => {
   const latestBlock = await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
   ts = latestBlock.timestamp;
   await stake.createPool(
-    2,
+    1,
     ts,
-    ethers.BigNumber.from("5000000000000000000"),
+    5 * ethers.BigNumber.from(10 ** 18),
     11574074074000, // reward rate, 1 PINA per day per staked MEME
-    pinaToken.address,
+    address(0),
     0,
     deployer.address);
 }
@@ -190,17 +192,17 @@ async function main() {
   const deployer = await ethers.getSigner();
   const accounts = await ethers.getSigners();
   token = await deployMemeXToken(deployer);
-  stake = await deployStaking(deployer, token);
-  pina = await deployPinaToken(deployer, stake);
+  stakeToken = await deployStakeToken(deployer, token);
+  pina = await deployPinaToken(deployer, stakeToken);
   lottery = await deployLottery(pina);
 
   nft = await deployNFT(lottery.address);
   randomness = await deployRandomness();
   await setLottery(lottery, randomness, pina, nft);
-  await setStake(pina, stake);
+  await setStake(pina, stakeToken);
   await setRandomGenerator(lottery, randomness.address);
   await createPool(stake, pina, deployer);
-  await stakeFunds(accounts, stake, token);
+  await stakeFunds(accounts, stakeToken, token);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

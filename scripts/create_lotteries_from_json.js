@@ -39,8 +39,9 @@ async function main() {
                     drop.metadata.endTime,
                     nftContract.address,
                     drop.prizeIds,
-                    drop.metadata.boostCost,
-                    drop.metadata.liquidityProviderMultiplier,
+                    drop.metadata.boostCost * ethers.BigNumber.from(10 ** 18), // boost cost in ETH
+                    drop.metadata.mintCost * ethers.BigNumber.from(10 ** 18), // mint cost in ETH
+                    drop.metadata.stakePoolId,
                     drop.metadata.metadataBasePath,
                     drop.metadata.defaultPrizeId,
                     {
