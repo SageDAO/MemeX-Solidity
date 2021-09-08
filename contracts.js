@@ -20,6 +20,13 @@ CONTRACTS = {
         "nftAddress": "",
         "randomnessAddress": "",
         "stakingAddress": ""
+    },
+    "fantom_testnet": {
+        "lotteryAddress": "",
+        "tokenAddress": "",
+        "nftAddress": "",
+        "randomnessAddress": "",
+        "stakingAddress": ""
     }
 }
 

@@ -189,11 +189,11 @@ async function main() {
 
   const deployer = await ethers.getSigner();
   const accounts = await ethers.getSigners();
+  
   token = await deployMemeXToken(deployer);
   stake = await deployStaking(deployer, token);
-  pina = await deployPinaToken(deployer, stake);
+  //pina = await deployPinaToken(deployer, stake);
   lottery = await deployLottery(pina);
-
   nft = await deployNFT(lottery.address);
   randomness = await deployRandomness();
   await setLottery(lottery, randomness, pina, nft);
