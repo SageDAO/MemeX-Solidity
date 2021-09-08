@@ -165,6 +165,7 @@ contract MemeXStaking is PoolLPTokenWrapper, Ownable, Pausable {
         return 100;
     }
 
+
     function setIsBoost(uint256 pool, bool _isBoost) public onlyOwner {
         Pool storage p = pools[pool];
 
