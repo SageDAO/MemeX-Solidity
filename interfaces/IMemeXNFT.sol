@@ -16,5 +16,16 @@ interface IMemeXNFT {
         string memory _symbol,
         address _lotteryContract
         ) external;
+
     function setBaseMetadataURI(string memory _newBaseMetadataURI) external;
+    
+    function create(
+        address _initialOwner,
+        uint256 _id,
+        uint256 _initialSupply,
+        uint256 _maxSupply,
+        string calldata _uri,
+        bytes calldata _data,
+        uint256 _lotteryId
+    ) external returns (uint256);
 }

@@ -85,14 +85,20 @@ contract MemeXStaking is PoolLPTokenWrapper, Ownable, Pausable {
         IRewards rewardToken;
         uint256 controllerShare;
         address artist;
-        mapping(address => uint256) lastUpdateTime;
+        uint256 boostAmount; //Boost amount in precision of 100. ie. 125 will boost reward rate by 1.25
+        bool isBoosted; 
+        bool hasPinaRewards;
+        mapping(address => uint256) lastUpdateTimePoints;
+        mapping(address => uint256) lastUpdateTimePinas;
         mapping(address => uint256) pinasToWithdraw;
+        mapping(address => uint256) points;
     }
 
     address public controller;
     address public rescuer;
     mapping(address => uint256) public pendingWithdrawals;
     mapping(uint256 => Pool) public pools;
+    mapping (uint256 => uint256) public pinaRewardsStartTime;
 
     event UpdatedArtist(uint256 poolId, address artist);
     event PoolAdded(
@@ -101,12 +107,16 @@ contract MemeXStaking is PoolLPTokenWrapper, Ownable, Pausable {
         uint256 periodStart,
         uint256 rewardRate,
         IRewards rewardToken,
-        uint256 maxStake
+        uint256 maxStake,
+        uint256 boostAmount,
+        bool isBoosted
     );
 
     event Staked(address indexed user, uint256 poolId, uint256 amount);
     event Withdrawn(address indexed user, uint256 poolId, uint256 amount);
     event WithdrawnPinas(address indexed user, uint256 poolId, uint256 amount);
+    event TicketBought(address indexed user, uint256 poolId, uint256 amount);
+
     event Transferred(
         address indexed user,
         uint256 fromPoolId,
@@ -114,13 +124,25 @@ contract MemeXStaking is PoolLPTokenWrapper, Ownable, Pausable {
         uint256 amount
     );
 
+//TODO: Think how to manage pina rewards. Test this
     modifier updateReward(address account, uint256 id) {
         if (account != address(0)) {
-            pools[id].pinasToWithdraw[account] = earned(account, id);
-            pools[id].lastUpdateTime[account] = block.timestamp;
+            if (pools[id].hasPinaRewards){
+                // This should execute once when the has pina rewards is activated but the rewards for the account have not been updated.
+                // Write a test for this.
+                if (pinaRewardsStartTime[id] > pools[id].lastUpdateTimePinas[account]){
+                    pools[id].lastUpdateTimePinas[account] =  pinaRewardsStartTime[id];
+                }
+                pools[id].pinasToWithdraw[account] = earnedPinas(account, id);
+                
+            }
+            pools[id].points[account] =  earnedPoints(account, id);
+            pools[id].lastUpdateTimePinas[account] = block.timestamp;
+            pools[id].lastUpdateTimePoints[account] = block.timestamp;
         }
         _;
     }
+
 
     modifier poolExists(uint256 id) {
         require(pools[id].rewardRate > 0, "pool does not exists");
@@ -133,6 +155,29 @@ contract MemeXStaking is PoolLPTokenWrapper, Ownable, Pausable {
         controller = _controller;
     }
 
+//TODO: Is it related to accounts or pools??
+    function boost(uint256 pool) public view returns (uint256){
+        Pool storage p = pools[pool];
+
+        if(p.isBoosted){
+            return p.boostAmount;
+        }
+        return 100;
+    }
+
+    function setIsBoost(uint256 pool, bool _isBoost) public onlyOwner {
+        Pool storage p = pools[pool];
+
+        p.isBoosted = _isBoost;
+    }
+
+
+     function activatePinaRewards(uint256 pool) public onlyOwner {
+        Pool storage p = pools[pool];
+        p.hasPinaRewards = true;
+        pinaRewardsStartTime[pool] = block.timestamp;
+    }
+
     function withdrawPinas(address account, uint256 pool)
         public
         updateReward(msg.sender, pool)
@@ -141,27 +186,60 @@ contract MemeXStaking is PoolLPTokenWrapper, Ownable, Pausable {
             pools[pool].pinasToWithdraw[account] > 0,
             "no pinas to withdraw"
         );
+        require(
+            pools[pool].hasPinaRewards,
+            "No pina rewards for the pool"
+        );
         uint256 pinas = pools[pool].pinasToWithdraw[account];
         pools[pool].pinasToWithdraw[account] = 0;
         pools[pool].rewardToken.mintPinas(account, pinas);
         emit WithdrawnPinas(account, pool, pinas);
     }
 
-   
-    function earned(address account, uint256 pool)
+    
+
+///TODO: Ask SIlver do we need to decrease points on buying
+    function buyTicket(address account, uint256 pool, uint256 costOfTicket)
+        public 
+        updateReward(msg.sender, pool)
+    {
+        require(
+            pools[pool].points[account] >= costOfTicket,
+            "LPSTakingWithBoost.buyTicket: not enough points to buy tickets"
+        );
+
+        uint256 points = pools[pool].points[account];
+        pools[pool].points[account] -= costOfTicket;
+        emit TicketBought(account, pool, points);
+    }
+
+    function earnedPinas(address account, uint256 pool)
         public
         view
         returns (uint256)
     {
         Pool storage p = pools[pool];
         uint256 blockTime = block.timestamp;
-         ///SSS: Do we need p.pinasToWithdraw?
+        uint256 rewardRate = p.rewardRate.mul(boost(pool)).div(100);
+         
         return
             balanceOf(account, pool)
             .div(1e18) // divide by the decimals of the token used
-                .mul(blockTime.sub(p.lastUpdateTime[account]).mul(p.rewardRate))
+                .mul(blockTime.sub(p.lastUpdateTimePinas[account]).mul(rewardRate))
                 .add(p.pinasToWithdraw[account]);
+                
     }
+
+    function earnedPoints(address account, uint256 pool) public view returns (uint256) {
+		Pool storage p = pools[pool];
+		uint256 blockTime = block.timestamp;
+		uint256 rewardRate = p.rewardRate.mul(boost(pool)).div(100);
+
+		return
+			balanceOf(account, pool).mul(blockTime.sub(p.lastUpdateTimePoints[account]).mul(rewardRate)).div(1e18).add(
+				p.points[account]
+			);
+	}
 
     // override PoolLPTokenWrapper's stake() function
     function stake(uint256 pool, uint256 amount)
@@ -261,7 +339,9 @@ contract MemeXStaking is PoolLPTokenWrapper, Ownable, Pausable {
         uint256 rewardRate,
         IRewards rewardToken,
         uint256 controllerShare,
-        address artist
+        address artist,
+        uint256 boostAmount, //Boost amount in precision of 100. ie. 125 will boost reward rate by 1.25
+        bool isBoosted
     ) public onlyOwner {
         require(pools[id].rewardRate == 0, "pool exists");
 
@@ -273,14 +353,17 @@ contract MemeXStaking is PoolLPTokenWrapper, Ownable, Pausable {
         p.rewardToken = rewardToken;
         p.controllerShare = controllerShare;
         p.artist = artist;
-
+        p.boostAmount = boostAmount;
+        p.isBoosted = isBoosted;
         emit PoolAdded(
             id,
             artist,
             periodStart,
             rewardRate,
             rewardToken,
-            maxStake
+            maxStake,
+            boostAmount,
+            isBoosted
         );
     }
 

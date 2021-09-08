@@ -28,7 +28,13 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
     mapping(uint256 => uint256) tokenSupply;
     mapping(uint256 => uint256) public tokenMaxSupply;
 
-   function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControl, ERC1155) returns (bool) {
+    struct NFTInfo {
+        uint256 lotteryId;
+        address owner;
+    }
+
+    mapping(uint256 => NFTInfo) nftInfos;
+    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControl, ERC1155) returns (bool) {
         return
             interfaceId == type(IERC1155).interfaceId ||
             interfaceId == type(IERC1155MetadataURI).interfaceId ||
@@ -98,7 +104,8 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         uint256 _initialSupply,
         uint256 _maxSupply,
         string calldata _uri,
-        bytes calldata _data
+        bytes calldata _data,
+        uint256 _lotteryId
     ) external onlyLottery returns (uint256) {
         require(_initialSupply <= _maxSupply, "Initial supply cannot be more than max supply");
         require(!_exists(_id),"Token Id Already exists");
@@ -111,8 +118,8 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         if (_initialSupply != 0) _mint(_initialOwner, _id, _initialSupply, _data);
         tokenSupply[_id] = _initialSupply;
         tokenMaxSupply[_id] = _maxSupply;
+        nftInfos[_id] = NFTInfo(_lotteryId, _initialOwner);
         return _id;
-
     }
 
     
@@ -168,7 +175,9 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
     // }
 
 
+    // function getNFTInfo(uint256 _id) public view (){
 
+    // }
 
     function setBaseMetadataURI(string memory _newBaseMetadataURI)
         public

@@ -432,6 +432,7 @@ contract Lottery is Ownable {
         return participant.isBooster;
     }
 
+    // What should happen if participant is boosted?
     function boostParticipant(uint256 _lotteryId, address _participantAddress)
         public
         payable
@@ -513,6 +514,7 @@ contract Lottery is Ownable {
         require(participant.prizeId != 0, "Participant is not a winner");
         participant.prizeClaimed = true;
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
+        ///SSS TODO: Add Create instead of mint
         nftContract.mint(msg.sender, participant.prizeId, 1, "", _lotteryId);
     }
 
