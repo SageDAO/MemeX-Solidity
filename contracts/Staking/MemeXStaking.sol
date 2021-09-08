@@ -144,6 +144,10 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         emit WithdrawnPinas(account, pool, pinas);
     }
 
+    function getPoolRewardToken(uint256 id) public view returns (IRewards) {
+        return pools[id].rewardToken;
+    }
+
     function earned(address account, uint256 pool)
         public
         view
