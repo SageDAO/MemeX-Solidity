@@ -130,6 +130,15 @@ contract MemeXStaking is PoolTokenWrapper, Ownable, Pausable {
         controller = _controller;
     }
 
+    function redeemPoints(uint256 pool, uint256 points) public {
+        require(
+            pools[pool].pinasToWithdraw[msg.sender] >= points,
+            "Redemption exceeds point balance"
+        );
+
+        pools[pool].lastUpdateTime[msg.sender] = block.timestamp;
+    }
+
     function withdrawPinas(address account, uint256 pool)
         public
         updateReward(msg.sender, pool)

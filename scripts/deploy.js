@@ -163,7 +163,7 @@ stakeFunds = async (accounts, stake, token) => {
   await stake.stake(2, 5 * TEN_POW_18, { gasLimit: 4000000 });
 }
 
-createPool = async (stake, pinaToken, deployer) => {
+createPool = async (stake, deployer) => {
   res = await stake.pools(1);
   if (res.maxStake > 0) {
     console.log("Pool already exists");
@@ -201,7 +201,7 @@ async function main() {
   await setLottery(lottery, randomness, pina, nft);
   await setStake(pina, stakeToken);
   await setRandomGenerator(lottery, randomness.address);
-  await createPool(stake, pina, deployer);
+  await createPool(stake, deployer);
   await stakeFunds(accounts, stakeToken, token);
 }
 

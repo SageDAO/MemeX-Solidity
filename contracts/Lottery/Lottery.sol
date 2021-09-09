@@ -17,7 +17,7 @@ contract Lottery is Ownable {
 
     bytes32 internal requestId_;
 
-    uint8 liquidityProviderMultiplier;
+    uint256 public poolId;
 
     // Address of the randomness generator
     IRandomNumberGenerator internal randomGenerator;
@@ -33,8 +33,9 @@ contract Lottery is Ownable {
     mapping(uint256 => mapping(address => ParticipantInfo))
         internal participants;
 
-    //lotteryId => number => address (allows multiple numbers per participant)
-    mapping(uint256 => mapping(uint256 => address)) numbersToParticipant;
+    //this maps the number a person received when buying a ticket or boost to their address
+    //lotteryId => number => address
+    mapping(uint256 => mapping(uint256 => address)) participantEntries;
 
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
@@ -46,32 +47,28 @@ contract Lottery is Ownable {
 
     struct ParticipantInfo {
         address participantAddress;
-        bool isLiquidityProvider;
         bool isBooster;
         uint256 prizeId;
         bool prizeClaimed;
-    }
-
-    struct LotteryCosts {
-        uint256 ticketCost;
-        uint256 boostCost;
-        uint256 mintCost;
+        uint32 entries;
     }
 
     // Information about lotteries
     struct LotteryInfo {
         uint256 lotteryID; // ID for lotto
         Status status; // Status for lotto
-        LotteryCosts costs; // Struct with all lottery costs
+        uint256 ticketCostPinas; // Cost per ticket in points/tokens
+        uint256 ticketCostCoins; // Cost per ticket in FTM
+        uint256 boostCost; // cost to boost the odds
         uint256 startingTime; // Timestamp to start the lottery
         uint256 closingTime; // Timestamp for end of entries
         IMemeXNFT nftContract; // reference to the NFT Contract
-        Counters.Counter numbers; // luck numbers assigned to participants (those will define winners)
+        Counters.Counter entries; // count the number of entries (each ticket + boost bought)
         Counters.Counter participantsCount; // number of participants
-        uint256 stakePoolId; // id of the stake pool in use
         // optional prize that every participant would win if they don't get better prizes
-        // IMPORTANT: WE SHOULD NOT USE A PRIZE ID = 0 OR IT WOULD BE USED EVEN WHEN WE DON'T SET THIS FIELD
+        // we shoudld avoid having a prize with id = 0 to avoid confusion when we don't set this value
         uint256 defaultPrizeId;
+        uint32 maxParticipants; // max number of participants
     }
 
     event ResponseReceived(bytes32 _requestId);
@@ -99,49 +96,35 @@ contract Lottery is Ownable {
         lpStakeContract = IRewards(_lpStakeContract);
     }
 
-    function setTicketCost(uint256 _price, uint256 _lotteryId)
+    function setTicketCostPinas(uint256 _price, uint256 _lotteryId)
         public
         onlyOwner
     {
-        lotteryHistory[_lotteryId].costs.ticketCost = _price;
+        lotteryHistory[_lotteryId].ticketCostPinas = _price;
         emit TicketCostChanged(msg.sender, _lotteryId, _price);
     }
 
-    function setLiquidityProviderMultiplier(uint8 _multiplier)
-        public
-        onlyOwner
-    {
-        liquidityProviderMultiplier = _multiplier;
-    }
-
-    // function _isLiquidityProvider(address _participant)
-    //     internal
-    //     returns (bool)
-    // {
-    //     return pinaRewards.isLiquidityProvider(_participant);
-    // }
-
-    function _burnPinas(
+    function _burnPinasToken(
         address _user,
-        LotteryInfo memory lottery,
-        IRewards rewardsToken
+        IRewards rewardsToken,
+        uint256 _amount
     ) internal {
-        uint256 costPerTicket = lottery.costs.ticketCost;
         require(
-            rewardsToken.balanceOf(_user) >= costPerTicket,
+            rewardsToken.balanceOf(_user) >= _amount,
             "Not enough PINA tokens to enter the lottery"
         );
-        rewardsToken.burnPinas(_user, costPerTicket);
+        rewardsToken.burnPinas(_user, _amount);
     }
 
-    function _checkEnoughPina(address _user, LotteryInfo memory lottery)
+    function _burnPinasPoints(address _user, LotteryInfo memory lottery)
         internal
     {
+        //TODO: would need to know what contract to use - token stake or liquidity stake
         require(
-            stakeContract.earned(_user, lottery.stakePoolId) >=
-                lottery.costs.ticketCost,
+            stakeContract.earned(_user, poolId) >= lottery.ticketCostPinas,
             "Not enough PINA points to enter the lottery"
         );
+        //TODO: there is no implementation to burn points yet
     }
 
     function setRandomGenerator(address _IRandomNumberGenerator)
@@ -192,18 +175,16 @@ contract Lottery is Ownable {
     }
 
     function createNewLottery(
-        uint256 _costPerTicket,
+        uint256 _costPerTicketPinas,
+        uint256 _costPerTicketCoins,
         uint256 _startingTime,
         uint256 _closingTime,
         IMemeXNFT _nftContract,
         uint256[] calldata _prizeIds,
         uint256 _boostCost,
-        uint256 _mintCost,
-        uint256 _stakePoolId,
-        string calldata _baseMetadataURI,
-        uint256 _defaultPrizeId
+        uint256 _defaultPrizeId,
+        uint32 _maxParticipants
     ) public onlyOwner returns (uint256 lotteryId) {
-        // DISABLED FOR TESTS require(_costPerTicket != 0, "Ticket cost cannot be 0");
         require(
             _startingTime != 0 && _startingTime < _closingTime,
             "Timestamps for lottery invalid"
@@ -217,26 +198,21 @@ contract Lottery is Ownable {
         } else {
             lotteryStatus = Status.Planned;
         }
-        LotteryCosts memory costs = LotteryCosts(
-            _costPerTicket,
-            _boostCost,
-            _mintCost
-        );
         // Saving data in struct
         LotteryInfo memory newLottery = LotteryInfo(
             lotteryId,
             lotteryStatus,
-            costs,
+            _costPerTicketPinas,
+            _costPerTicketCoins,
+            _boostCost,
             _startingTime,
             _closingTime,
             _nftContract,
             Counters.Counter(0),
             Counters.Counter(0),
-            _stakePoolId,
-            _defaultPrizeId
+            _defaultPrizeId,
+            _maxParticipants
         );
-        IMemeXNFT nftContract = _nftContract;
-        nftContract.setBaseMetadataURI(_baseMetadataURI);
         prizes[lotteryId] = _prizeIds;
         emit PrizesChanged(lotteryId, _prizeIds.length);
         lotteryHistory[lotteryId] = newLottery;
@@ -285,12 +261,13 @@ contract Lottery is Ownable {
 
         uint16 numberOfPrizes_ = uint16(prizes[_lotteryId].length);
         uint256 totalParticipants_ = lottery.participantsCount.current();
+        uint256 totalEntries = lottery.entries.current();
 
         // if there are less participants than prizes, reduce the number of prizes
         if (totalParticipants_ < numberOfPrizes_) {
             numberOfPrizes_ = uint16(totalParticipants_);
         }
-        // Loops through each prize
+        // Loops through each prize assigning to a position on the entries array
         for (uint16 i = 0; i < numberOfPrizes_; i++) {
             // Encodes the random number with its position in loop
             bytes32 hashOfRandom = keccak256(
@@ -299,13 +276,13 @@ contract Lottery is Ownable {
             // Casts random number hash into uint256
             uint256 numberRepresentation = uint256(hashOfRandom);
             // Sets the winning number position to a uint16 of random hash number
-            uint16 winningNumber = uint16(
-                numberRepresentation.mod(totalParticipants_)
+            uint256 winningNumber = uint256(
+                numberRepresentation.mod(totalEntries)
             );
             // defines the winner
             bool winnerFound = false;
             do {
-                address winnerAddress = numbersToParticipant[_lotteryId][
+                address winnerAddress = participantEntries[_lotteryId][
                     winningNumber
                 ];
                 ParticipantInfo storage participant = participants[_lotteryId][
@@ -317,6 +294,7 @@ contract Lottery is Ownable {
                 ) {
                     // If address is already a winner pick the next number until a new winner is found
                     winningNumber++;
+                    winningNumber = winningNumber.mod(totalEntries);
                 } else {
                     participant.prizeId = prizes[_lotteryId][i];
                     winnerFound = true;
@@ -337,13 +315,10 @@ contract Lottery is Ownable {
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
-    function buyTicket(uint256 _lotteryId) public {
-        require(
-            participants[_lotteryId][msg.sender].participantAddress ==
-                address(0),
-            "Already bought ticket to this lottery"
-        );
-
+    function buyTickets(uint256 _lotteryId, uint8 numberOfTickets)
+        public
+        payable
+    {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         if (
             lottery.status == Status.Planned &&
@@ -361,36 +336,47 @@ contract Lottery is Ownable {
         }
         require(lottery.status == Status.Open, "Lottery not open");
 
-        IRewards rewardsToken = stakeContract.getPoolRewardToken(
-            lottery.stakePoolId
-        );
-        // if the pool in use is rewarding ERC-20 tokens we burn the ticket cost
-        if (address(rewardsToken) != address(0)) {
-            _burnPinas(msg.sender, lottery, rewardsToken);
-        } else {
-            // if the pool is not using tokens we just handle the reward as points
-            _checkEnoughPina(msg.sender, lottery);
-        }
+        IRewards rewardsToken = stakeContract.getPoolRewardToken(poolId);
 
-        ParticipantInfo memory newParticipant = ParticipantInfo(
-            msg.sender,
-            false, //_isLiquidityProvider(msg.sender),
-            false,
-            lottery.defaultPrizeId, // all participants will start with default prize, if any
-            false
-        );
-        lottery.participantsCount.increment();
-        participants[_lotteryId][msg.sender] = newParticipant;
-        if (newParticipant.isLiquidityProvider) {
-            for (uint8 i = 0; i < liquidityProviderMultiplier; i++) {
-                assignNewNumberToParticipant(_lotteryId, msg.sender);
+        uint256 totalCostInPoints = numberOfTickets * lottery.ticketCostPinas;
+        if (totalCostInPoints > 0) {
+            // if the pool in use is rewarding ERC-20 tokens we burn the ticket cost
+            if (address(rewardsToken) != address(0)) {
+                _burnPinasToken(msg.sender, rewardsToken, totalCostInPoints);
+            } else {
+                // if the pool is not using tokens we just handle the reward as points
+                _burnPinasPoints(msg.sender, lottery);
             }
+        }
+        uint256 totalCostInCoins = numberOfTickets * lottery.ticketCostCoins;
+        if (totalCostInCoins > 0) {
+            require(
+                msg.value >= totalCostInCoins,
+                "Didn't transfer enough funds to buy tickets"
+            );
+        }
+        ParticipantInfo memory participantStored = participants[_lotteryId][
+            msg.sender
+        ];
+        if (participantStored.participantAddress == address(0)) {
+            ParticipantInfo memory newParticipant = ParticipantInfo(
+                msg.sender,
+                false,
+                lottery.defaultPrizeId, // all participants will start with default prize, if any
+                false,
+                numberOfTickets
+            );
+            lottery.participantsCount.increment();
+            participants[_lotteryId][msg.sender] = newParticipant;
         } else {
-            assignNewNumberToParticipant(_lotteryId, msg.sender);
+            participantStored.entries += numberOfTickets;
+        }
+        for (uint8 i = 0; i < numberOfTickets; i++) {
+            assignNewEntryToParticipant(_lotteryId, msg.sender);
         }
     }
 
-    function assignNewNumberToParticipant(
+    function assignNewEntryToParticipant(
         uint256 _lotteryId,
         address _participantAddress
     ) private {
@@ -406,15 +392,15 @@ contract Lottery is Ownable {
             "Participant not found"
         );
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-        numbersToParticipant[_lotteryId][
-            lottery.numbers.current()
+        participantEntries[_lotteryId][
+            lottery.entries.current()
         ] = _participantAddress;
         emit NumberAssignedToParticipant(
             _lotteryId,
-            lottery.numbers.current(),
+            lottery.entries.current(),
             _participantAddress
         );
-        lottery.numbers.increment();
+        lottery.entries.increment();
     }
 
     function isBooster(uint256 _lotteryId, address _participantAddress)
@@ -453,12 +439,12 @@ contract Lottery is Ownable {
         );
         // check if the transaction contains the boost cost
         require(
-            msg.value >= lotteryHistory[_lotteryId].costs.boostCost,
+            msg.value >= lotteryHistory[_lotteryId].boostCost,
             "Not enough tokens to boost"
         );
 
         participant.isBooster = true;
-        assignNewNumberToParticipant(_lotteryId, _participantAddress);
+        assignNewEntryToParticipant(_lotteryId, _participantAddress);
     }
 
     function isAddressWinner(uint256 _lotteryId, address _address)
