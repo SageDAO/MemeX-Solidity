@@ -156,7 +156,7 @@ contract Lottery is Ownable {
         _;
     }
 
-    function addPrizes(uint256 _lotteryId, uint256[] calldata _prizeIds)
+    function setPrizes(uint256 _lotteryId, uint256[] calldata _prizeIds)
         public
         onlyOwner
     {
@@ -165,9 +165,7 @@ contract Lottery is Ownable {
             "Lottery id does not exist"
         );
         require(_prizeIds.length > 0, "No prize ids");
-        for (uint256 i = 0; i < _prizeIds.length; i++) {
-            prizes[_lotteryId].push(_prizeIds[i]);
-        }
+        prizes[_lotteryId] = _prizeIds;
         emit PrizesChanged(_lotteryId, prizes[_lotteryId].length);
     }
 
@@ -283,9 +281,7 @@ contract Lottery is Ownable {
                 ParticipantInfo storage participant = participants[_lotteryId][
                     winnerAddress
                 ];
-                if (
-                    participant.prizeId != 0 &&
-                ) {
+                if (participant.prizeId != 0) {
                     // If address is already a winner pick the next number until a new winner is found
                     winningNumber++;
                     winningNumber = winningNumber.mod(totalEntries);
