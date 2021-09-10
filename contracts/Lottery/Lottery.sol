@@ -432,7 +432,6 @@ contract Lottery is Ownable {
         return participant.isBooster;
     }
 
-    // What should happen if participant is boosted?
     function boostParticipant(uint256 _lotteryId, address _participantAddress)
         public
         payable

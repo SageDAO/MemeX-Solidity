@@ -124,6 +124,7 @@ contract MemeXStaking is PoolLPTokenWrapper, Ownable, Pausable {
         uint256 amount
     );
 
+//TODO: Remove this logic and copy from previous one
 //TODO: Think how to manage pina rewards. Test this
     modifier updateReward(address account, uint256 id) {
         if (account != address(0)) {

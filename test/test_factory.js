@@ -11,6 +11,7 @@ describe(' Factory Contract', () => {
         factory = await Factory.deploy();
         NFT = await ethers.getContractFactory('MemeXNFT');
         nft = await NFT.deploy();
+        
     });
 
     describe('Deployment', () => {
@@ -39,6 +40,27 @@ describe(' Factory Contract', () => {
             assert(name === "MemeXNFT")
         })
     })
+    
+    describe("Add and Remove Templates", () => {
+
+        it('Should revert with same NFT template added twice', async function() {
+            tx = await factory.addMemeXNFTTemplate(nft.address)
+            const res = await tx.wait()
+            tx = await expect(factory.addMemeXNFTTemplate(nft.address)
+                ).to.be.revertedWith("addMemeXNFTemplate: Template has already been added")
+        })
+
+        it('Should remove the Template with template Id', async () => {
+            tx = await factory.addMemeXNFTTemplate(nft.address)
+            const res = await tx.wait()
+            template_id = res.events[0].args[1].toNumber()
+            tx = await factory.removeMemeXNFTTemplate(template_id)
+            expectedTemplateId = 0
+            expect(await factory.templateToId(nft.address)).to.equal(0)
+            
+    })
+
+});
 
 });
 

@@ -60,7 +60,7 @@ contract MemeXNFTFactory is CloneFactory, MemeXAccessControls{
         //Add Access Control
         require(hasOperatorRole(msg.sender)
                  || hasAdminRole(msg.sender),"addMemeXNFTemplate: Must be operator or admin");
-        require(templateToId[_template] ==0);
+        require(templateToId[_template] ==0, "addMemeXNFTemplate: Template has already been added");
         MemeXNFTTemplateId += 1;
         MemeXNFTTemplates[MemeXNFTTemplateId] = _template;
         templateToId[_template] = MemeXNFTTemplateId;
