@@ -65,9 +65,6 @@ contract Lottery is Ownable {
         IMemeXNFT nftContract; // reference to the NFT Contract
         Counters.Counter entries; // count the number of entries (each ticket + boost bought)
         Counters.Counter participantsCount; // number of participants
-        // optional prize that every participant would win if they don't get better prizes
-        // we shoudld avoid having a prize with id = 0 to avoid confusion when we don't set this value
-        uint256 defaultPrizeId;
         uint32 maxParticipants; // max number of participants
     }
 
@@ -182,7 +179,6 @@ contract Lottery is Ownable {
         IMemeXNFT _nftContract,
         uint256[] calldata _prizeIds,
         uint256 _boostCost,
-        uint256 _defaultPrizeId,
         uint32 _maxParticipants
     ) public onlyOwner returns (uint256 lotteryId) {
         require(
@@ -210,7 +206,6 @@ contract Lottery is Ownable {
             _nftContract,
             Counters.Counter(0),
             Counters.Counter(0),
-            _defaultPrizeId,
             _maxParticipants
         );
         prizes[lotteryId] = _prizeIds;
@@ -290,7 +285,6 @@ contract Lottery is Ownable {
                 ];
                 if (
                     participant.prizeId != 0 &&
-                    participant.prizeId != lottery.defaultPrizeId
                 ) {
                     // If address is already a winner pick the next number until a new winner is found
                     winningNumber++;
@@ -362,7 +356,7 @@ contract Lottery is Ownable {
             ParticipantInfo memory newParticipant = ParticipantInfo(
                 msg.sender,
                 false,
-                lottery.defaultPrizeId, // all participants will start with default prize, if any
+                0,
                 false,
                 numberOfTickets
             );
@@ -476,15 +470,6 @@ contract Lottery is Ownable {
         )
     {
         return isAddressWinner(_lotteryId, msg.sender);
-    }
-
-    function getDefaultPrizeId(uint256 _lotteryId)
-        public
-        view
-        returns (uint256)
-    {
-        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
-        return lottery.defaultPrizeId;
     }
 
     function redeemNFT(uint256 _lotteryId) public {
