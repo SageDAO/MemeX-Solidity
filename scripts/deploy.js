@@ -11,7 +11,7 @@ const CONTRACTS = require('../contracts.js')
 
 const timer = ms => new Promise(res => setTimeout(res, ms));
 
-const TEN_POW_18 = ethers.BigNumber.from(10 ** 18);
+const TEN_POW_18 = "1000000000000000000";
 
 deployMemeXToken = async (deployer) => {
   token_address = CONTRACTS[hre.network.name]["tokenAddress"]
@@ -52,17 +52,17 @@ deployPinaToken = async (deployer, stake) => {
   return pinaToken
 }
 
-deployStakeToken = async (deployer, token) => {
-  staking_address = CONTRACTS[hre.network.name]["stakeTokenAddress"]
-  const Staking = await hre.ethers.getContractFactory("MemeXStaking");
+deploySoftStake = async (deployer, token) => {
+  staking_address = CONTRACTS[hre.network.name]["softStakeAddress"]
+  const Staking = await hre.ethers.getContractFactory("SoftStaking");
   if (staking_address == "") {
-    stake = await Staking.deploy(deployer.address, token.address);
+    stake = await Staking.deploy(token.address, token.address); // TODO: change to MEME and liquidity address
     await stake.deployed();
     console.log("StakeToken deployed to:", stake.address);
     await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
     await hre.run("verify:verify", {
       address: stake.address,
-      constructorArguments: [deployer.address, token.address],
+      constructorArguments: [token.address, token.address],
     });
   } else {
     stake = await Staking.attach(staking_address);
@@ -156,31 +156,6 @@ setRandomGenerator = async (lottery, rng) => {
   await lottery.setRandomGenerator(rng, { gasLimit: 4000000 });
 }
 
-stakeFunds = async (accounts, stake, token) => {
-  await token.transfer(accounts[1].address, 10 * TEN_POW_18, { gasLimit: 4000000 });
-  await token.connect(accounts[1]).approve(stake.address, 10 * TEN_POW_18, { gasLimit: 4000000 });
-  await token.approve(stake.address, 10 * TEN_POW_18, { gasLimit: 4000000 });
-  await stake.stake(2, 5 * TEN_POW_18, { gasLimit: 4000000 });
-}
-
-createPool = async (stake, deployer) => {
-  res = await stake.pools(1);
-  if (res.maxStake > 0) {
-    console.log("Pool already exists");
-    return;
-  }
-  const latestBlock = await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
-  ts = latestBlock.timestamp;
-  await stake.createPool(
-    1,
-    ts,
-    5 * ethers.BigNumber.from(10 ** 18),
-    11574074074000, // reward rate, 1 PINA per day per staked MEME
-    address(0),
-    0,
-    deployer.address);
-}
-
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
   // line interface.
@@ -192,7 +167,7 @@ async function main() {
   const deployer = await ethers.getSigner();
   const accounts = await ethers.getSigners();
   token = await deployMemeXToken(deployer);
-  stakeToken = await deployStakeToken(deployer, token);
+  stakeToken = await deploySoftStake(deployer, token);
   pina = await deployPinaToken(deployer, stakeToken);
   lottery = await deployLottery(pina);
 
@@ -201,8 +176,6 @@ async function main() {
   await setLottery(lottery, randomness, pina, nft);
   await setStake(pina, stakeToken);
   await setRandomGenerator(lottery, randomness.address);
-  await createPool(stake, deployer);
-  await stakeFunds(accounts, stakeToken, token);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

@@ -17,12 +17,9 @@ contract Lottery is Ownable {
 
     bytes32 internal requestId_;
 
-    uint256 public poolId;
-
     // Address of the randomness generator
     IRandomNumberGenerator internal randomGenerator;
-    IRewards public stakeContract;
-    IRewards public lpStakeContract;
+    IRewards public softStakeContract;
 
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
 
@@ -88,9 +85,8 @@ contract Lottery is Ownable {
         address participantAddress
     );
 
-    constructor(address _stakeContract, address _lpStakeContract) public {
-        stakeContract = IRewards(_stakeContract);
-        lpStakeContract = IRewards(_lpStakeContract);
+    constructor(address _stakeContract) public {
+        softStakeContract = IRewards(_stakeContract);
     }
 
     function setTicketCostPinas(uint256 _price, uint256 _lotteryId)
@@ -113,15 +109,12 @@ contract Lottery is Ownable {
         rewardsToken.burnPinas(_user, _amount);
     }
 
-    function _burnPinasPoints(address _user, LotteryInfo memory lottery)
-        internal
-    {
-        //TODO: would need to know what contract to use - token stake or liquidity stake
+    function _burnUserPoints(address _user, uint256 _amount) internal {
         require(
-            stakeContract.earned(_user, poolId) >= lottery.ticketCostPinas,
+            softStakeContract.earned(_user) >= _amount,
             "Not enough PINA points to enter the lottery"
         );
-        //TODO: there is no implementation to burn points yet
+        softStakeContract.burnUserPoints(_user, _amount);
     }
 
     function setRandomGenerator(address _IRandomNumberGenerator)
@@ -326,7 +319,7 @@ contract Lottery is Ownable {
         }
         require(lottery.status == Status.Open, "Lottery not open");
 
-        IRewards rewardsToken = stakeContract.getPoolRewardToken(poolId);
+        IRewards rewardsToken = softStakeContract.getRewardToken();
 
         uint256 totalCostInPoints = numberOfTickets * lottery.ticketCostPinas;
         if (totalCostInPoints > 0) {
@@ -335,7 +328,7 @@ contract Lottery is Ownable {
                 _burnPinasToken(msg.sender, rewardsToken, totalCostInPoints);
             } else {
                 // if the pool is not using tokens we just handle the reward as points
-                _burnPinasPoints(msg.sender, lottery);
+                _burnUserPoints(msg.sender, totalCostInPoints);
             }
         }
         uint256 totalCostInCoins = numberOfTickets * lottery.ticketCostCoins;
