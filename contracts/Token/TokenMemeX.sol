@@ -2,13 +2,18 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "hardhat/console.sol";
-contract MemeXToken is ERC20{
+
+contract MemeXToken is ERC20 {
     constructor(
         string memory name,
         string memory symbol,
         uint256 initialSupply,
         address owner
     ) ERC20(name, symbol) {
-         _mint(owner, initialSupply * (10 ** decimals()));   
+        _mint(owner, initialSupply * (10**decimals()));
+    }
+
+    function decimals() public view virtual override returns (uint8) {
+        return 8;
     }
 }

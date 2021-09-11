@@ -46,9 +46,16 @@ contract SoftStaking is Ownable, Pausable {
         _;
     }
 
-    constructor(IERC20 _memeAddress, IERC20 _liquidityAddress) {
+    constructor(
+        IERC20 _memeAddress,
+        IERC20 _liquidityAddress,
+        uint256 _rewardRateToken,
+        uint256 _rewardRateLiquidity
+    ) public {
         memeAddress = _memeAddress;
         liquidityAddress = _liquidityAddress;
+        rewardRateToken = _rewardRateToken;
+        rewardRateLiquidity = _rewardRateLiquidity;
     }
 
     function setLotteryAddress(address _lotteryAddr) public onlyOwner {
@@ -72,6 +79,14 @@ contract SoftStaking is Ownable, Pausable {
         onlyOwner
     {
         rewardRateLiquidity = _rewardRateLiquidity;
+    }
+
+    function setMemeAddresS(IERC20 _memeAddress) public onlyOwner {
+        memeAddress = _memeAddress;
+    }
+
+    function setLiquidityAddress(IERC20 _liquidityAddress) public onlyOwner {
+        liquidityAddress = _liquidityAddress;
     }
 
     function claimTokenReward(address account) public updateReward(msg.sender) {

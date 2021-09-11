@@ -10,10 +10,15 @@ const CONTRACTS = require('../contracts.js')
 
 buyTickets = async (_lotteryId, lottery) => {
   const [...accounts] = await ethers.getSigners();
-  tx = await lottery.connect(accounts[0]).buyTicket(_lotteryId)
+  tx = await lottery.connect(accounts[0]).buyTickets(_lotteryId, 2, { gasLimit: 4000000 });
   //await lottery.connect(accounts[1]).buyTicket(_lotteryId)
   //tx = await lottery.connect(accounts[2]).buyTicket(_lotteryId)
   receipt = await tx.wait();
+}
+
+joinMemex = async (staking) => {
+  const [...accounts] = await ethers.getSigners();
+  tx = await staking.connect(accounts[0]).join({ gasLimit: 4000000 });
 }
 
 createLottery = async (lottery, memeX) => {
@@ -30,13 +35,12 @@ createLottery = async (lottery, memeX) => {
   _closingTime = timestamp + 24 * 60 * 60
   lotteryId = lottery.createNewLottery(
     _costPerTicket,
+    0,
     _startingTime,
     _closingTime,
     _nftContract,
     _prizeIds,
     0, 0,
-    "https://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze.ipfs.dweb.link",
-    3,
     {
       gasLimit: 4000000
     })
@@ -46,8 +50,8 @@ createLottery = async (lottery, memeX) => {
 }
 
 getStakingContract = async () => {
-  stake_address = CONTRACTS[hre.network.name]["stakingAddress"]
-  const Staking = await hre.ethers.getContractFactory("MemeXStaking");
+  stake_address = CONTRACTS[hre.network.name]["softStakeAddress"]
+  const Staking = await hre.ethers.getContractFactory("SoftStaking");
   return await Staking.attach(stake_address);
 }
 
@@ -76,14 +80,13 @@ async function main() {
   lottery = await getLotteryContract()
   nft = await getNFTContract();
 
-  console.log("Creating new lottery");
-  tx = await createLottery(lottery, nft)
-  const receipt = await tx.wait();
+  // console.log("Creating new lottery");
+  // tx = await createLottery(lottery, nft)
+  // const receipt = await tx.wait();
   lotteryId = (await lottery.getCurrentLotteryId()).toNumber();
 
-  console.log("withdraw pinas from stake contract");
-  await stake.withdrawPinas(deployer, 2);
-
+  // console.log("Joining memex")
+  // await joinMemex(stake)
   console.log("buying tickets");
   await buyTickets(lotteryId, lottery);
 

@@ -117,6 +117,10 @@ contract Lottery is Ownable {
         softStakeContract.burnUserPoints(_user, _amount);
     }
 
+    function setSoftStakeContract(address _stakeContract) public onlyOwner {
+        softStakeContract = IRewards(_stakeContract);
+    }
+
     function setRandomGenerator(address _IRandomNumberGenerator)
         external
         onlyOwner

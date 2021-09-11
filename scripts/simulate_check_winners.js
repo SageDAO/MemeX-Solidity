@@ -33,7 +33,7 @@ async function main() {
                 console.log(`Account ${account_address} won prize #id: ${prizeId}.`);
                 tx = await lottery.connect(accounts[account]).redeemNFT(lotteryId, { gasLimit: 4000000 });
                 receipt = await tx.wait();
-                [isWinner, prizeId, claimed] = await lottery.isAddressWinner(lotteryId, account_address);
+                //[isWinner, prizeId, claimed] = await lottery.isAddressWinner(lotteryId, account_address);
                 console.log(`Account ${account_address} claimed prize #id: ${prizeId}.`);
             } else {
                 console.log(`Account ${account_address} won prize #id: ${prizeId} - ALREADY CLAIMED!`);
