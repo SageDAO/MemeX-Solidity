@@ -89,6 +89,10 @@ contract SoftStaking is Ownable, Pausable {
         liquidityAddress = _liquidityAddress;
     }
 
+    function getUserInfo(address _user) public view returns (UserInfo memory) {
+        return userInfo[_user];
+    }
+
     function claimTokenReward(address account) public updateReward(msg.sender) {
         require(
             address(addressOfRewardToken) != address(0),
@@ -129,6 +133,10 @@ contract SoftStaking is Ownable, Pausable {
         );
         return
             pointsToken.add(pointsLiquidity).add(user.pointsAvailableSnapshot);
+    }
+
+    function userJoined() public view returns (bool) {
+        return userInfo[msg.sender].lastSnapshotTime != 0;
     }
 
     function join() public whenNotPaused {
