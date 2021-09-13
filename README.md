@@ -45,6 +45,12 @@ Executing the script
 
 will deploy a new NFT contract and create a new lottery for each new drop, updating the json with the created lotteryId.
 
+## Unit tests
+
+To run unit tests:
+
+`npx hardhat test`
+
 ## E2E Tests
 
 The scripts folder contains multiple functions to interact with the deployed contracts. 

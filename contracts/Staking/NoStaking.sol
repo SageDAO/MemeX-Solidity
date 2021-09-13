@@ -6,7 +6,7 @@ import "../../interfaces/IERC1155.sol";
 import "./Pausable.sol";
 import "../../interfaces/IRewards.sol";
 
-contract SoftStaking is Ownable, Pausable {
+contract NoStaking is Ownable, Pausable {
     using SafeMath for uint256;
 
     IERC20 memeAddress;
@@ -146,7 +146,10 @@ contract SoftStaking is Ownable, Pausable {
         );
         uint256 memeBalance = memeAddress.balanceOf(msg.sender);
         uint256 liquidityBalance = liquidityAddress.balanceOf(msg.sender);
-
+        require(
+            memeBalance > 0 || liquidityBalance > 0,
+            "MEME or MEMELP position required to join"
+        );
         UserInfo memory user = UserInfo(
             memeBalance,
             liquidityBalance,
