@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
 import "../Access/MemeXAccessControls.sol";
 
 
@@ -38,6 +39,7 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         return
             interfaceId == type(IERC1155).interfaceId ||
             interfaceId == type(IERC1155MetadataURI).interfaceId ||
+            interfaceId == type(IAccessControl).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
@@ -64,13 +66,15 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
     function initNFT(
         string memory _name,
         string memory _symbol,
-        address _lotteryContract
+        address _lotteryContract,
+        address _admin
         ) public{
            // setBaseMetadataURI(_baseUri);
            require(!initialized,"MemeXNFT: Already intialized");
             name = _name;
             symbol = _symbol;
             lotteryContract = _lotteryContract;
+            initAccessControls(_admin);
             initialized = true;
     }
 
@@ -78,6 +82,7 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         require(_lotteryContract != address(0));
         address oldAddr = address(lotteryContract);
         lotteryContract = _lotteryContract;
+        addSmartContractRole(lotteryContract);
         emit LotteryContractUpdated(oldAddr, lotteryContract);
     }
 
@@ -106,9 +111,12 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         string calldata _uri,
         bytes calldata _data,
         uint256 _lotteryId
-    ) external onlyLottery returns (uint256) {
+    ) external returns (uint256) {
+        require(hasSmartContractRole(msg.sender)
+                || hasMinterRole(msg.sender),
+                "ERC1155.create only Lottery or Minter can create");
         require(_initialSupply <= _maxSupply, "Initial supply cannot be more than max supply");
-        require(!_exists(_id),"Token Id Already exists");
+        require(!exists(_id),"Token Id Already exists");
         creator[_id] = msg.sender;
 
         if (bytes(_uri).length > 0) {
@@ -186,7 +194,7 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
     }
 
    
-    function _exists(uint256 _id) internal view returns (bool) {
+    function exists(uint256 _id) public view returns (bool) {
         return creator[_id] != address(0);
     }
 }

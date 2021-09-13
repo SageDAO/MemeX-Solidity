@@ -8,7 +8,7 @@ describe(' Factory Contract', () => {
     beforeEach(async () => {
         Factory = await ethers.getContractFactory('MemeXNFTFactory');
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
-        factory = await Factory.deploy();
+        factory = await Factory.deploy(owner.address);
         NFT = await ethers.getContractFactory('MemeXNFT');
         nft = await NFT.deploy();
         
@@ -28,16 +28,37 @@ describe(' Factory Contract', () => {
             template_id = res.events[0].args[1].toNumber()
             _name = "MemeXNFT"
             _symbol = "MXN"
+            _admin = owner.address
             _lotteryAddress = addr1.address
             _baseUri = "nothing yet"
-            tx2 = await  factory.deployMemeXNFT(_name, _symbol, _lotteryAddress, _baseUri, template_id)
+            tx2 = await  factory.deployMemeXNFT(_name, _symbol, _lotteryAddress, _admin,_baseUri, template_id)
             const res2 = await tx2.wait()
-            proxyAddress = res2.events[0].args[1]
-            console.log(proxyAddress)
+            proxyAddress = res2.events[1].args[1]
+
             const deployedNFT = await NFTArtifact.at(proxyAddress)
             const name = await deployedNFT.name.call()
-            console.log(name)
             assert(name === "MemeXNFT")
+        })
+
+        it('Should increase number Of NFTs deployed', async function () {
+            tx = await factory.addMemeXNFTTemplate(nft.address)
+            const res = await tx.wait()
+            template_id = res.events[0].args[1].toNumber()
+            _name = "MemeXNFT"
+            _symbol = "MXN"
+            _admin = owner.address
+            _lotteryAddress = addr1.address
+            _baseUri = "nothing yet"
+            tx2 = await  factory.deployMemeXNFT(_name, _symbol, _lotteryAddress, _admin,_baseUri, template_id)
+
+            __name = "MemeXNFT2"
+            _symbol = "MXN2"
+            _lotteryAddress = addr1.address
+            _baseUri = "nothing yet"
+            tx2 = await  factory.deployMemeXNFT(_name, _symbol, _lotteryAddress, _admin,_baseUri, template_id)
+
+            expect(await factory.numberOfNFTs()).to.equal(2)
+
         })
     })
     
@@ -56,9 +77,26 @@ describe(' Factory Contract', () => {
             template_id = res.events[0].args[1].toNumber()
             tx = await factory.removeMemeXNFTTemplate(template_id)
             expectedTemplateId = 0
-            expect(await factory.templateToId(nft.address)).to.equal(0)
+            expect(await factory.getTemplateId(nft.address)).to.equal(0)
             
-    })
+        })
+
+        it('Should add two NFT Template', async () => {
+            tx = await factory.addMemeXNFTTemplate(nft.address)
+            const res = await tx.wait()
+            template_id = res.events[0].args[1].toNumber()
+            assert(template_id === 1)
+
+            NFT2 = await ethers.getContractFactory('MemeXNFT');
+            nft2 = await NFT.deploy();
+
+            tx = await factory.addMemeXNFTTemplate(nft2.address)
+            const res2 = await tx.wait()
+            template_id = res2.events[0].args[1].toNumber()
+            assert(template_id === 2)
+        })
+
+
 
 });
 

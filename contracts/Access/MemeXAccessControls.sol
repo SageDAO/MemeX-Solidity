@@ -88,7 +88,7 @@ contract MemeXAccessControls is MemeXAdminAccess {
      * @dev The sender must have the admin role
      * @param _address EOA or contract receiving the new role
      */
-    function addMinterRole(address _address) external {
+    function addMinterRole(address _address) public {
         grantRole(MINTER_ROLE, _address);
         emit MinterRoleGranted(_address, _msgSender());
     }
@@ -98,7 +98,7 @@ contract MemeXAccessControls is MemeXAdminAccess {
      * @dev The sender must have the admin role
      * @param _address EOA or contract affected
      */
-    function removeMinterRole(address _address) external {
+    function removeMinterRole(address _address) public {
         revokeRole(MINTER_ROLE, _address);
         emit MinterRoleRemoved(_address, _msgSender());
     }
@@ -108,7 +108,7 @@ contract MemeXAccessControls is MemeXAdminAccess {
      * @dev The sender must have the admin role
      * @param _address EOA or contract receiving the new role
      */
-    function addSmartContractRole(address _address) external {
+    function addSmartContractRole(address _address) public {
         grantRole(SMART_CONTRACT_ROLE, _address);
         emit SmartContractRoleGranted(_address, _msgSender());
     }
@@ -118,7 +118,7 @@ contract MemeXAccessControls is MemeXAdminAccess {
      * @dev The sender must have the admin role
      * @param _address EOA or contract affected
      */
-    function removeSmartContractRole(address _address) external {
+    function removeSmartContractRole(address _address) public {
         revokeRole(SMART_CONTRACT_ROLE, _address);
         emit SmartContractRoleRemoved(_address, _msgSender());
     }
@@ -128,7 +128,7 @@ contract MemeXAccessControls is MemeXAdminAccess {
      * @dev The sender must have the admin role
      * @param _address EOA or contract receiving the new role
      */
-    function addOperatorRole(address _address) external {
+    function addOperatorRole(address _address) public {
         grantRole(OPERATOR_ROLE, _address);
         emit OperatorRoleGranted(_address, _msgSender());
     }
@@ -138,7 +138,7 @@ contract MemeXAccessControls is MemeXAdminAccess {
      * @dev The sender must have the admin role
      * @param _address EOA or contract affected
      */
-    function removeOperatorRole(address _address) external {
+    function removeOperatorRole(address _address) public {
         revokeRole(OPERATOR_ROLE, _address);
         emit OperatorRoleRemoved(_address, _msgSender());
     }

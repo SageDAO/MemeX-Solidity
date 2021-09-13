@@ -14,6 +14,10 @@ contract MemeXAdminAccess is AccessControl {
         address indexed caller
     );
 
+    event AdminRoleGranted2(
+        address indexed beneficiary
+    );
+
     event AdminRoleRemoved(
         address indexed beneficiary,
         address indexed caller
@@ -21,8 +25,10 @@ contract MemeXAdminAccess is AccessControl {
 
 
     /// @notice The deployer is automatically given the admin role which will allow them to then grant roles to other addresses.
-    constructor() {
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+    function initAccessControls(address _admin) public {
+        require(!initAccess, "Already initialised");
+        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+        initAccess = true;
     }
 
     // /**
@@ -70,5 +76,9 @@ contract MemeXAdminAccess is AccessControl {
     function removeAdminRole(address _address) external {
         revokeRole(DEFAULT_ADMIN_ROLE, _address);
         emit AdminRoleRemoved(_address, _msgSender());
+    }
+
+    function  msgSender() public view returns (address){
+        return _msgSender();
     }
 }
