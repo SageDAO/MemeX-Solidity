@@ -115,7 +115,7 @@ contract SoftStaking is Ownable, Pausable {
         address account,
         uint256 tokenBalance,
         uint256 liquidityBalance
-    ) public onlyOwner {
+    ) public onlyOwner updateReward(account) {
         UserInfo storage user = userInfo[account];
         user.memeOnWallet = tokenBalance;
         user.liquidityOnWallet = liquidityBalance;
