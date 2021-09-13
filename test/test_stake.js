@@ -1,8 +1,11 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-const rewardRateToken = 11574074074000;
-const rewardRateLiquidity = 115740740740000;
+// const rewardRateToken = 11574074074000;
+// const rewardRateLiquidity = 115740740740000;
+
+const rewardRateToken = 1;
+const rewardRateLiquidity = 2;
 
 describe("SoftStaking", function () {
     beforeEach(async () => {
@@ -26,7 +29,7 @@ describe("SoftStaking", function () {
         await expect(stake.connect(addr1).join()).to.be.reverted;
     });
 
-    it("Check after user join", async function () {
+    it("User join", async function () {
         await stake.join();
         expect(await stake.userJoined()).to.equal(true);
     });
@@ -65,12 +68,20 @@ describe("SoftStaking", function () {
         await expect(stake.connect(addr1).burnUserPoints(owner.address, 0)).to.be.reverted;
     });
 
+    it("Try burn - user didn't join - should revert", async function () {
+        // simulate addr1 is the lottery contract
+        await stake.setLotteryAddress(addr1.address);
+        // send a transaction as the lottery contract
+        await expect(stake.connect(addr1).burnUserPoints(owner.address, 100)).to.be.reverted;
+    });
+
     it("Not enough points - should revert", async function () {
         // simulate addr1 is the lottery contract
         await stake.setLotteryAddress(addr1.address);
         await stake.join();
-        info = await stake.earned(owner.address);
-        console.log(info);
+        await stake.updateUserBalance(owner.address, 1, 0);
+        await stake.updateUserRewards(owner.address, 0);
+        // send a transaction as the lottery contract
         await expect(stake.connect(addr1).burnUserPoints(owner.address, 100)).to.be.reverted;
     });
 
@@ -82,14 +93,56 @@ describe("SoftStaking", function () {
             burnUserPoints(owner.address, 1)).to.have.emit(stake, "PointsUsed").withArgs(owner.address, 1);
     });
 
-    it("Lottery burning points", async function () {
+    it("Check reward balance after 10 seconds - token", async function () {
+        // simulate addr1 is the lottery contract
+        await stake.setLotteryAddress(addr1.address);
+        await stake.join();
+        await stake.updateUserBalance(owner.address, 100000000, 0);
+        await stake.updateUserRewards(owner.address, 0);
+        // const blockNumBefore = await ethers.provider.getBlockNumber();
+        // const blockBefore = await ethers.provider.getBlock(blockNumBefore);
+        // const timestampBefore = blockBefore.timestamp;
+        // console.log(timestampBefore)
+        await ethers.provider.send("evm_increaseTime", [10]); // increase next block timestamp in 10 seconds
+        await ethers.provider.send("evm_mine", []);
+        // const blockNumAfter = await ethers.provider.getBlockNumber();
+        // const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+        // const timestampAfter = blockAfter.timestamp;
+        // console.log(timestampAfter)
+        expect(await stake.earned(owner.address)).to.equal(10);
+    });
+
+    it("Check reward balance after 10 seconds - liquidity", async function () {
+        // simulate addr1 is the lottery contract
+        await stake.setLotteryAddress(addr1.address);
+        await stake.join();
+        await stake.updateUserBalance(owner.address, 0, 100000000);
+        await stake.updateUserRewards(owner.address, 0);
+        // const blockNumBefore = await ethers.provider.getBlockNumber();
+        // const blockBefore = await ethers.provider.getBlock(blockNumBefore);
+        // const timestampBefore = blockBefore.timestamp;
+        // console.log(timestampBefore)
+        await ethers.provider.send("evm_increaseTime", [10]); // increase next block timestamp in 10 seconds
+        await ethers.provider.send("evm_mine", []);
+        // const blockNumAfter = await ethers.provider.getBlockNumber();
+        // const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+        // const timestampAfter = blockAfter.timestamp;
+        // console.log(timestampAfter)
+        expect(await stake.earned(owner.address)).to.equal(20);
+    });
+
+    it("Lottery burn points", async function () {
+        var provider = ethers.providers.getDefaultProvider();
         await stake.join();
         await stake.setLotteryAddress(addr1.address);
+        await stake.updateUserBalance(owner.address, 100000000, 0);
+        await stake.updateUserRewards(owner.address, 0);
+        await ethers.provider.send("evm_increaseTime", [10]);
         await ethers.provider.send("evm_mine", []);
-        snapshot = await stake.earned(owner.address);
-        console.log(snapshot);
+        // console.log(await provider.getBlockNumber());
         await stake.connect(addr1).burnUserPoints(owner.address, 1);
-        snapshot2 = await stake.earned(owner.address);
-        expect(snapshot).to.be.equal(snapshot2.sub(1));
+        // get the current block number
+        // console.log(await provider.getBlockNumber());
+        expect(await stake.earned(owner.address)).to.equal(9);
     });
 });

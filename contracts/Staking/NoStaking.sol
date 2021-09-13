@@ -121,6 +121,15 @@ contract NoStaking is Ownable, Pausable {
         user.liquidityOnWallet = liquidityBalance;
     }
 
+    function updateUserRewards(address account, uint256 rewards)
+        public
+        onlyOwner
+        updateReward(account)
+    {
+        UserInfo storage user = userInfo[account];
+        user.pointsAvailableSnapshot = rewards;
+    }
+
     function earned(address account) public view returns (uint256) {
         UserInfo memory user = userInfo[account];
         require(user.lastSnapshotTime > 0, "User didn't join Memex yet");
