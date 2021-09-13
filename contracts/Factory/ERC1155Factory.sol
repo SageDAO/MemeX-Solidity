@@ -1,6 +1,5 @@
 pragma solidity ^0.8.0;
 
-import "../ERC1155/MemeXNFT.sol";
 import "../Utils/CloneFactory.sol";
 import "../../interfaces/IMemeXNFT.sol";
 import "../Access/MemeXAccessControls.sol";
@@ -16,7 +15,7 @@ contract MemeXNFTFactory is CloneFactory, MemeXAccessControls{
     address[] public MemeXNFTs;
     mapping(address => uint256) private templateToId;
     
-
+    
     struct MemeXNFT {
         bool exists;
         uint256 templateId;
@@ -27,9 +26,11 @@ contract MemeXNFTFactory is CloneFactory, MemeXAccessControls{
     event TemplateAdded(address template, uint256 templateId);
     event TemplateRemoved(address template, uint256 templateId);
 
-    constructor(){
+    constructor(address _admin){
         locked = true;
+        initAccessControls(_admin);
     }
+
 
     function setLocked(bool _locked) public{
         require(hasOperatorRole(msg.sender)
@@ -40,8 +41,9 @@ contract MemeXNFTFactory is CloneFactory, MemeXAccessControls{
         string memory _name,
         string memory _symbol,
         address _lotteryContract,
-        string memory _baseUri,
+        address _admin,
         uint256 _templateId
+        
     ) public returns (address NFT) {
         if (locked){
             require(hasOperatorRole(msg.sender)
@@ -49,7 +51,7 @@ contract MemeXNFTFactory is CloneFactory, MemeXAccessControls{
         }
         require(MemeXNFTTemplates[_templateId] != address(0));
         NFT = createClone(MemeXNFTTemplates[_templateId]);
-        IMemeXNFT(NFT).initNFT(_name,_symbol,_lotteryContract);
+        IMemeXNFT(NFT).initNFT(_name,_symbol,_lotteryContract,_admin);
         MemeXNFTInfo[NFT] = MemeXNFT(true, _templateId, MemeXNFTs.length);
         MemeXNFTs.push(NFT);
         emit NFTCreated(msg.sender, address(NFT),MemeXNFTTemplates[_templateId]);

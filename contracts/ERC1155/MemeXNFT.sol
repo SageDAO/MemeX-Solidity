@@ -75,6 +75,7 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
             symbol = _symbol;
             lotteryContract = _lotteryContract;
             initAccessControls(_admin);
+            
             initialized = true;
     }
 

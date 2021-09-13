@@ -19,8 +19,7 @@ describe(' ERC1155 Contract', () => {
         _symbol = "MXN"
         _admin = owner.address
         _lotteryAddress = addr1.address
-        _baseUri = "nothing yet"
-        tx2 = await factory.deployMemeXNFT(_name, _symbol, _lotteryAddress,_admin, _baseUri, template_id)
+        tx2 = await factory.deployMemeXNFT(_name, _symbol, _lotteryAddress,_admin, template_id)
         
         const res2 = await tx2.wait()
         proxyAddress = res2.events[1].args[1]
