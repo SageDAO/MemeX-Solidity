@@ -50,6 +50,19 @@ describe("Lottery", function () {
         expect(await lottery.getTotalEntries(1)).to.equal(10);
     });
 
+    it("Lottery full - should revert", async function () {
+        const blockNum = await ethers.provider.getBlockNumber();
+        const block = await ethers.provider.getBlock(blockNum);
+        await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 10,
+            nft.address, [1],
+            ethers.utils.parseEther("1"),
+            1 // just one participant allowed
+        );
+        await lottery.buyTickets(2, 1);
+        // should fail on the second entry
+        await expect(lottery.connect(addr1).buyTickets(2, 1)).to.be.reverted;
+    });
+
     it("User boosts", async function () {
         await rewards.join();
         await ethers.provider.send("evm_mine", []);

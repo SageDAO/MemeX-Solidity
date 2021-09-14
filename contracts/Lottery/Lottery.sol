@@ -311,6 +311,12 @@ contract Lottery is Ownable {
         payable
     {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        if (lottery.maxParticipants != 0) {
+            require(
+                lottery.participantsCount.current() < lottery.maxParticipants,
+                "Lottery is full"
+            );
+        }
         if (
             lottery.status == Status.Planned &&
             lottery.startingTime < block.timestamp
