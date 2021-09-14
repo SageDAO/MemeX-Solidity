@@ -6,7 +6,7 @@ import "../../interfaces/IERC1155.sol";
 import "./Pausable.sol";
 import "../../interfaces/IRewards.sol";
 
-contract SoftStaking is Ownable, Pausable {
+contract NoStaking is Ownable, Pausable {
     using SafeMath for uint256;
 
     IERC20 memeAddress;
@@ -115,10 +115,19 @@ contract SoftStaking is Ownable, Pausable {
         address account,
         uint256 tokenBalance,
         uint256 liquidityBalance
-    ) public onlyOwner {
+    ) public onlyOwner updateReward(account) {
         UserInfo storage user = userInfo[account];
         user.memeOnWallet = tokenBalance;
         user.liquidityOnWallet = liquidityBalance;
+    }
+
+    function updateUserRewards(address account, uint256 rewards)
+        public
+        onlyOwner
+        updateReward(account)
+    {
+        UserInfo storage user = userInfo[account];
+        user.pointsAvailableSnapshot = rewards;
     }
 
     function earned(address account) public view returns (uint256) {
@@ -146,7 +155,10 @@ contract SoftStaking is Ownable, Pausable {
         );
         uint256 memeBalance = memeAddress.balanceOf(msg.sender);
         uint256 liquidityBalance = liquidityAddress.balanceOf(msg.sender);
-
+        require(
+            memeBalance > 0 || liquidityBalance > 0,
+            "MEME or MEMELP position required to join"
+        );
         UserInfo memory user = UserInfo(
             memeBalance,
             liquidityBalance,
