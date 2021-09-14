@@ -6,7 +6,7 @@ import "../../interfaces/IERC1155.sol";
 import "./Pausable.sol";
 import "../../interfaces/IRewards.sol";
 
-contract NoStaking is Ownable, Pausable {
+contract Rewards is Ownable, Pausable {
     using SafeMath for uint256;
 
     IERC20 memeAddress;
@@ -16,6 +16,8 @@ contract NoStaking is Ownable, Pausable {
     uint256 rewardRateToken;
     uint256 rewardRateLiquidity;
     IRewards addressOfRewardToken;
+
+    address[] userList;
 
     struct UserInfo {
         uint256 memeOnWallet;
@@ -148,11 +150,16 @@ contract NoStaking is Ownable, Pausable {
         return userInfo[msg.sender].lastSnapshotTime != 0;
     }
 
+    function getUserList() public view returns (address[] memory) {
+        return userList;
+    }
+
     function join() public whenNotPaused {
         require(
             userInfo[msg.sender].lastSnapshotTime == 0,
             "User already joined"
         );
+        userList.push(msg.sender);
         uint256 memeBalance = memeAddress.balanceOf(msg.sender);
         uint256 liquidityBalance = liquidityAddress.balanceOf(msg.sender);
         require(

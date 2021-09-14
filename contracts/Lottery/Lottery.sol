@@ -19,7 +19,7 @@ contract Lottery is Ownable {
 
     // Address of the randomness generator
     IRandomNumberGenerator internal randomGenerator;
-    IRewards public softStakeContract;
+    IRewards public rewardsContract;
 
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
 
@@ -85,8 +85,8 @@ contract Lottery is Ownable {
         address participantAddress
     );
 
-    constructor(address _stakeContract) public {
-        softStakeContract = IRewards(_stakeContract);
+    constructor(address _rewardsContract) public {
+        rewardsContract = IRewards(_rewardsContract);
     }
 
     function setTicketCostPinas(uint256 _price, uint256 _lotteryId)
@@ -111,14 +111,14 @@ contract Lottery is Ownable {
 
     function _burnUserPoints(address _user, uint256 _amount) internal {
         require(
-            softStakeContract.earned(_user) >= _amount,
+            rewardsContract.earned(_user) >= _amount,
             "Not enough PINA points to enter the lottery"
         );
-        softStakeContract.burnUserPoints(_user, _amount);
+        rewardsContract.burnUserPoints(_user, _amount);
     }
 
-    function setSoftStakeContract(address _stakeContract) public onlyOwner {
-        softStakeContract = IRewards(_stakeContract);
+    function setRewardsContract(address _rewardsContract) public onlyOwner {
+        rewardsContract = IRewards(_rewardsContract);
     }
 
     function setRandomGenerator(address _IRandomNumberGenerator)
@@ -323,7 +323,7 @@ contract Lottery is Ownable {
         }
         require(lottery.status == Status.Open, "Lottery not open");
 
-        IRewards rewardsToken = softStakeContract.getRewardToken();
+        IRewards rewardsToken = rewardsContract.getRewardToken();
 
         uint256 totalCostInPoints = numberOfTickets * lottery.ticketCostPinas;
         if (totalCostInPoints > 0) {

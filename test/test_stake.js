@@ -12,7 +12,7 @@ describe("SoftStaking", function () {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
         Token = await ethers.getContractFactory("MemeXToken");
         token = await Token.deploy("MEMEX", "MemeX", 1000000, owner.address);
-        Stake = await ethers.getContractFactory('NoStaking');
+        Stake = await ethers.getContractFactory('Rewards');
         stake = await Stake.deploy(token.address, token.address, rewardRateToken, rewardRateLiquidity);
     });
 
