@@ -118,16 +118,8 @@ describe("SoftStaking", function () {
         await stake.join();
         await stake.updateUserBalance(owner.address, 0, 100000000);
         await stake.updateUserRewards(owner.address, 0);
-        // const blockNumBefore = await ethers.provider.getBlockNumber();
-        // const blockBefore = await ethers.provider.getBlock(blockNumBefore);
-        // const timestampBefore = blockBefore.timestamp;
-        // console.log(timestampBefore)
         await ethers.provider.send("evm_increaseTime", [10]); // increase next block timestamp in 10 seconds
         await ethers.provider.send("evm_mine", []);
-        // const blockNumAfter = await ethers.provider.getBlockNumber();
-        // const blockAfter = await ethers.provider.getBlock(blockNumAfter);
-        // const timestampAfter = blockAfter.timestamp;
-        // console.log(timestampAfter)
         expect(await stake.earned(owner.address)).to.equal(20);
     });
 
@@ -137,12 +129,11 @@ describe("SoftStaking", function () {
         await stake.setLotteryAddress(addr1.address);
         await stake.updateUserBalance(owner.address, 100000000, 0);
         await stake.updateUserRewards(owner.address, 0);
-        await ethers.provider.send("evm_increaseTime", [10]);
+        await ethers.provider.send("evm_increaseTime", [10]); // this block will have 10 seconds of rewards
         await ethers.provider.send("evm_mine", []);
-        // console.log(await provider.getBlockNumber());
-        await stake.connect(addr1).burnUserPoints(owner.address, 1);
-        // get the current block number
-        // console.log(await provider.getBlockNumber());
-        expect(await stake.earned(owner.address)).to.equal(9);
+        // one block is mined here, so theres one extra second of rewards
+        await stake.connect(addr1).burnUserPoints(owner.address, 11);
+
+        expect(await stake.earned(owner.address)).to.equal(0);
     });
 });
