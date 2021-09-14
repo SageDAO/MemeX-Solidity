@@ -13,7 +13,8 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol
 //TODO: Find out what proxy registry address is and implement it if required:ASK ET
 //TODO: Add Access Control:DONE
 //TODO: Add Lottery as admin?: Think
-//TODO: Add Max Supply! IMP:DONE
+//TODO: Add Max Supply for each token! IMP:DONE
+//TODO: Max Supply for Total Supply.
 contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
     using SafeMath for uint256;
     using Strings for string;
