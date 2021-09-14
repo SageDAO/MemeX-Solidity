@@ -60,7 +60,7 @@ contract Lottery is Ownable {
         uint256 startingTime; // Timestamp to start the lottery
         uint256 closingTime; // Timestamp for end of entries
         IMemeXNFT nftContract; // reference to the NFT Contract
-        Counters.Counter entries; // count the number of entries (each ticket + boost bought)
+        Counters.Counter entriesCount; // count the number of entries (each ticket + boost bought)
         Counters.Counter participantsCount; // number of participants
         uint32 maxParticipants; // max number of participants
     }
@@ -130,6 +130,10 @@ contract Lottery is Ownable {
             "Contracts cannot be 0 address"
         );
         randomGenerator = IRandomNumberGenerator(_IRandomNumberGenerator);
+    }
+
+    function getTotalEntries(uint256 _lotteryId) public view returns (uint256) {
+        return lotteryHistory[_lotteryId].entriesCount.current();
     }
 
     function getLotteryInfo(uint256 _lotteryId)
@@ -251,7 +255,7 @@ contract Lottery is Ownable {
 
         uint16 numberOfPrizes_ = uint16(prizes[_lotteryId].length);
         uint256 totalParticipants_ = lottery.participantsCount.current();
-        uint256 totalEntries = lottery.entries.current();
+        uint256 totalEntries = lottery.entriesCount.current();
 
         // if there are less participants than prizes, reduce the number of prizes
         if (totalParticipants_ < numberOfPrizes_) {
@@ -380,14 +384,14 @@ contract Lottery is Ownable {
         );
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         participantEntries[_lotteryId][
-            lottery.entries.current()
+            lottery.entriesCount.current()
         ] = _participantAddress;
         emit NumberAssignedToParticipant(
             _lotteryId,
-            lottery.entries.current(),
+            lottery.entriesCount.current(),
             _participantAddress
         );
-        lottery.entries.increment();
+        lottery.entriesCount.increment();
     }
 
     function isBooster(uint256 _lotteryId, address _participantAddress)
