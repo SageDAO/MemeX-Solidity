@@ -99,7 +99,6 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         * @dev Creates a new token type and assigns _initialSupply to an address
         * @param _initialOwner address of the first owner of the token
         * @param _initialSupply amount to supply the first owner
-        * @param _uri Optional URI for this token type
         * @param _data Data to pass if receiver is contract
         * @return The newly created token ID
     */
@@ -108,7 +107,6 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         uint256 _id,
         uint256 _initialSupply,
         uint256 _maxSupply,
-        string calldata _uri,
         bytes calldata _data,
         uint256 _lotteryId
     ) external returns (uint256) {
@@ -119,9 +117,7 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         require(!exists(_id),"Token Id Already exists");
         creator[_id] = msg.sender;
 
-        if (bytes(_uri).length > 0) {
-            emit URI(_uri, _id);
-        }
+       
 
         if (_initialSupply != 0) _mint(_initialOwner, _id, _initialSupply, _data);
         tokenSupply[_id] = _initialSupply;

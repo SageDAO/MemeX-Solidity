@@ -37,7 +37,6 @@ describe(' TokenMemeXNFT Basic Contract', () => {
             _id = 2
             _initialSupply = 1
             _maxSupply = 1
-            _uri = ""
             _data = []
             _lotteryId = 1
             await deployedNFT.connect(addr1).create(
@@ -45,7 +44,6 @@ describe(' TokenMemeXNFT Basic Contract', () => {
                 _id,
                 _initialSupply,
                 _maxSupply,
-                _uri,
                 _data,
                 _lotteryId
             )
@@ -67,7 +65,6 @@ describe(' TokenMemeXNFT Basic Contract', () => {
                 _id,
                 _initialSupply,
                 _maxSupply,
-                _uri,
                 _data,
                 _lotteryId
             )).to.be.revertedWith("ERC1155.create only Lottery or Minter can create")

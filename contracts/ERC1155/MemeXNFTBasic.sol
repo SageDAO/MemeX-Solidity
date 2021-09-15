@@ -82,11 +82,10 @@ contract MemeXNFTBasic is  ERC1155, MemeXAccessControls {
     }
 
 
-     /**
+    /**
         * @dev Creates a new token type and assigns _initialSupply to an address
         * @param _initialOwner address of the first owner of the token
         * @param _initialSupply amount to supply the first owner
-        * @param _uri Optional URI for this token type
         * @param _data Data to pass if receiver is contract
         * @return The newly created token ID
     */

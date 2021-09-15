@@ -15,8 +15,9 @@ describe("Lottery", function () {
         Lottery = await ethers.getContractFactory("Lottery");
         lottery = await Lottery.deploy(rewards.address);
         await rewards.setLotteryAddress(lottery.address);
-        Nft = await ethers.getContractFactory("MemeXNFT");
-        nft = await Nft.deploy("Memex", "MEMEX", lottery.address);
+        Nft = await ethers.getContractFactory("MemeXNFTBasic");
+        nft = await Nft.deploy("Memex", "MEMEX", owner.address);
+        await nft.setLotteryContract(lottery.address);
         MockRNG = await ethers.getContractFactory("MockRNG");
         mockRng = await MockRNG.deploy(lottery.address);
         await lottery.setRandomGenerator(mockRng.address);

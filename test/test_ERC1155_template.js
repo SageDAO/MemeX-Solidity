@@ -44,7 +44,7 @@ describe(' ERC1155 Contract', () => {
             _id,
             _initialSupply,
             _maxSupply,
-            _uri,
+            
             _data,
             _lotteryId
         )
@@ -66,7 +66,7 @@ describe(' ERC1155 Contract', () => {
             _id,
             _initialSupply,
             _maxSupply,
-            _uri,
+          
             _data,
             _lotteryId
         )).to.be.revertedWith("ERC1155.create only Lottery or Minter can create")
