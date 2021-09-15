@@ -51,7 +51,7 @@ contract MemeXNFTFactory is CloneFactory, MemeXAccessControls{
         }
         require(MemeXNFTTemplates[_templateId] != address(0));
         NFT = createClone(MemeXNFTTemplates[_templateId]);
-        IMemeXNFT(NFT).initNFT(_name,_symbol,_lotteryContract,_admin);
+        IMemeXNFT(NFT).initNFT(_name,_symbol,_admin);
         MemeXNFTInfo[NFT] = MemeXNFT(true, _templateId, MemeXNFTs.length);
         MemeXNFTs.push(NFT);
         emit NFTCreated(msg.sender, address(NFT),MemeXNFTTemplates[_templateId]);

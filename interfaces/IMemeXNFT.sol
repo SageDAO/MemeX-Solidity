@@ -14,7 +14,6 @@ interface IMemeXNFT {
     function initNFT(
         string memory _name,
         string memory _symbol,
-        address _lotteryContract,
         address _admin
         ) external;
 

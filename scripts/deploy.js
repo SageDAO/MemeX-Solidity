@@ -36,6 +36,7 @@ deployPinaToken = async (deployer, stake) => {
   pina_address = CONTRACTS[hre.network.name]["pinaAddress"]
   const PinaToken = await hre.ethers.getContractFactory("PinaToken");
   if (pina_address == "") {
+    console.log("deploying pina token")
     pinaToken = await PinaToken.deploy("PINA", "Pina", 0,
       deployer.address, stake.address);
     await pinaToken.deployed();
@@ -53,8 +54,9 @@ deployPinaToken = async (deployer, stake) => {
 }
 
 deploySoftStake = async (deployer, token) => {
-  staking_address = CONTRACTS[hre.network.name]["softStakeAddress"]
-  const Staking = await hre.ethers.getContractFactory("SoftStaking");
+  console.log("deploying no stake")
+  staking_address = CONTRACTS[hre.network.name]["NoStakingAddress"]
+  const Staking = await hre.ethers.getContractFactory("NoStaking");
   if (staking_address == "") {
     stake = await Staking.deploy(token.address, token.address, 11574074074000, 115740740740000); // TODO: change to MEME and liquidity address
     await stake.deployed();
@@ -74,6 +76,7 @@ deployNFT = async (lottery) => {
   nft_address = CONTRACTS[hre.network.name]["nftAddress"]
   const Nft = await hre.ethers.getContractFactory("MemeXNFT");
   if (nft_address == "") {
+    console.log("deploying NFT token")
     nft = await Nft.deploy("MMXNFT", "MMXNFT", lottery);
     await nft.deployed();
     console.log("NFT deployed to:", nft.address);
@@ -89,6 +92,7 @@ deployNFT = async (lottery) => {
 }
 
 deployLottery = async (stake) => {
+  console.log("deploying Lottery")
   lottery_address = CONTRACTS[hre.network.name]["lotteryAddress"]
   const Lottery = await hre.ethers.getContractFactory("Lottery");
   if (lottery_address == "") {

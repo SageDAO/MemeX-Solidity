@@ -1,22 +1,16 @@
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../Access/MemeXAccessControls.sol";
 
-
-import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
 
 //TODO: Find out what proxy registry address is and implement it if required:ASK ET
 //TODO: Add Access Control:DONE
 //TODO: Add Lottery as admin?: Think
 //TODO: Add Max Supply for each token! IMP:DONE
 //TODO: Max Supply for Total Supply.
-contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
-    using SafeMath for uint256;
+contract MemeXNFTBasic is  ERC1155, MemeXAccessControls {
     using Strings for string;
 
 
@@ -60,25 +54,18 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
     _   ;
     }
 
-    constructor()ERC1155("") {
-
-    }
-    
-    function initNFT(
+    constructor( 
         string memory _name,
         string memory _symbol,
         address _admin
-        ) public{
-           // setBaseMetadataURI(_baseUri);
-           require(!initialized,"MemeXNFT: Already intialized");
+        )ERC1155("") {
             name = _name;
             symbol = _symbol;
             initAccessControls(_admin);
-            
-            initialized = true;
     }
-
-    function setLotteryContract(address _lotteryContract) public onlyOwner {
+    
+    function setLotteryContract(address _lotteryContract) public  {
+        require(hasAdminRole(msg.sender), "MemeXNFT: Only Admin can change lottery address");
         require(_lotteryContract != address(0));
         address oldAddr = address(lotteryContract);
         lotteryContract = _lotteryContract;
@@ -148,7 +135,7 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
         uint256 tokenId = _id;
 		require(tokenSupply[tokenId] < tokenMaxSupply[tokenId], "Max supply reached");
         _mint(_to, _id, _quantity, _data);
-        tokenSupply[_id] = tokenSupply[_id].add(_quantity);
+        tokenSupply[_id] = tokenSupply[_id] += _quantity;
     }   
 
     function batchMint(

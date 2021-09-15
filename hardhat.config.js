@@ -2,7 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-truffle4");
 
-const { alchemy_key, deployer_pk, etherscan_key, ankr_key, account1, account2 } = require('./secrets.json');
+const { alchemy_key, deployer_pk, etherscan_key, ftm_key,ankr_key, account1, account2 } = require('./secrets.json');
 
 const fs = require("fs");
 
@@ -22,25 +22,42 @@ module.exports = {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${alchemy_key}`,
       accounts: [`${deployer_pk}`, `${account1}`, `${account2}`],
     },
-    fantom_testnet: {
+    Fantom: {
       url: `https://apis.ankr.com/${ankr_key}/fantom/full/test`,
       accounts: [`${deployer_pk}`, `${account1}`, `${account2}`],
+      chainId: 0xfa2
     },
+    hardhat: {
+      gas: 12000000,
+      blockGasLimit: 0x1fffffffffffff,
+      allowUnlimitedContractSize: true,
+      timeout: 1800000
+    }
 
   },
   etherscan: {
-    apiKey: etherscan_key,
+    apiKey: ftm_key
   },
+  
   solidity: {
     compilers: [
       {
         version: "0.8.0",
       },
     ],
+
+    settings: {
+      optimizer: {
+      enabled: true,
+      runs: 200
+      }
+    }
+      
   },
   namedAccounts: {
     deployer: {
       default: 0,
     },
   },
+
 };
