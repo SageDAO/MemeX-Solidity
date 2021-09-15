@@ -8,7 +8,6 @@ import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 
-/// SSS TODO: Add more events maybe??
 contract Lottery is Ownable {
     using SafeMath for uint256;
     using Counters for Counters.Counter;
@@ -83,6 +82,12 @@ contract Lottery is Ownable {
         uint256 lotteryId,
         uint256 number,
         address participantAddress
+    );
+
+    event PrizeClaimed(
+        uint256 lotteryId,
+        address participantAddress,
+        uint256 prizeId
     );
 
     constructor(address _rewardsContract) public {
@@ -488,6 +493,11 @@ contract Lottery is Ownable {
         participant.prizeClaimed = true;
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
         nftContract.mint(msg.sender, participant.prizeId, 1, "", _lotteryId);
+        emit PrizeClaimed(
+            _lotteryId,
+            participant.participantAddress,
+            participant.prizeId
+        );
     }
 
     function withdraw(address payable _to, uint256 _amount) external onlyOwner {
