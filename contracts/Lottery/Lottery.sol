@@ -1,7 +1,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IRewards.sol";
@@ -9,7 +8,6 @@ import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 
 contract Lottery is Ownable {
-    using SafeMath for uint256;
     using Counters for Counters.Counter;
 
     Counters.Counter private lotteryCounter;
@@ -276,7 +274,7 @@ contract Lottery is Ownable {
             uint256 numberRepresentation = uint256(hashOfRandom);
             // Sets the winning number position to a uint16 of random hash number
             uint256 winningNumber = uint256(
-                numberRepresentation.mod(totalEntries)
+                numberRepresentation % totalEntries
             );
             // defines the winner
             bool winnerFound = false;
@@ -290,7 +288,7 @@ contract Lottery is Ownable {
                 if (participant.prizeId != 0) {
                     // If address is already a winner pick the next number until a new winner is found
                     winningNumber++;
-                    winningNumber = winningNumber.mod(totalEntries);
+                    winningNumber = winningNumber % totalEntries;
                 } else {
                     participant.prizeId = prizes[_lotteryId][i];
                     winnerFound = true;

@@ -2,11 +2,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./String.sol";
 
 contract MemeXNFT is Ownable, ERC1155 {
-    using SafeMath for uint256;
     using Strings for string;
     string public name;
     mapping(uint256 => address) public creators;
@@ -77,7 +75,7 @@ contract MemeXNFT is Ownable, ERC1155 {
         for (uint256 i = 0; i < _ids.length; i++) {
             uint256 _id = _ids[i];
             uint256 quantity = _quantities[i];
-            tokenSupply[_id] = tokenSupply[_id].add(quantity);
+            tokenSupply[_id] = tokenSupply[_id] + quantity;
         }
         _mintBatch(_to, _ids, _quantities, _data);
     }
