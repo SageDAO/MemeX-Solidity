@@ -95,7 +95,6 @@ contract MemeXNFTBasic is  ERC1155, MemeXAccessControls {
         uint256 _id,
         uint256 _initialSupply,
         uint256 _maxSupply,
-        string calldata _uri,
         bytes calldata _data,
         uint256 _lotteryId
     ) external returns (uint256) {
@@ -106,9 +105,6 @@ contract MemeXNFTBasic is  ERC1155, MemeXAccessControls {
         require(!exists(_id),"Token Id Already exists");
         creator[_id] = msg.sender;
 
-        if (bytes(_uri).length > 0) {
-            emit URI(_uri, _id);
-        }
 
         if (_initialSupply != 0) _mint(_initialOwner, _id, _initialSupply, _data);
         tokenSupply[_id] = _initialSupply;

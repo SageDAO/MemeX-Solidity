@@ -1,16 +1,13 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 
-/// SSS TODO: Add more events maybe??
 contract Lottery is Ownable {
-    using SafeMath for uint256;
     using Counters for Counters.Counter;
 
     Counters.Counter private lotteryCounter;
@@ -19,7 +16,7 @@ contract Lottery is Ownable {
 
     // Address of the randomness generator
     IRandomNumberGenerator internal randomGenerator;
-    IRewards public softStakeContract;
+    IRewards public rewardsContract;
 
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
 
@@ -60,7 +57,7 @@ contract Lottery is Ownable {
         uint256 startingTime; // Timestamp to start the lottery
         uint256 closingTime; // Timestamp for end of entries
         IMemeXNFT nftContract; // reference to the NFT Contract
-        Counters.Counter entries; // count the number of entries (each ticket + boost bought)
+        Counters.Counter entriesCount; // count the number of entries (each ticket + boost bought)
         Counters.Counter participantsCount; // number of participants
         uint32 maxParticipants; // max number of participants
     }
@@ -85,8 +82,14 @@ contract Lottery is Ownable {
         address participantAddress
     );
 
-    constructor(address _stakeContract) public {
-        softStakeContract = IRewards(_stakeContract);
+    event PrizeClaimed(
+        uint256 lotteryId,
+        address participantAddress,
+        uint256 prizeId
+    );
+
+    constructor(address _rewardsContract) public {
+        rewardsContract = IRewards(_rewardsContract);
     }
 
     function setTicketCostPinas(uint256 _price, uint256 _lotteryId)
@@ -111,14 +114,14 @@ contract Lottery is Ownable {
 
     function _burnUserPoints(address _user, uint256 _amount) internal {
         require(
-            softStakeContract.earned(_user) >= _amount,
+            rewardsContract.earned(_user) >= _amount,
             "Not enough PINA points to enter the lottery"
         );
-        softStakeContract.burnUserPoints(_user, _amount);
+        rewardsContract.burnUserPoints(_user, _amount);
     }
 
-    function setSoftStakeContract(address _stakeContract) public onlyOwner {
-        softStakeContract = IRewards(_stakeContract);
+    function setRewardsContract(address _rewardsContract) public onlyOwner {
+        rewardsContract = IRewards(_rewardsContract);
     }
 
     function setRandomGenerator(address _IRandomNumberGenerator)
@@ -130,6 +133,10 @@ contract Lottery is Ownable {
             "Contracts cannot be 0 address"
         );
         randomGenerator = IRandomNumberGenerator(_IRandomNumberGenerator);
+    }
+
+    function getTotalEntries(uint256 _lotteryId) public view returns (uint256) {
+        return lotteryHistory[_lotteryId].entriesCount.current();
     }
 
     function getLotteryInfo(uint256 _lotteryId)
@@ -251,7 +258,7 @@ contract Lottery is Ownable {
 
         uint16 numberOfPrizes_ = uint16(prizes[_lotteryId].length);
         uint256 totalParticipants_ = lottery.participantsCount.current();
-        uint256 totalEntries = lottery.entries.current();
+        uint256 totalEntries = lottery.entriesCount.current();
 
         // if there are less participants than prizes, reduce the number of prizes
         if (totalParticipants_ < numberOfPrizes_) {
@@ -267,7 +274,7 @@ contract Lottery is Ownable {
             uint256 numberRepresentation = uint256(hashOfRandom);
             // Sets the winning number position to a uint16 of random hash number
             uint256 winningNumber = uint256(
-                numberRepresentation.mod(totalEntries)
+                numberRepresentation % totalEntries
             );
             // defines the winner
             bool winnerFound = false;
@@ -281,7 +288,7 @@ contract Lottery is Ownable {
                 if (participant.prizeId != 0) {
                     // If address is already a winner pick the next number until a new winner is found
                     winningNumber++;
-                    winningNumber = winningNumber.mod(totalEntries);
+                    winningNumber = winningNumber % totalEntries;
                 } else {
                     participant.prizeId = prizes[_lotteryId][i];
                     winnerFound = true;
@@ -307,6 +314,12 @@ contract Lottery is Ownable {
         payable
     {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        if (lottery.maxParticipants != 0) {
+            require(
+                lottery.participantsCount.current() < lottery.maxParticipants,
+                "Lottery is full"
+            );
+        }
         if (
             lottery.status == Status.Planned &&
             lottery.startingTime < block.timestamp
@@ -323,7 +336,7 @@ contract Lottery is Ownable {
         }
         require(lottery.status == Status.Open, "Lottery not open");
 
-        IRewards rewardsToken = softStakeContract.getRewardToken();
+        IRewards rewardsToken = rewardsContract.getRewardToken();
 
         uint256 totalCostInPoints = numberOfTickets * lottery.ticketCostPinas;
         if (totalCostInPoints > 0) {
@@ -380,14 +393,14 @@ contract Lottery is Ownable {
         );
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         participantEntries[_lotteryId][
-            lottery.entries.current()
+            lottery.entriesCount.current()
         ] = _participantAddress;
         emit NumberAssignedToParticipant(
             _lotteryId,
-            lottery.entries.current(),
+            lottery.entriesCount.current(),
             _participantAddress
         );
-        lottery.entries.increment();
+        lottery.entriesCount.increment();
     }
 
     function isBooster(uint256 _lotteryId, address _participantAddress)
@@ -478,7 +491,12 @@ contract Lottery is Ownable {
         participant.prizeClaimed = true;
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
         ///SSS TODO: Add Create instead of mint
-        nftContract.mint(msg.sender, participant.prizeId, 1, "", _lotteryId);
+        nftContract.create(msg.sender, participant.prizeId, 1,1,"",_lotteryId);
+        emit PrizeClaimed(
+            _lotteryId,
+            participant.participantAddress,
+            participant.prizeId
+        );
     }
 
     function withdraw(address payable _to, uint256 _amount) external onlyOwner {

@@ -166,6 +166,7 @@ contract MemeXNFT is Ownable, ERC1155, MemeXAccessControls {
             require(tokenSupply[_id] < tokenMaxSupply[_id], "Max supply reached");
             uint256 quantity = _quantities[i];
             tokenSupply[_id] += quantity;
+
         }
         _mintBatch(_to, _ids, _quantities, _data);
     }

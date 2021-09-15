@@ -1,14 +1,11 @@
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../../interfaces/IERC1155.sol";
 import "./Pausable.sol";
 import "../../interfaces/IRewards.sol";
 
-contract NoStaking is Ownable, Pausable {
-    using SafeMath for uint256;
-
+contract Rewards is Ownable, Pausable {
     IERC20 memeAddress;
     IERC20 liquidityAddress;
     address internal lotteryAddr;
@@ -16,6 +13,8 @@ contract NoStaking is Ownable, Pausable {
     uint256 rewardRateToken;
     uint256 rewardRateLiquidity;
     IRewards addressOfRewardToken;
+
+    address[] userList;
 
     struct UserInfo {
         uint256 memeOnWallet;
@@ -134,18 +133,22 @@ contract NoStaking is Ownable, Pausable {
         UserInfo memory user = userInfo[account];
         require(user.lastSnapshotTime > 0, "User didn't join Memex yet");
         uint256 blockTime = block.timestamp;
-        uint256 pointsToken = user.memeOnWallet.div(1e8).mul( // divide by the decimals of the token used
-            blockTime.sub(user.lastSnapshotTime).mul(rewardRateToken)
-        );
-        uint256 pointsLiquidity = user.liquidityOnWallet.div(1e8).mul( // divide by the decimals of the token used
-            blockTime.sub(user.lastSnapshotTime).mul(rewardRateLiquidity)
-        );
-        return
-            pointsToken.add(pointsLiquidity).add(user.pointsAvailableSnapshot);
+        uint256 pointsToken = (user.memeOnWallet / 1e8) * // divide by the decimals of the token used
+            (blockTime - user.lastSnapshotTime) *
+            rewardRateToken;
+        uint256 pointsLiquidity = (user.liquidityOnWallet / 1e8) *
+            (// divide by the decimals of the token used
+            blockTime - user.lastSnapshotTime) *
+            rewardRateLiquidity;
+        return pointsToken + pointsLiquidity + user.pointsAvailableSnapshot;
     }
 
     function userJoined() public view returns (bool) {
         return userInfo[msg.sender].lastSnapshotTime != 0;
+    }
+
+    function getUserList() public view returns (address[] memory) {
+        return userList;
     }
 
     function join() public whenNotPaused {
@@ -153,6 +156,7 @@ contract NoStaking is Ownable, Pausable {
             userInfo[msg.sender].lastSnapshotTime == 0,
             "User already joined"
         );
+        userList.push(msg.sender);
         uint256 memeBalance = memeAddress.balanceOf(msg.sender);
         uint256 liquidityBalance = liquidityAddress.balanceOf(msg.sender);
         require(
@@ -177,7 +181,7 @@ contract NoStaking is Ownable, Pausable {
         require(amount > 0, "cannot use 0 points");
         UserInfo storage user = userInfo[account];
         require(amount <= user.pointsAvailableSnapshot, "not enough points");
-        user.pointsAvailableSnapshot = user.pointsAvailableSnapshot.sub(amount);
+        user.pointsAvailableSnapshot = user.pointsAvailableSnapshot - amount;
 
         emit PointsUsed(account, amount);
     }

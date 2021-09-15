@@ -24,7 +24,6 @@ interface IMemeXNFT {
         uint256 _id,
         uint256 _initialSupply,
         uint256 _maxSupply,
-        string calldata _uri,
         bytes calldata _data,
         uint256 _lotteryId
     ) external returns (uint256);

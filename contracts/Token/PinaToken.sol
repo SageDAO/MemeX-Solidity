@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
 contract PinaToken is ERC20Burnable, Ownable {
-    address stakeContract;
+    address rewardsContract;
     address lotteryContract;
 
     constructor(
@@ -13,16 +13,16 @@ contract PinaToken is ERC20Burnable, Ownable {
         string memory symbol,
         uint256 initialSupply,
         address owner,
-        address _stakeContract
+        address _rewardsContract
     ) ERC20(name, symbol) {
-        stakeContract = _stakeContract;
+        rewardsContract = _rewardsContract;
         if (initialSupply != 0) {
             _mint(owner, initialSupply);
         }
     }
 
-    modifier onlyStakeContract() {
-        require(msg.sender == address(stakeContract), "Only Stake address");
+    modifier onlyRewardsContract() {
+        require(msg.sender == address(rewardsContract), "Only Stake address");
         _;
     }
 
@@ -31,16 +31,16 @@ contract PinaToken is ERC20Burnable, Ownable {
         _;
     }
 
-    function setStakeContract(address _stakeContract) public onlyOwner {
-        stakeContract = _stakeContract;
+    function setRewardsContract(address _rewardsContract) public onlyOwner {
+        rewardsContract = _rewardsContract;
     }
 
     function setLotteryContract(address _lotteryContract) public onlyOwner {
         lotteryContract = _lotteryContract;
     }
 
-    function getStakeContract() public view returns (address) {
-        return stakeContract;
+    function getRewardsContract() public view returns (address) {
+        return rewardsContract;
     }
 
     function getLotteryContract() public view returns (address) {
@@ -49,7 +49,7 @@ contract PinaToken is ERC20Burnable, Ownable {
 
     function mintPinas(address recipient, uint256 amount)
         external
-        onlyStakeContract
+        onlyRewardsContract
     {
         _mint(recipient, amount);
     }
