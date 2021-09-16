@@ -1,13 +1,21 @@
 const { parseBytes32String } = require("@ethersproject/strings");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { Wallet } = require('ethers');
 
 const rewardRateToken = 1;
 const rewardRateLiquidity = 2;
+const TEN_POW_18 = "1000000000000000000";
 
+function range(start, end) {
+    return Array(end - start + 1).fill().map((_, idx) => start + idx)
+  }
+  
 describe("Lottery", function () {
+    
     beforeEach(async () => {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
+        [owner, ...accounts] = await ethers.getSigners();
         Token = await ethers.getContractFactory("MemeXToken");
         token = await Token.deploy("MEMEX", "MemeX", 1000000, owner.address);
         Rewards = await ethers.getContractFactory('Rewards');
@@ -25,8 +33,11 @@ describe("Lottery", function () {
         // create a new lottery
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
-        await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 10,
-            nft.address, [1, 2],
+        var prizeIds = range(1,100)
+
+        
+        await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 500000,
+            nft.address, prizeIds,
             ethers.utils.parseEther("1"), 0);
 
     });
@@ -43,6 +54,38 @@ describe("Lottery", function () {
         expect(await lottery.getTotalEntries(1)).to.equal(1);
     });
 
+
+
+    it('Buy with lots of accounts', async function() {
+        await rewards.join();
+        
+        for (let i = 1; i< 100; i++){
+            await token.connect(owner).transfer(accounts[i].address,1)
+            await rewards.connect(accounts[i]).join();
+            await lottery.connect(accounts[i]).buyTickets(1,1)  
+            console.log(await lottery.getNumberOfParticipants(1)) 
+        
+    }
+        
+        
+
+        await lottery.drawWinningNumbers(1);
+        expect(await mockRng.fulfillRequest(1)).to.have.emit(lottery, "ResponseReceived");
+        for(let i = 1; i<100;i++){
+            result = await lottery.connect(accounts[i]).isCallerWinner(1);
+            console.log(`Is ${accounts[i].address} winner,:`,result[0])
+            console.log("Prize Id:",result[1])
+            console.log("Claimed:",result[2])
+        }
+        
+        // await lottery.redeemNFT(1);
+        // result = await lottery.isCallerWinner(1);
+        // console.log("Is 1 winner,:",result[0])
+        // console.log("Prize Id:",result[1])
+        // console.log("Claimed:",result[2])
+    })
+
+    
     it("User buys 10 lottery tickets", async function () {
         await rewards.join();
         await ethers.provider.send("evm_mine", []);
@@ -110,12 +153,12 @@ describe("Lottery", function () {
         expect(await mockRng.fulfillRequest(1)).to.have.emit(lottery, "ResponseReceived");
         result = await lottery.isCallerWinner(1);
         expect(result[0]).to.equal(true);  // winner
-        expect(result[1]).to.equal(1);     // prize 1
+        console.log("Prize Id:",result[1])     // prize 1
         expect(result[2]).to.equal(false); // not claimed
         await lottery.redeemNFT(1);
         result = await lottery.isCallerWinner(1);
         expect(result[0]).to.equal(true); // winner
-        expect(result[1]).to.equal(1);    // prize 1
+        console.log("Prize Id:",result[1])   // prize 1
         expect(result[2]).to.equal(true); // claimed
 
     });
