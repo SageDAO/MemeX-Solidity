@@ -113,10 +113,6 @@ contract Lottery is Ownable {
     }
 
     function _burnUserPoints(address _user, uint256 _amount) internal {
-        require(
-            rewardsContract.earned(_user) >= _amount,
-            "Not enough PINA points to enter the lottery"
-        );
         rewardsContract.burnUserPoints(_user, _amount);
     }
 
@@ -135,10 +131,20 @@ contract Lottery is Ownable {
         randomGenerator = IRandomNumberGenerator(_IRandomNumberGenerator);
     }
 
+    /**
+     * @notice Get the number of entries (each ticket and each boost provide an entry).
+     * @param _lotteryId The lottery ID
+     * @return Amount entries for a lottery (number of tickets and boosts bought)
+     */
     function getTotalEntries(uint256 _lotteryId) public view returns (uint256) {
         return lotteryHistory[_lotteryId].entriesCount.current();
     }
 
+    /**
+     * @notice Query lottery info
+     * @param _lotteryId The lottery ID
+     * @return Lottery info
+     */
     function getLotteryInfo(uint256 _lotteryId)
         public
         view
@@ -147,6 +153,11 @@ contract Lottery is Ownable {
         return (lotteryHistory[_lotteryId]);
     }
 
+    /**
+     * @notice Get the number of participants in a lottery.
+     * @param _lotteryId The lottery ID
+     * @return Amount of different addresses that have entered the lottery
+     */
     function getNumberOfParticipants(uint256 _lotteryId)
         public
         view
@@ -160,6 +171,11 @@ contract Lottery is Ownable {
         _;
     }
 
+    /**
+     * @notice Changes the prizes for a lottery.
+     * @param _lotteryId The lottery ID
+     * @param _prizeIds array of uint256's that represent unique prize ids
+     */
     function setPrizes(uint256 _lotteryId, uint256[] calldata _prizeIds)
         public
         onlyOwner
@@ -173,6 +189,17 @@ contract Lottery is Ownable {
         emit PrizesChanged(_lotteryId, prizes[_lotteryId].length);
     }
 
+    /**
+     * @notice Creates a new lottery.
+     * @param _costPerTicketPinas cost in wei per ticket in points/tokens (token only when using ERC20 on the rewards contract)
+     * @param _costPerTicketCoins cost in wei per ticket in FTM
+     * @param _startingTime timestamp to begin lottery entries
+     * @param _closingTime timestamp for end of entries
+     * @param _prizeIds array of uint256's that represent unique prize ids
+     * @param _nftContract reference to the NFT contract
+     * @param _boostCost cost in wei (FTM) for users to boost their odds
+     * @param _maxParticipants max number of participants
+     */
     function createNewLottery(
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
@@ -191,7 +218,7 @@ contract Lottery is Ownable {
         lotteryCounter.increment();
         lotteryId = lotteryCounter.current();
         Status lotteryStatus;
-        if (_startingTime >= getCurrentTime()) {
+        if (_startingTime <= block.timestamp) {
             lotteryStatus = Status.Open;
         } else {
             lotteryStatus = Status.Planned;
@@ -215,14 +242,18 @@ contract Lottery is Ownable {
         lotteryHistory[lotteryId] = newLottery;
     }
 
+    /**
+     * @notice Used to check the latest lottery id.
+     * @return Latest lottery id created.
+     */
     function getCurrentLotteryId() public view returns (uint256) {
         return (lotteryCounter.current());
     }
 
-    function getCurrentTime() public view returns (uint256) {
-        return block.timestamp;
-    }
-
+    /**
+     * @notice Called by the Memex team to request a random number to a particular lottery.
+     * @param _lotteryId ID of the lottery the random number is for
+     */
     function drawWinningNumbers(uint256 _lotteryId) external onlyOwner {
         require(
             _lotteryId <= lotteryCounter.current(),
@@ -243,6 +274,13 @@ contract Lottery is Ownable {
         emit RequestNumbers(_lotteryId, requestId_);
     }
 
+    /**
+     * @notice Callback function called by the RNG contract after receiving the chainlink response.
+     * Will use the received random number to assign prizes to random participants.
+     * @param _lotteryId ID of the lottery the random number is for
+     * @param _requestId ID of the request that was sent to the RNG contract
+     * @param _randomNumber Random number provided by the VRF chainlink oracle
+     */
     function numbersDrawn(
         uint256 _lotteryId,
         bytes32 _requestId,
@@ -299,6 +337,10 @@ contract Lottery is Ownable {
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
+    /**
+     * @notice Change the lottery state to canceled.
+     * @param _lotteryId ID of the lottery to canccel
+     */
     function cancelLottery(uint256 _lotteryId) public onlyOwner {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(
@@ -309,6 +351,11 @@ contract Lottery is Ownable {
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
+    /**
+     * @notice Function called by users to buy lottery tickets
+     * @param _lotteryId ID of the lottery to buy tickets for
+     * @param numberOfTickets Number of tickets to buy
+     */
     function buyTickets(uint256 _lotteryId, uint8 numberOfTickets)
         public
         payable
@@ -334,7 +381,7 @@ contract Lottery is Ownable {
             lottery.status = Status.Closed;
             emit LotteryStatusChanged(_lotteryId, lottery.status);
         }
-        require(lottery.status == Status.Open, "Lottery not open");
+        require(lottery.status == Status.Open, "Lottery is not open");
 
         IRewards rewardsToken = rewardsContract.getRewardToken();
 
@@ -376,6 +423,11 @@ contract Lottery is Ownable {
         }
     }
 
+    /**
+     * @notice Function called when user buys a ticket or boost. Gives the user a new lottery entry.
+     * @param _lotteryId ID of the lottery to buy tickets for
+     * @param _participantAddress Address of the participant that will receive the new entry
+     */
     function assignNewEntryToParticipant(
         uint256 _lotteryId,
         address _participantAddress
@@ -403,6 +455,11 @@ contract Lottery is Ownable {
         lottery.entriesCount.increment();
     }
 
+    /**
+     * @notice Function called to check if a user boosted on a particular lottery.
+     * @param _lotteryId ID of the lottery to check if user boosted
+     * @param _participantAddress Address of the participant to check
+     */
     function isBooster(uint256 _lotteryId, address _participantAddress)
         public
         view
@@ -418,6 +475,11 @@ contract Lottery is Ownable {
         return participant.isBooster;
     }
 
+    /**
+     * @notice Boost the participant odds on the lottery.
+     * @param _lotteryId ID of the lottery to boost
+     * @param _participantAddress Address of the participant that will receive the boost
+     */
     function boostParticipant(uint256 _lotteryId, address _participantAddress)
         public
         payable
@@ -447,6 +509,12 @@ contract Lottery is Ownable {
         assignNewEntryToParticipant(_lotteryId, _participantAddress);
     }
 
+    /**
+     * @notice Function called to check if a user won a prize.
+     * @param _lotteryId ID of the lottery to check if user won
+     * @param _address Address of the participant to check
+     * @return true if the winner won a prize, with the prize id and if the prize was already claimed
+     */
     function isAddressWinner(uint256 _lotteryId, address _address)
         public
         view
@@ -466,6 +534,11 @@ contract Lottery is Ownable {
         );
     }
 
+    /**
+     * @notice Function called to check if the caller won a prize.
+     * @param _lotteryId ID of the lottery to check if user won
+     * @return true if the winner won a prize, with the prize id and if the prize was already claimed
+     */
     function isCallerWinner(uint256 _lotteryId)
         public
         view
@@ -478,6 +551,10 @@ contract Lottery is Ownable {
         return isAddressWinner(_lotteryId, msg.sender);
     }
 
+    /**
+     * @notice Called to mint a prize to the winner.
+     * @param _lotteryId ID of the lottery to check if user won
+     */
     function redeemNFT(uint256 _lotteryId) public {
         require(
             lotteryHistory[_lotteryId].status == Status.Completed,
@@ -490,8 +567,14 @@ contract Lottery is Ownable {
         require(participant.prizeId != 0, "Participant is not a winner");
         participant.prizeClaimed = true;
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
-        ///SSS TODO: Add Create instead of mint
-        nftContract.create(msg.sender, participant.prizeId, 1,1,"",_lotteryId);
+        nftContract.create(
+            msg.sender,
+            participant.prizeId,
+            1,
+            1,
+            "",
+            _lotteryId
+        );
         emit PrizeClaimed(
             _lotteryId,
             participant.participantAddress,
@@ -499,6 +582,11 @@ contract Lottery is Ownable {
         );
     }
 
+    /**
+     * @notice Function called to withdraw funds (FTM) from the contract.
+     * @param _to Recipient of the funds
+     * @param _amount Amount to withdraw
+     */
     function withdraw(address payable _to, uint256 _amount) external onlyOwner {
         require(_amount <= address(this).balance);
         _to.transfer(_amount);

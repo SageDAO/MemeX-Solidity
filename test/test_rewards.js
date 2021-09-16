@@ -7,11 +7,11 @@ const { ethers } = require("hardhat");
 const rewardRateToken = 1;
 const rewardRateLiquidity = 2;
 
-describe("Rewards", function () {
+describe("Rewards Contract", function () {
     beforeEach(async () => {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
         Token = await ethers.getContractFactory("MemeXToken");
-        token = await Token.deploy("MEMEX", "MemeX", 1000000, owner.address);
+        token = await Token.deploy("MEMEX", "MemeX", 1, owner.address);
         Rewards = await ethers.getContractFactory('Rewards');
         rewards = await Rewards.deploy(token.address, token.address, rewardRateToken, rewardRateLiquidity);
     });
@@ -79,10 +79,8 @@ describe("Rewards", function () {
         // simulate addr1 is the lottery contract
         await rewards.setLotteryAddress(addr1.address);
         await rewards.join();
-        await rewards.updateUserBalance(owner.address, 1, 0);
-        await rewards.updateUserRewards(owner.address, 0);
         // send a transaction as the lottery contract
-        await expect(rewards.connect(addr1).burnUserPoints(owner.address, 100)).to.be.reverted;
+        await expect(rewards.connect(addr1).burnUserPoints(owner.address, 100000000000)).to.be.revertedWith("not enough points");
     });
 
     it("Check burn points event emitted", async function () {
@@ -123,17 +121,18 @@ describe("Rewards", function () {
         expect(await rewards.earned(owner.address)).to.equal(20);
     });
 
-    it("Lottery burn points", async function () {
+    it("Reward balance updates after lottery burns points", async function () {
         var provider = ethers.providers.getDefaultProvider();
-        await rewards.join();
         await rewards.setLotteryAddress(addr1.address);
+        await rewards.join();
         await rewards.updateUserBalance(owner.address, 100000000, 0);
         await rewards.updateUserRewards(owner.address, 0);
         await ethers.provider.send("evm_increaseTime", [10]); // this block will have 10 seconds of rewards
         await ethers.provider.send("evm_mine", []);
-        // one block is mined here, so theres one extra second of rewards
-        await rewards.connect(addr1).burnUserPoints(owner.address, 11);
-
-        expect(await rewards.earned(owner.address)).to.equal(0);
+        const blockNumBefore = await ethers.provider.getBlockNumber();
+        // if one block is mined here, would be one extra second of rewards
+        await rewards.connect(addr1).burnUserPoints(owner.address, 10);
+        const blockNumAfter = await ethers.provider.getBlockNumber();
+        expect(await rewards.earned(owner.address)).to.equal(blockNumAfter - blockNumBefore); // should be 0 + extra rewards if there are new blocks
     });
 });

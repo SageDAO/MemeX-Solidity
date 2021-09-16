@@ -4,6 +4,9 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
+/**
+    This contract is used to simulate the use of a reward token and currently won't be used in production.
+ */
 contract PinaToken is ERC20Burnable, Ownable {
     address rewardsContract;
     address lotteryContract;

@@ -5,10 +5,11 @@ import "hardhat/console.sol";
 
 import "../Access/MemeXAccessControls.sol";
 
-//TODO: What should be MAX CAP?
-//TODO: Should it be mintable
-contract MemeXToken is ERC20, MemeXAccessControls{
-
+/**
+    This contract is used to mimic the real MEME token and allow us to mint tokens during tests
+    but won't be used in production.
+ */
+contract MemeXToken is ERC20, MemeXAccessControls {
     constructor(
         string memory name,
         string memory symbol,
@@ -22,11 +23,11 @@ contract MemeXToken is ERC20, MemeXAccessControls{
         return 18;
     }
 
-
     function mint(address to, uint256 amount) public virtual {
-        require(hasMinterRole(msg.sender), "MintableToken: must have minter role to mint");
-        _mint(to, amount * (10 ** decimals()));
+        require(
+            hasMinterRole(msg.sender),
+            "MintableToken: must have minter role to mint"
+        );
+        _mint(to, amount * (10**decimals()));
     }
 }
-
-
