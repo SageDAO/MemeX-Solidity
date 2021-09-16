@@ -128,15 +128,20 @@ describe("Lottery Contract", function () {
         expect(await mockRng.fulfillRequest(1)).to.have.emit(lottery, "ResponseReceived");
         result = await lottery.isCallerWinner(1);
         expect(result[0]).to.equal(true);  // winner
-        expect(result[1]).to.equal(1);     // prize 1
+        expect(result[1]).to.equal(1);     // prize id 1
         expect(result[2]).to.equal(false); // not claimed
         await lottery.redeemNFT(1);
         result = await lottery.isCallerWinner(1);
         expect(result[0]).to.equal(true); // winner
-        expect(result[1]).to.equal(1);    // prize 1
+        expect(result[1]).to.equal(1);    // prize id 1
         expect(result[2]).to.equal(true); // claimed
         // should allow to mint only once
         await expect(lottery.redeemNFT(1)).to.be.revertedWith("Participant already claimed prize");
+        await nft.setArtist(addr1.address);
+        await nft.setRoayltyPercentage(2);
+        roaytlyInfo = await nft.royaltyInfo(1, 200);
+        expect(roaytlyInfo[0]).to.equal(addr1.address);
+        expect(roaytlyInfo[1]).to.equal(4);
     });
 
     it("Run lottery with >1500 entries and 100 prizes", async function () {
