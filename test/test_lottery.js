@@ -1,4 +1,3 @@
-const { parseBytes32String } = require("@ethersproject/strings");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
@@ -139,20 +138,19 @@ describe("Lottery Contract", function () {
         await expect(lottery.redeemNFT(1)).to.be.revertedWith("Participant already claimed prize");
     });
 
-    it("Run lottery with more participants", async function () {
+    it("Run lottery with >1500 entries and 100 prizes", async function () {
+        accounts = await ethers.getSigners()
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
         // creating lottery with id = 2
-        await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 10,
-            nft.address, [1],
+        await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 1000,
+            nft.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100],
             ethers.utils.parseEther("1"), 0);
-        await lottery.buyTickets(2, 1);
-        await lottery.connect(addr1).buyTickets(2, 1);
-        await lottery.connect(addr2).buyTickets(2, 1);
-
+        for (let i = 0; i < accounts.length; i++) {
+            await lottery.connect(accounts[i]).buyTickets(2, 10);
+        }
         await lottery.drawWinningNumbers(2);
-        expect(await mockRng.fulfillRequest(1)).to.have.emit(lottery, "ResponseReceived");
-
+        expect(await mockRng.fulfillRequest(1)).to.have.emit(lottery, "LotteryStatusChanged");
     });
 
 });
