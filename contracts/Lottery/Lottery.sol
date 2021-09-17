@@ -20,6 +20,9 @@ contract Lottery is Ownable {
 
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
 
+    // participant address => lottery ids he entered
+    mapping(address => uint256[]) internal participantHistory;
+
     //lotteryid => prizeIds[]
     mapping(uint256 => uint256[]) internal prizes;
 
@@ -27,7 +30,7 @@ contract Lottery is Ownable {
     mapping(uint256 => mapping(address => ParticipantInfo))
         internal participants;
 
-    //this maps the number a person received when buying a ticket or boost to their address
+    //this maps the entries a user received when buying a ticket or boost
     //lotteryId => number => address
     mapping(uint256 => mapping(uint256 => address)) participantEntries;
 
@@ -88,7 +91,7 @@ contract Lottery is Ownable {
         uint256 prizeId
     );
 
-    constructor(address _rewardsContract) public {
+    constructor(address _rewardsContract) {
         rewardsContract = IRewards(_rewardsContract);
     }
 
@@ -129,6 +132,14 @@ contract Lottery is Ownable {
             "Contracts cannot be 0 address"
         );
         randomGenerator = IRandomNumberGenerator(_IRandomNumberGenerator);
+    }
+
+    function getParticipantHistory(address _participantAddress)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return participantHistory[_participantAddress];
     }
 
     /**
@@ -265,10 +276,7 @@ contract Lottery is Ownable {
         if (lottery.status == Status.Open) {
             lottery.status = Status.Closed;
         }
-        require(
-            lottery.status == Status.Closed,
-            "Must be closed prior to draw"
-        );
+        require(lottery.status == Status.Closed, "Lottery must be closed");
         requestId_ = randomGenerator.getRandomNumber(_lotteryId);
         // Emits that random number has been requested
         emit RequestNumbers(_lotteryId, requestId_);
@@ -406,6 +414,7 @@ contract Lottery is Ownable {
             msg.sender
         ];
         if (participantStored.participantAddress == address(0)) {
+            participantHistory[msg.sender].push(_lotteryId);
             ParticipantInfo memory newParticipant = ParticipantInfo(
                 msg.sender,
                 false,

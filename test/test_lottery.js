@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 const rewardRateToken = 1;
-const rewardRateLiquidity = 2;
+const rewardRateLiquidity = 0;
 const timer = ms => new Promise(res => setTimeout(res, ms));
 
 describe("Lottery Contract", function () {
@@ -25,7 +25,7 @@ describe("Lottery Contract", function () {
         // create a new lottery
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
-        await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 10,
+        await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 3600,
             nft.address, [1, 2],
             ethers.utils.parseEther("1"), 0);
 
@@ -37,7 +37,7 @@ describe("Lottery Contract", function () {
 
     it("User buys 1 lottery ticket", async function () {
         await rewards.join();
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
         expect(await lottery.getTotalEntries(1)).to.equal(1);
@@ -45,7 +45,7 @@ describe("Lottery Contract", function () {
 
     it("Same user buys a second ticket", async function () {
         await rewards.join();
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(30);
         await lottery.buyTickets(1, 1);
         await lottery.buyTickets(1, 1);
         expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
@@ -55,7 +55,7 @@ describe("Lottery Contract", function () {
 
     it("User buys 10 lottery tickets", async function () {
         await rewards.join();
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(150);
         await lottery.buyTickets(1, 10);
         expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
         expect(await lottery.getTotalEntries(1)).to.equal(10);
@@ -76,7 +76,7 @@ describe("Lottery Contract", function () {
 
     it("User boosts", async function () {
         await rewards.join();
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         await lottery.boostParticipant(1, owner.address,
             { value: ethers.utils.parseEther("1") });
@@ -86,7 +86,7 @@ describe("Lottery Contract", function () {
 
     it("User tries to enter when lottery is not open", async function () {
         await rewards.join();
-        await ethers.provider.send("evm_increaseTime", [10000000000]); // long wait, enough to be after the end of the lottery
+        await waitAndMineBlock(10000000000); // long wait, enough to be after the end of the lottery
         await ethers.provider.send("evm_mine", []);
         await expect(lottery.buyTickets(1, 1)).to.be.revertedWith("Lottery is not open");
     });
@@ -94,7 +94,7 @@ describe("Lottery Contract", function () {
 
     it("User tries to boost without sending funds - should revert", async function () {
         await rewards.join();
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         await expect(lottery.boostParticipant(1, owner.address,
             { value: ethers.utils.parseEther("0") })).to.be.reverted;
@@ -102,27 +102,28 @@ describe("Lottery Contract", function () {
 
     it("User tries to boost without buying ticket first - should revert", async function () {
         await rewards.join();
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(15);
         await expect(lottery.boostParticipant(1, owner.address,
-            { value: ethers.utils.parseEther("1") })).to.be.reverted;
+            { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Participant not found");
     });
 
     it("User tries to buy ticket with wrong lottery id - should revert", async function () {
         await rewards.join();
-        await ethers.provider.send("evm_mine", []);
-        await expect(lottery.buyTickets(2, 1)).to.be.reverted;
+        await waitAndMineBlock(15);
+        await expect(lottery.buyTickets(2, 1)).to.be.revertedWith("Lottery is not open");
     });
 
     it("User tries to boost with wrong lottery id - should revert", async function () {
         await rewards.join();
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         await expect(lottery.boostParticipant(2, owner.address,
-            { value: ethers.utils.parseEther("1") })).to.be.reverted;
+            { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Lottery id does not exist");
     });
 
     it("Run Lottery with 1 participant - mint prize only once", async function () {
         await rewards.join();
+        await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         await lottery.drawWinningNumbers(1);
         expect(await mockRng.fulfillRequest(1)).to.have.emit(lottery, "ResponseReceived");
@@ -138,10 +139,10 @@ describe("Lottery Contract", function () {
         // should allow to mint only once
         await expect(lottery.redeemNFT(1)).to.be.revertedWith("Participant already claimed prize");
         await nft.setArtist(addr1.address);
-        await nft.setRoayltyPercentage(2);
-        roaytlyInfo = await nft.royaltyInfo(1, 200);
+        await nft.setRoyaltyPercentage(2);
+        roaytlyInfo = await nft.royaltyInfo(1, 10);
         expect(roaytlyInfo[0]).to.equal(addr1.address);
-        expect(roaytlyInfo[1]).to.equal(4);
+        expect(roaytlyInfo[1]).to.equal(0);
     });
 
     it("Run lottery with >1500 entries and 100 prizes", async function () {
@@ -164,7 +165,7 @@ describe("Lottery Contract", function () {
 
     it("Request to draw again after receiving random number - should revert", async function () {
         await rewards.join();
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         await lottery.drawWinningNumbers(1);
         await mockRng.fulfillRequest(1);
@@ -173,11 +174,20 @@ describe("Lottery Contract", function () {
 
     it("Should be able to request a new random number if no response received", async function () {
         await rewards.join();
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         await lottery.drawWinningNumbers(1);
         await ethers.provider.send("evm_mine", []);
         await lottery.drawWinningNumbers(1);
         expect(await mockRng.fulfillRequest(1)).to.have.emit(lottery, "LotteryStatusChanged");
     });
+
+    it("Draw numbers - only owner", async function () {
+        await expect(lottery.connect(addr1).drawWinningNumbers(1)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
 });
+
+async function waitAndMineBlock(seconds) {
+    await ethers.provider.send("evm_increaseTime", [seconds]);
+    await ethers.provider.send("evm_mine", []);
+}

@@ -14,7 +14,7 @@ contract MemeXNFTBasic is ERC1155, MemeXAccessControls {
 
     string public name;
     address public artist;
-    uint8 public roayltyPercentage;
+    uint8 public royaltyPercentage;
 
     mapping(uint256 => address) public creator;
     // Contract symbol
@@ -202,7 +202,7 @@ contract MemeXNFTBasic is ERC1155, MemeXAccessControls {
         return creator[_id] != address(0);
     }
 
-    function setRoayltyPercentage(uint8 _percentage) public {
+    function setRoyaltyPercentage(uint8 _percentage) public {
         require(
             hasAdminRole(msg.sender),
             "MemeXNFT: Only Admin can change royalties"
@@ -211,7 +211,7 @@ contract MemeXNFTBasic is ERC1155, MemeXAccessControls {
             _percentage <= 100,
             "MemeXNFT: Percentage should be less than 100"
         );
-        roayltyPercentage = _percentage;
+        royaltyPercentage = _percentage;
     }
 
     function setArtist(address _artist) public {
@@ -222,11 +222,16 @@ contract MemeXNFTBasic is ERC1155, MemeXAccessControls {
         artist = _artist;
     }
 
+    /**
+     * @notice Calculates roaylties based on a sale price provided.
+     * Solution is agnostic of the sale price unit and will answer using the same unit.
+     * @return  receiver address: address to receive royaltyAmount.
+     */
     function royaltyInfo(uint256 tokenId, uint256 salePrice)
         external
         view
         returns (address receiver, uint256 royaltyAmount)
     {
-        return (artist, (salePrice * roayltyPercentage) / 100);
+        return (artist, (salePrice * royaltyPercentage) / 100);
     }
 }
