@@ -69,6 +69,10 @@ contract Rewards is Ownable, Pausable {
         return rewardRateLiquidity;
     }
 
+    function setRewardToken(address _rewardToken) public onlyOwner {
+        addressOfRewardToken = IRewards(_rewardToken);
+    }
+
     function setRewardRateToken(uint256 _rewardRateToken) public onlyOwner {
         rewardRateToken = _rewardRateToken;
     }
@@ -133,13 +137,12 @@ contract Rewards is Ownable, Pausable {
         UserInfo memory user = userInfo[account];
         require(user.lastSnapshotTime > 0, "User didn't join Memex yet");
         uint256 blockTime = block.timestamp;
-        uint256 pointsToken = (user.memeOnWallet / 1e8) * // divide by the decimals of the token used
+        uint256 pointsToken = ((user.memeOnWallet) *
             (blockTime - user.lastSnapshotTime) *
-            rewardRateToken;
-        uint256 pointsLiquidity = (user.liquidityOnWallet / 1e8) *
-            (// divide by the decimals of the token used
-            blockTime - user.lastSnapshotTime) *
-            rewardRateLiquidity;
+            rewardRateToken) / 1e8; // divide by the decimals of the token used
+        uint256 pointsLiquidity = ((user.liquidityOnWallet) *
+            (blockTime - user.lastSnapshotTime) *
+            rewardRateLiquidity) / 1e8; // divide by the decimals of the token used
         return pointsToken + pointsLiquidity + user.pointsAvailableSnapshot;
     }
 

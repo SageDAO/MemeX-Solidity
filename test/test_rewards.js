@@ -26,7 +26,7 @@ describe("Rewards Contract", function () {
     });
 
     it("Join without MEME position - should revert", async function () {
-        await expect(rewards.connect(addr1).join()).to.be.reverted;
+        await expect(rewards.connect(addr1).join()).to.be.revertedWith("MEME or MEMELP position required to join");
     });
 
     it("User join", async function () {
@@ -36,7 +36,7 @@ describe("Rewards Contract", function () {
 
     it("User tries to join twice - should revert", async function () {
         await rewards.join();
-        await expect(rewards.join()).to.be.reverted;
+        await expect(rewards.join()).to.be.revertedWith("User already joined");
 
     });
 
@@ -60,19 +60,19 @@ describe("Rewards Contract", function () {
 
     it("Check only lottery can burn points - should revert", async function () {
         await rewards.join();
-        await expect(rewards.burnUserPoints(owner.address, 1)).to.be.reverted;
+        await expect(rewards.burnUserPoints(owner.address, 1)).to.be.revertedWith("Lottery calls only");
     });
 
     it("Burn 0 points - should revert", async function () {
         await rewards.setLotteryAddress(addr1.address);
-        await expect(rewards.connect(addr1).burnUserPoints(owner.address, 0)).to.be.reverted;
+        await expect(rewards.connect(addr1).burnUserPoints(owner.address, 0)).to.be.revertedWith("User didn't join Memex yet");
     });
 
     it("Try to burn but user didn't join - should revert", async function () {
         // simulate addr1 is the lottery contract
         await rewards.setLotteryAddress(addr1.address);
         // send a transaction as the lottery contract
-        await expect(rewards.connect(addr1).burnUserPoints(owner.address, 100)).to.be.reverted;
+        await expect(rewards.connect(addr1).burnUserPoints(owner.address, 100)).to.be.revertedWith("User didn't join Memex yet");
     });
 
     it("Not enough points - should revert", async function () {
@@ -101,8 +101,7 @@ describe("Rewards Contract", function () {
         // const blockBefore = await ethers.provider.getBlock(blockNumBefore);
         // const timestampBefore = blockBefore.timestamp;
         // console.log(timestampBefore)
-        await ethers.provider.send("evm_increaseTime", [10]); // increase next block timestamp in 10 seconds
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(10); // increase next block timestamp in 10 seconds
         // const blockNumAfter = await ethers.provider.getBlockNumber();
         // const blockAfter = await ethers.provider.getBlock(blockNumAfter);
         // const timestampAfter = blockAfter.timestamp;
@@ -116,8 +115,7 @@ describe("Rewards Contract", function () {
         await rewards.join();
         await rewards.updateUserBalance(owner.address, 0, 100000000);
         await rewards.updateUserRewards(owner.address, 0);
-        await ethers.provider.send("evm_increaseTime", [10]); // increase next block timestamp in 10 seconds
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(10); // increase next block timestamp in 10 seconds
         expect(await rewards.earned(owner.address)).to.equal(20);
     });
 
@@ -127,8 +125,7 @@ describe("Rewards Contract", function () {
         await rewards.join();
         await rewards.updateUserBalance(owner.address, 100000000, 0);
         await rewards.updateUserRewards(owner.address, 0);
-        await ethers.provider.send("evm_increaseTime", [10]); // this block will have 10 seconds of rewards
-        await ethers.provider.send("evm_mine", []);
+        await waitAndMineBlock(10);
         const blockNumBefore = await ethers.provider.getBlockNumber();
         // if one block is mined here, would be one extra second of rewards
         await rewards.connect(addr1).burnUserPoints(owner.address, 10);
@@ -136,3 +133,8 @@ describe("Rewards Contract", function () {
         expect(await rewards.earned(owner.address)).to.equal(blockNumAfter - blockNumBefore); // should be 0 + extra rewards if there are new blocks
     });
 });
+
+async function waitAndMineBlock(seconds) {
+    await ethers.provider.send("evm_increaseTime", [seconds]);
+    await ethers.provider.send("evm_mine", []);
+}

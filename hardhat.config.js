@@ -2,7 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-truffle4");
 
-const { alchemy_key, deployer_pk, etherscan_key, ftm_key,ankr_key, account1, account2 } = require('./secrets.json');
+const { alchemy_key, deployer_pk, etherscan_key, ftm_key, ankr_key, account1, account2 } = require('./secrets.json');
 
 const fs = require("fs");
 
@@ -31,7 +31,7 @@ module.exports = {
       gas: 12000000,
       allowUnlimitedContractSize: true,
       timeout: 1800000,
-      accounts:{
+      accounts: {
         count: 101
       }
     }
@@ -40,7 +40,7 @@ module.exports = {
   etherscan: {
     apiKey: ftm_key
   },
-  
+
   solidity: {
     compilers: [
       {
@@ -50,11 +50,11 @@ module.exports = {
 
     settings: {
       optimizer: {
-      enabled: true,
-      runs: 200
+        enabled: true,
+        runs: 200
       }
     }
-      
+
   },
   namedAccounts: {
     deployer: {

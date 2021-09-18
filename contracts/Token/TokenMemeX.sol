@@ -20,7 +20,7 @@ contract MemeXToken is ERC20, MemeXAccessControls {
     }
 
     function decimals() public view virtual override returns (uint8) {
-        return 18;
+        return 8;
     }
 
     function mint(address to, uint256 amount) public virtual {
