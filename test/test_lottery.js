@@ -25,7 +25,7 @@ describe("Lottery Contract", function () {
         // create a new lottery
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
-        await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 3600,
+        await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 3600 * 24,
             nft.address, [1, 2],
             ethers.utils.parseEther("1"), 0);
 
