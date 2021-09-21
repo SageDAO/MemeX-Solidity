@@ -1,11 +1,11 @@
 CONTRACTS = {
     "rinkeby": {
-        "lotteryAddress": "0x87F29cBF27d21826A56a743349d050eD9E4B0C1E",
-        "tokenAddress": "0x3828817a9b442bb52A5646BF54cA84a6bDeFAfA1",
+        "lotteryAddress": "0x92C3B07DDfFc38412D073B3a7fB11A8e063862E8",
+        "tokenAddress": "0x65cD770B9FA597F11f4665746A10e19294aFF65f",
         "pinaAddress": "0x2Da76A63d8b6D51dc29141524A18E0c28c74C340",
         "nftAddress": "0x8410645aeD27109c10e60088C1fD939aFeAE7203",
         "randomnessAddress": "0x53245f76B812b115764C26F1BA1B8CC02695834C",
-        "rewardsAddress": "0x671eE398F94FB6282034b833d421199890914B2c",
+        "rewardsAddress": "0x9548049930d48e44c0A74f377E502EF3456b1f43",
     },
     "localhost": {
         "lotteryAddress": "",
@@ -27,9 +27,9 @@ CONTRACTS = {
         "nftAddress": "",
         "randomnessAddress": "",
         "stakingAddress": "",
-        "NoStakingAddress":"",
-        "pinaAddress":""
-        
+        "NoStakingAddress": "",
+        "pinaAddress": ""
+
     }
 }
 

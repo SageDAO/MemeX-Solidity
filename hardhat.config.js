@@ -32,13 +32,13 @@ module.exports = {
       allowUnlimitedContractSize: true,
       timeout: 1800000,
       accounts: {
-        count: 800
+        count: 700
       }
     }
 
   },
   etherscan: {
-    apiKey: ftm_key
+    apiKey: etherscan_key
   },
 
   solidity: {

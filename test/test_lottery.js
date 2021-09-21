@@ -155,21 +155,20 @@ describe("Lottery Contract", function () {
             const block = await ethers.provider.getBlock(blockNum);
             // creating lottery with id = 2
             await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 3600 * 24,
-                nft.address, 800,
+                nft.address, 700,
                 ethers.utils.parseEther("1"), 0);
             for (let i = 0; i < 400; i++) {
                 await lottery.connect(accounts[i]).buyTickets(2, 1);
             }
         });
 
-        it("Should run lottery with 800 entries and 800 prizes and allow to mint", async function () {
-            for (let i = 400; i < 800; i++) {
+        it("Should run lottery with 700 entries and 700 prizes and allow to mint", async function () {
+            for (let i = 400; i < 700; i++) {
                 await lottery.connect(accounts[i]).buyTickets(2, 1);
             }
             await lottery.drawWinningNumbers(2);
             expect(await mockRng.fulfillRequest(2, 256)).to.have.emit(lottery, "LotteryStatusChanged");
-            // distribute the 800 prizes in 8 batches
-            await lottery.definePrizeWinners(2, 100);
+            // distribute the prizes in batches
             await lottery.definePrizeWinners(2, 100);
             await lottery.definePrizeWinners(2, 100);
             await lottery.definePrizeWinners(2, 100);
