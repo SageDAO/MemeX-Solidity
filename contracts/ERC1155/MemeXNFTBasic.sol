@@ -208,8 +208,8 @@ contract MemeXNFTBasic is ERC1155, MemeXAccessControls {
             "MemeXNFT: Only Admin can change royalties"
         );
         require(
-            _percentage <= 100,
-            "MemeXNFT: Percentage should be less than 100"
+            _percentage <= 10000,
+            "MemeXNFT: Percentage should be less than 10000"
         );
         royaltyPercentage = _percentage;
     }
@@ -223,7 +223,7 @@ contract MemeXNFTBasic is ERC1155, MemeXAccessControls {
     }
 
     /**
-     * @notice Calculates roaylties based on a sale price provided.
+     * @notice Calculates royalties based on a sale price provided.
      * Solution is agnostic of the sale price unit and will answer using the same unit.
      * @return  receiver address: address to receive royaltyAmount.
      */
@@ -232,6 +232,6 @@ contract MemeXNFTBasic is ERC1155, MemeXAccessControls {
         view
         returns (address receiver, uint256 royaltyAmount)
     {
-        return (artist, (salePrice * royaltyPercentage) / 100);
+        return (artist, (salePrice * royaltyPercentage) / 10000);
     }
 }

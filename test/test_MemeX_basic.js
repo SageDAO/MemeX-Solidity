@@ -2,21 +2,21 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe(' TokenMemeXNFT Basic Contract', () => {
-    let Factory, factory, owner, addr1, addr2,addr3, NFT, nft, deployedNFT;
+    let Factory, factory, owner, addr1, addr2, addr3, NFT, nft, deployedNFT;
 
 
-    beforeEach(async() => {
+    beforeEach(async () => {
         Factory = await ethers.getContractFactory('MemeXFactory');
-        [owner, addr1, addr2,addr3, ...addrs] = await ethers.getSigners();
+        [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
         factory = await Factory.deploy(owner.address);
         NFT = await ethers.getContractFactory("MemeXNFTBasic");
-        
-        
+
+
     })
 
 
     describe(' NFT Contract Deploy', () => {
-        beforeEach(async() => {
+        beforeEach(async () => {
             _name = "MemeXNFT"
             _symbol = "MXN"
             _admin = owner.address
@@ -47,7 +47,7 @@ describe(' TokenMemeXNFT Basic Contract', () => {
                 _data,
                 _lotteryId
             )
-    
+
             expect(await deployedNFT.exists(_id))
         })
 
@@ -59,7 +59,7 @@ describe(' TokenMemeXNFT Basic Contract', () => {
             _uri = ""
             _data = []
             _lotteryId = 1
-    
+
             await expect(deployedNFT.connect(addr3).create(
                 _initialOwner.address,
                 _id,
@@ -68,9 +68,17 @@ describe(' TokenMemeXNFT Basic Contract', () => {
                 _data,
                 _lotteryId
             )).to.be.revertedWith("ERC1155.create only Lottery or Minter can create")
-    
+
             expect(await deployedNFT.exists(_id))
         })
+
+        it("Should set and calculate royalties", async function () {
+            await deployedNFT.setArtist(addr1.address);
+            await deployedNFT.setRoyaltyPercentage(200); // 2.00 %
+            roaytlyInfo = await deployedNFT.royaltyInfo(1, 100);
+            expect(roaytlyInfo[0]).to.equal(addr1.address);
+            expect(roaytlyInfo[1]).to.equal(2);
+        });
 
     })
 })

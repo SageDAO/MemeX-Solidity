@@ -123,7 +123,7 @@ describe("Lottery Contract", function () {
             { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Lottery id does not exist");
     });
 
-    it("Should run the lottery with one participant and allow to mint the prize", async function () {
+    it("Should run the lottery with one participant and allow to mint the prize only once", async function () {
         await rewards.join();
         await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
@@ -141,11 +141,6 @@ describe("Lottery Contract", function () {
         expect(result[2]).to.equal(true); // claimed
         // should allow to mint only once
         await expect(lottery.redeemNFT(1)).to.be.revertedWith("Participant already claimed prize");
-        await nft.setArtist(addr1.address);
-        await nft.setRoyaltyPercentage(2);
-        roaytlyInfo = await nft.royaltyInfo(1, 10);
-        expect(roaytlyInfo[0]).to.equal(addr1.address);
-        expect(roaytlyInfo[1]).to.equal(0);
     });
 
     describe("Big Lottery", () => {
