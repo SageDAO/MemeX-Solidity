@@ -217,7 +217,7 @@ contract Lottery is Ownable {
      * @param _amountOfPrizes amount of prizes
      * @param _nftContract reference to the NFT contract
      * @param _boostCost cost in wei (FTM) for users to boost their odds
-     * @param _maxParticipants max number of participants
+     * @param _maxParticipants max number of participants. Use 0 for unlimited
      */
     function createNewLottery(
         uint256 _costPerTicketPinas,
