@@ -31,9 +31,9 @@ contract MockRNG is Ownable {
     /**
      * Simulates callback function used by VRF Coordinator
      */
-    function fulfillRequest(uint256 randomness) public {
+    function fulfillRequest(uint256 lotteryId, uint256 randomness) public {
         ILottery(lotteryAddr).numbersDrawn(
-            currentLotteryId,
+            lotteryId,
             bytes32(keccak256(abi.encodePacked(randomness))),
             randomness
         );

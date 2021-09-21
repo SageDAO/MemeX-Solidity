@@ -28,7 +28,7 @@ describe("Lottery Contract", function () {
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
         await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 3600 * 24,
-            nft.address, [1, 2],
+            nft.address, 2,
             ethers.utils.parseEther("1"), 0);
 
     });
@@ -45,36 +45,6 @@ describe("Lottery Contract", function () {
         expect(await lottery.getTotalEntries(1)).to.equal(1);
     });
 
-
-
-    it('Buy Tickets with lots of accounts', async function() {
-        await rewards.join();
-        
-        for (let i = 1; i< 100; i++){
-            await token.connect(owner).transfer(accounts[i].address,1)
-            await rewards.connect(accounts[i]).join();
-            await lottery.connect(accounts[i]).buyTickets(1,1)  
-            console.log(await lottery.getNumberOfParticipants(1)) 
-        
-    }
-
-        await lottery.drawWinningNumbers(1);
-        expect(await mockRng.fulfillRequest(1)).to.have.emit(lottery, "ResponseReceived");
-        for(let i = 1; i<100;i++){
-            result = await lottery.connect(accounts[i]).isCallerWinner(1);
-            console.log(`Is ${accounts[i].address} winner,:`,result[0])
-            console.log("Prize Id:",result[1])
-            console.log("Claimed:",result[2])
-        }
-        
-        // await lottery.redeemNFT(1);
-        // result = await lottery.isCallerWinner(1);
-        // console.log("Is 1 winner,:",result[0])
-        // console.log("Prize Id:",result[1])
-        // console.log("Claimed:",result[2])
-    })
-
-    
     it("Same user buys a second ticket", async function () {
         await rewards.join();
         await waitAndMineBlock(30);
@@ -158,7 +128,8 @@ describe("Lottery Contract", function () {
         await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         await lottery.drawWinningNumbers(1);
-        expect(await mockRng.fulfillRequest(1)).to.have.emit(lottery, "ResponseReceived");
+        expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
+        await lottery.definePrizeWinners(1, 1);
         result = await lottery.isCallerWinner(1);
         expect(result[0]).to.equal(true);  // winner
         expect(result[1]).to.equal(1);     // prize id 1
@@ -177,22 +148,45 @@ describe("Lottery Contract", function () {
         expect(roaytlyInfo[1]).to.equal(0);
     });
 
-    it("Run lottery with >1500 entries and 100 prizes", async function () {
-        accounts = await ethers.getSigners()
-        const blockNum = await ethers.provider.getBlockNumber();
-        const block = await ethers.provider.getBlock(blockNum);
-        // creating lottery with id = 2
-        await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 1000,
-            nft.address, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100],
-            ethers.utils.parseEther("1"), 0);
-        for (let i = 0; i < accounts.length; i++) {
-            // not waiting the result of each transaction so we can improve the test time
-            lottery.connect(accounts[i]).buyTickets(2, 10);
-        }
-        // sleep a little to allow all buyTickets to finish
-        await timer(100);
-        await lottery.drawWinningNumbers(2);
-        expect(await mockRng.fulfillRequest(1)).to.have.emit(lottery, "LotteryStatusChanged");
+    describe("Big Lottery", () => {
+        beforeEach(async () => {
+            accounts = await ethers.getSigners()
+            const blockNum = await ethers.provider.getBlockNumber();
+            const block = await ethers.provider.getBlock(blockNum);
+            // creating lottery with id = 2
+            await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 3600 * 24,
+                nft.address, 800,
+                ethers.utils.parseEther("1"), 0);
+            for (let i = 0; i < 400; i++) {
+                // not waiting the result of each transaction so we can improve the test time
+                await lottery.connect(accounts[i]).buyTickets(2, 1);
+            }
+
+            // sleep a little to allow all buyTickets to finish
+            await timer(100);
+
+        });
+
+        it("Run lottery with 800 entries and 800 prizes", async function () {
+            for (let i = 400; i < 800; i++) {
+                // not waiting the result of each transaction so we can improve the test time
+                await lottery.connect(accounts[i]).buyTickets(2, 1);
+            }
+            await lottery.drawWinningNumbers(2);
+            expect(await mockRng.fulfillRequest(2, 256)).to.have.emit(lottery, "LotteryStatusChanged");
+            console.log(await lottery.getParticipantsCount(2));
+            console.log(await lottery.getTotalEntries(2));
+            // distribute the 800 prizes in 8 batches
+            await lottery.definePrizeWinners(2, 100);
+            await lottery.definePrizeWinners(2, 100);
+            await lottery.definePrizeWinners(2, 100);
+            await lottery.definePrizeWinners(2, 100);
+            await lottery.definePrizeWinners(2, 100);
+            await lottery.definePrizeWinners(2, 100);
+            await lottery.definePrizeWinners(2, 100);
+            await lottery.definePrizeWinners(2, 100);
+            await lottery.redeemNFT(2);
+        });
     });
 
     it("Request to draw again after receiving random number - should revert", async function () {
@@ -200,7 +194,7 @@ describe("Lottery Contract", function () {
         await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         await lottery.drawWinningNumbers(1);
-        await mockRng.fulfillRequest(1);
+        await mockRng.fulfillRequest(1, 1);
         await expect(lottery.drawWinningNumbers(1)).to.be.revertedWith("Lottery must be closed");
     });
 
@@ -211,12 +205,13 @@ describe("Lottery Contract", function () {
         await lottery.drawWinningNumbers(1);
         await ethers.provider.send("evm_mine", []);
         await lottery.drawWinningNumbers(1);
-        expect(await mockRng.fulfillRequest(1)).to.have.emit(lottery, "LotteryStatusChanged");
+        expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "LotteryStatusChanged");
     });
 
     it("Draw numbers - only owner", async function () {
         await expect(lottery.connect(addr1).drawWinningNumbers(1)).to.be.revertedWith("Ownable: caller is not the owner");
     });
+
 });
 
 async function waitAndMineBlock(seconds) {

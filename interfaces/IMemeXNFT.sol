@@ -15,10 +15,10 @@ interface IMemeXNFT {
         string memory _name,
         string memory _symbol,
         address _admin
-        ) external;
+    ) external;
 
     function setBaseMetadataURI(string memory _newBaseMetadataURI) external;
-    
+
     function create(
         address _initialOwner,
         uint256 _id,
@@ -27,4 +27,6 @@ interface IMemeXNFT {
         bytes calldata _data,
         uint256 _lotteryId
     ) external returns (uint256);
+
+    function getNFTOwner(uint256 _id) external view returns (address);
 }

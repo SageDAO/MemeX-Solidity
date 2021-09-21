@@ -187,9 +187,9 @@ contract MemeXNFTBasic is ERC1155, MemeXAccessControls {
     //     _currentTokenID++;
     // }
 
-    // function getNFTInfo(uint256 _id) public view (){
-
-    // }
+    function getNFTOwner(uint256 _id) public view returns (address) {
+        return nftInfos[_id].owner;
+    }
 
     function setBaseMetadataURI(string memory _newBaseMetadataURI)
         public
