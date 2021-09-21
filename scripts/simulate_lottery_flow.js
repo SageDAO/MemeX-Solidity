@@ -25,7 +25,7 @@ createLottery = async (lottery, memeX) => {
   const [...accounts] = await ethers.getSigners();
   deployer = accounts[0]
   _nftContract = memeX.address
-  _prizeIds = [1, 2]
+  _prizeIds = 2
   _costPerTicket = ethers.BigNumber.from("1000000000000000000");
 
 

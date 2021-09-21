@@ -43,16 +43,14 @@
             "status": "planned",
             "entryFee": 1,
             "lotSize": 2,
-            "costPerTicket": 1,
+            "costPerTicketPoints": 1,
+            "costPerTicketCoins": 0,
             "startTime": 1628886889000,
             "endTime": 1628973289000,
             "artistName": "anArtist",
             "dropName": "anArtistDrop",
             "boostCost": 1,
             "mintCost": 0,
-            "stakePoolId": 2,
-            "liquidityProviderMultiplier": 15,
-            "defaultPrizeId": 1,
             "metadataBasePath": "https://bafybeiajnrcjlogedqpnb6eawbmhjqfocz4n3izqhwfoud7jqqgilli64m.ipfs.dweb.link",
             "nft1": {
                 "name": "Japanese town at night",
@@ -81,12 +79,7 @@
             }
         },
         "prizeMetadataCid": "bafybeiboc5qqyi6glq2xyk4bro6c47c2n7vvozt2uhqmmhypu3ilhhvz24",
-        "prizeIds": [
-            0,
-            1,
-            2,
-            3,
-            4
-        ]
+        "prizes": 5,
+        "maxParticipants": 1000
     }
 ]

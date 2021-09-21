@@ -34,16 +34,14 @@ async function main() {
             try {
                 // TODO: align with Daniel so that the json provides all these fields
                 await lottery.createNewLottery(
-                    drop.metadata.costPerTicket,
+                    drop.metadata.costPerTicketPoints,
+                    drop.metadata.costPerTicketCoins,
                     drop.metadata.startTime,
                     drop.metadata.endTime,
                     nftContract.address,
-                    drop.prizeIds,
+                    drop.prizes, // amount of prizes
                     drop.metadata.boostCost * ethers.BigNumber.from(10 ** 18), // boost cost in ETH
-                    drop.metadata.mintCost * ethers.BigNumber.from(10 ** 18), // mint cost in ETH
-                    drop.metadata.stakePoolId,
-                    drop.metadata.metadataBasePath,
-                    drop.metadata.defaultPrizeId,
+                    drop.maxParticipants,
                     {
                         gasLimit: 4000000,
                     });
