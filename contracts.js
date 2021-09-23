@@ -7,27 +7,13 @@ CONTRACTS = {
         "randomnessAddress": "0x53245f76B812b115764C26F1BA1B8CC02695834C",
         "rewardsAddress": "0x9548049930d48e44c0A74f377E502EF3456b1f43",
     },
-    "localhost": {
-        "lotteryAddress": "",
-        "tokenAddress": "",
-        "nftAddress": "",
-        "randomnessAddress": "0xc63343D411fd8ca6734b75E469D84B2Ec9f4159E",
-        "stakingAddress": ""
-    },
-    "hardhat": {
-        "lotteryAddress": "",
-        "tokenAddress": "",
-        "nftAddress": "",
-        "randomnessAddress": "",
-        "stakingAddress": ""
-    },
     "fantomtestnet": {
-        "lotteryAddress": "",
+        "lotteryAddress": "0x68D410c214A35a555E6fc496CFA36c56D8C56886",
         "tokenAddress": "0x8383A15CB2A829E0E638A350D308fAc72984A0D2",
-        "nftAddress": "",
+        "nftAddress": "0x3C3920be49eab5F949f9Fd332E458f1f4F092E8f",
         "randomnessAddress": "",
         "rewardsAddress": "0x40DC903878049BF2ca14E43eD422b9947c97bBD9",
-        "pinaAddress": "0x40DC903878049BF2ca14E43eD422b9947c97bBD9"
+        "pinaAddress": ""
 
     },
     "fantom": {

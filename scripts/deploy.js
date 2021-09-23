@@ -94,7 +94,7 @@ deployRewards = async (deployer, token) => {
 
 deployNFT = async (lottery) => {
   nft_address = CONTRACTS[hre.network.name]["nftAddress"]
-  const Nft = await hre.ethers.getContractFactory("MemeXNFT");
+  const Nft = await hre.ethers.getContractFactory("MemeXNFTBasic");
   if (nft_address == "") {
     console.log("deploying NFT token")
     nft = await Nft.deploy("MMXNFT", "MMXNFT", lottery);
