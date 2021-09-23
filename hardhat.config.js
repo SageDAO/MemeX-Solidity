@@ -1,8 +1,9 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-truffle4");
+require("hardhat-gas-reporter");
 
-const { alchemy_key, deployer_pk, etherscan_key, ftm_key, ankr_key, account1, account2 } = require('./secrets.json');
+const { alchemy_key, deployer_pk, etherscan_key, ftm_key, ankr_key, account1, account2, coinmarketcap_key } = require('./secrets.json');
 
 const fs = require("fs");
 
@@ -61,5 +62,9 @@ module.exports = {
       default: 0,
     },
   },
-
+  gasReporter: {
+    enabled: (process.env.REPORT_GAS) ? true : false,
+    currency: "USD",
+    coinmarketcap: `${coinmarketcap_key}`
+  }
 };
