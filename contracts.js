@@ -21,13 +21,21 @@ CONTRACTS = {
         "randomnessAddress": "",
         "stakingAddress": ""
     },
-    "Fantom": {
+    "fantomtestnet": {
         "lotteryAddress": "",
         "tokenAddress": "0x8383A15CB2A829E0E638A350D308fAc72984A0D2",
         "nftAddress": "",
         "randomnessAddress": "",
-        "stakingAddress": "",
-        "NoStakingAddress": "",
+        "rewardsAddress": "0x40DC903878049BF2ca14E43eD422b9947c97bBD9",
+        "pinaAddress": "0x40DC903878049BF2ca14E43eD422b9947c97bBD9"
+
+    },
+    "fantom": {
+        "lotteryAddress": "",
+        "tokenAddress": "",
+        "nftAddress": "",
+        "randomnessAddress": "",
+        "rewardsAddress": "",
         "pinaAddress": ""
 
     }

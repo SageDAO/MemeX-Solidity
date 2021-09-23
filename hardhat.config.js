@@ -22,7 +22,7 @@ module.exports = {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${alchemy_key}`,
       accounts: [`${deployer_pk}`, `${account1}`, `${account2}`],
     },
-    Fantom: {
+    fantomtestnet: {
       url: `https://apis.ankr.com/${ankr_key}/fantom/full/test`,
       accounts: [`${deployer_pk}`, `${account1}`, `${account2}`],
       chainId: 0xfa2

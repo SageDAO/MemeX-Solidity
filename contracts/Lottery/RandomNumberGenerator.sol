@@ -65,7 +65,7 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
         internal
         override
     {
-        ILottery(requester).numbersDrawn(
+        ILottery(requester).receiveRandomNumber(
             currentLotteryId,
             requestId,
             randomness

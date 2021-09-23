@@ -8,7 +8,7 @@ interface ILottery {
     // STATE MODIFYING FUNCTIONS
     //-------------------------------------------------------------------------
 
-    function numbersDrawn(
+    function receiveRandomNumber(
         uint256 _lotteryId,
         bytes32 _requestId,
         uint256 _randomNumber
@@ -24,5 +24,5 @@ interface ILottery {
         uint256 _boostCost,
         uint256 _defaultPrizeId,
         uint32 _maxParticipants
-    )external returns (uint256 lotteryId);
+    ) external returns (uint256 lotteryId);
 }

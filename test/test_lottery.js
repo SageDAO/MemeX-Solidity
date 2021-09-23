@@ -127,7 +127,7 @@ describe("Lottery Contract", function () {
         await rewards.join();
         await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
-        await lottery.drawWinningNumbers(1);
+        await lottery.requestRandomNumber(1);
         expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
         await lottery.definePrizeWinners(1, 1);
         result = await lottery.isCallerWinner(1);
@@ -141,6 +141,32 @@ describe("Lottery Contract", function () {
         expect(result[2]).to.equal(true); // claimed
         // should allow to mint only once
         await expect(lottery.redeemNFT(1)).to.be.revertedWith("Participant already claimed prize");
+    });
+
+    it("Should run more than one lottery", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await lottery.buyTickets(1, 1);
+        await lottery.requestRandomNumber(1);
+        expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
+        await lottery.definePrizeWinners(1, 1);
+        await lottery.redeemNFT(1);
+        const blockNum = await ethers.provider.getBlockNumber();
+        const block = await ethers.provider.getBlock(blockNum);
+        // deploy a second NFT contract
+        Nft2 = await ethers.getContractFactory("MemeXNFTBasic");
+        nft2 = await Nft2.deploy("Memex2", "MEMEX2", owner.address);
+        await nft2.setLotteryContract(lottery.address);
+        // create a second lottery
+        await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 3600 * 24,
+            nft2.address, 1,
+            ethers.utils.parseEther("1"), 0);
+        await lottery.buyTickets(2, 1);
+        await lottery.requestRandomNumber(2);
+        expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(lottery, "ResponseReceived");
+        await lottery.definePrizeWinners(2, 1);
+        await lottery.redeemNFT(2);
+
     });
 
     describe("Big Lottery", () => {
@@ -161,7 +187,7 @@ describe("Lottery Contract", function () {
             for (let i = 400; i < 700; i++) {
                 await lottery.connect(accounts[i]).buyTickets(2, 1);
             }
-            await lottery.drawWinningNumbers(2);
+            await lottery.requestRandomNumber(2);
             expect(await mockRng.fulfillRequest(2, 256)).to.have.emit(lottery, "LotteryStatusChanged");
             // distribute the prizes in batches
             await lottery.definePrizeWinners(2, 100);
@@ -179,23 +205,23 @@ describe("Lottery Contract", function () {
         await rewards.join();
         await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
-        await lottery.drawWinningNumbers(1);
+        await lottery.requestRandomNumber(1);
         await mockRng.fulfillRequest(1, 1);
-        await expect(lottery.drawWinningNumbers(1)).to.be.revertedWith("Lottery must be closed");
+        await expect(lottery.requestRandomNumber(1)).to.be.revertedWith("Lottery must be closed");
     });
 
     it("Should allow a second RNG request if no response was received", async function () {
         await rewards.join();
         await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
-        await lottery.drawWinningNumbers(1);
+        await lottery.requestRandomNumber(1);
         await ethers.provider.send("evm_mine", []);
-        await lottery.drawWinningNumbers(1);
+        await lottery.requestRandomNumber(1);
         expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "LotteryStatusChanged");
     });
 
-    it("Should not allow other accounts to call function requestRandomNumber", async function () {
-        await expect(lottery.connect(addr1).drawWinningNumbers(1)).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call requestRandomNumber if not owner", async function () {
+        await expect(lottery.connect(addr1).requestRandomNumber(1)).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
 });

@@ -273,7 +273,7 @@ contract Lottery is Ownable {
      * @notice Called by the Memex team to request a random number to a particular lottery.
      * @param _lotteryId ID of the lottery the random number is for
      */
-    function drawWinningNumbers(uint256 _lotteryId) external onlyOwner {
+    function requestRandomNumber(uint256 _lotteryId) external onlyOwner {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(prizes[_lotteryId] != 0, "No prizes for this lottery");
         // DISABLED FOR TESTS require(lottery.closingTime < block.timestamp);
@@ -294,7 +294,7 @@ contract Lottery is Ownable {
      * @param _requestId ID of the request that was sent to the RNG contract
      * @param _randomNumber Random number provided by the VRF chainlink oracle
      */
-    function numbersDrawn(
+    function receiveRandomNumber(
         uint256 _lotteryId,
         bytes32 _requestId,
         uint256 _randomNumber

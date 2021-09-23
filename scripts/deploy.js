@@ -4,7 +4,6 @@
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
 
-const { hexZeroPad } = require("@ethersproject/bytes");
 const { ethers } = require("hardhat");
 const hre = require("hardhat");
 const { factory } = require("typescript");
@@ -34,19 +33,19 @@ deployMemeXToken = async (deployer) => {
   return token
 }
 
-deployMemeXFactory =  async(owner) => {
+deployMemeXFactory = async (owner) => {
   memeXFactory_address = CONTRACTS[hre.network.name]["memeXFactoryAddress"]
   const MemeXFactory = await hre.ethers.getContractFactory("MemeXFactory")
-  if (memeXFactoryAddress == ""){
-      memeXFactory = await MemeXFactory.deploy(owner.address)
-      await memeXFactory.deployed()
-      console.log("MemeXFactory deployed to: ", memeXFactory.address)
-      await timer(60000);
-      await hre.run("verify:verify", {
-        address: memeXFactory.address,
-        contract: "contracts/Factory/MemeXFactory.sol:MemeXFactory",
-        constructorArguments: [memeXFactory.address]
-      });
+  if (memeXFactoryAddress == "") {
+    memeXFactory = await MemeXFactory.deploy(owner.address)
+    await memeXFactory.deployed()
+    console.log("MemeXFactory deployed to: ", memeXFactory.address)
+    await timer(60000);
+    await hre.run("verify:verify", {
+      address: memeXFactory.address,
+      contract: "contracts/Factory/MemeXFactory.sol:MemeXFactory",
+      constructorArguments: [memeXFactory.address]
+    });
   } else {
     memeXFactory = await MemeXFactory.attach(memeXFactory_address)
   }
@@ -113,23 +112,23 @@ deployNFT = async (lottery) => {
 }
 
 
-deployNFTByFactory = async (MemeXFactory,name,symbol,admin,lottery) => {
+deployNFTByFactory = async (MemeXFactory, name, symbol, admin, lottery) => {
   nft_address = CONTRACTS[hre.network.name]["nftAddress"]
   const NFT = await hre.ethers.getContractFactory("MemeXNFTBasic")
 
-  if (nft_address == ""){
-     
-      tx = await MemeXFactory.connect(admin).deployMemeXNFT(name, symbol)
-      const res = await tx.wait()
-      nft_address = res.events[1].args[1]
-      deployedNFT = await NFT.attach(nft_address)
-      deployedNFT.setLotteryContract(_lotteryAddress)
-      await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
-      await hre.run("verify:verify", {
-        address: deployedNFT.address,
-        constructorArguments: [name,symbol],
+  if (nft_address == "") {
+
+    tx = await MemeXFactory.connect(admin).deployMemeXNFT(name, symbol)
+    const res = await tx.wait()
+    nft_address = res.events[1].args[1]
+    deployedNFT = await NFT.attach(nft_address)
+    deployedNFT.setLotteryContract(_lotteryAddress)
+    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    await hre.run("verify:verify", {
+      address: deployedNFT.address,
+      constructorArguments: [name, symbol],
     });
-  }else {
+  } else {
     deployedNFT = await NFT.attach(nft_address)
   }
   return nft
@@ -213,7 +212,7 @@ async function main() {
 
   const deployer = await ethers.getSigner();
   const accounts = await ethers.getSigners();
-  
+
   token = await deployMemeXToken(deployer);
   rewards = await deployRewards(deployer, token);
   pina = await deployPinaToken(deployer, rewards);
