@@ -21,21 +21,29 @@ contract Lottery is Ownable {
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
 
     // participant address => lottery ids he entered
-    mapping(address => uint256[]) internal participantHistory;
+    mapping(address => uint256[]) public participantHistory;
 
     //lotteryid => prizeIds
     mapping(uint256 => uint256) internal prizes;
 
+    //lotteryid => default prize id counter
+    mapping(uint256 => uint256) internal nextDefaultPrizeId;
+
     mapping(uint256 => mapping(address => uint256)) internal prizeWinners;
 
-    //lotteryid => address => amount of entries
-    mapping(uint256 => mapping(address => uint256)) internal participants;
+    //lotteryid => address => prize id claimed
+    mapping(uint256 => mapping(address => uint256)) internal claimedPrizes;
 
-    mapping(uint256 => mapping(address => uint256)) internal boosters;
+    //lotteryid => address => amount of entries
+    mapping(uint256 => mapping(address => uint8)) internal participants;
+
+    //lotteryid => address =>
+    mapping(uint256 => mapping(address => uint8)) internal boosters;
 
     //loteryId => randomNumber received from RNG
     mapping(uint256 => uint256) internal randomSeeds;
 
+    //lotteryId => id of the next prize do be assigned
     mapping(uint256 => uint16) internal nextPrize;
 
     //this maps the entries a user received when buying a ticket or boost
@@ -70,6 +78,7 @@ contract Lottery is Ownable {
         IMemeXNFT nftContract; // reference to the NFT Contract
         Counters.Counter participantsCount; // number of participants
         uint32 maxParticipants; // max number of participants
+        bool hasDefaultPrize; // if true, every participant will be allowed to mint a prize if they don't win anything
     }
 
     event ResponseReceived(bytes32 _requestId);
@@ -86,7 +95,7 @@ contract Lottery is Ownable {
         uint256 lotteryId,
         uint256 priceOfTicket
     );
-    event NumberAssignedToParticipant(
+    event NewEntry(
         uint256 lotteryId,
         uint256 number,
         address participantAddress
@@ -203,7 +212,7 @@ contract Lottery is Ownable {
             _lotteryId <= lotteryCounter.current(),
             "Lottery id does not exist"
         );
-        require(_amount > 0, "No prize ids");
+        require(_amount > 0, "Number of prizes can't be 0");
         prizes[_lotteryId] = _amount;
         emit PrizesChanged(_lotteryId, _amount);
     }
@@ -227,7 +236,8 @@ contract Lottery is Ownable {
         IMemeXNFT _nftContract,
         uint256 _amountOfPrizes,
         uint256 _boostCost,
-        uint32 _maxParticipants
+        uint32 _maxParticipants,
+        bool _hasDefaultPrize
     ) public onlyOwner returns (uint256 lotteryId) {
         require(
             _startingTime != 0 && _startingTime < _closingTime,
@@ -253,8 +263,12 @@ contract Lottery is Ownable {
             _closingTime,
             _nftContract,
             Counters.Counter(0),
-            _maxParticipants
+            _maxParticipants,
+            _hasDefaultPrize
         );
+        if (_hasDefaultPrize) {
+            nextDefaultPrizeId[lotteryId] = _amountOfPrizes + 1;
+        }
         prizes[lotteryId] = _amountOfPrizes;
         nextPrize[lotteryId] = 1;
         emit PrizesChanged(lotteryId, _amountOfPrizes);
@@ -469,9 +483,9 @@ contract Lottery is Ownable {
             "Participant not found"
         );
         participantEntries[_lotteryId].push(_participantAddress);
-        emit NumberAssignedToParticipant(
+        emit NewEntry(
             _lotteryId,
-            participantEntries[_lotteryId].length - 1,
+            participantEntries[_lotteryId].length,
             _participantAddress
         );
     }
@@ -570,15 +584,17 @@ contract Lottery is Ownable {
             "Status Not Completed"
         );
         uint256 prizeId = prizeWinners[_lotteryId][msg.sender];
-        require(
-            prizeWinners[_lotteryId][msg.sender] != 0,
-            "Participant is not a winner"
-        );
+        if (prizeId == 0 && lotteryHistory[_lotteryId].hasDefaultPrize) {
+            prizeId = nextDefaultPrizeId[_lotteryId];
+            nextDefaultPrizeId[_lotteryId]++;
+        }
+        require(prizeId != 0, "Participant is not a winner");
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
         require(
-            nftContract.getNFTOwner(prizeId) == address(0),
+            claimedPrizes[_lotteryId][msg.sender] == 0,
             "Participant already claimed prize"
         );
+        claimedPrizes[_lotteryId][msg.sender] = prizeId;
         nftContract.create(msg.sender, prizeId, 1, 1, "", _lotteryId);
         emit PrizeClaimed(_lotteryId, msg.sender, prizeId);
     }

@@ -29,7 +29,7 @@ describe("Lottery Contract", function () {
         const block = await ethers.provider.getBlock(blockNum);
         await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 3600 * 24,
             nft.address, 2,
-            ethers.utils.parseEther("1"), 0);
+            ethers.utils.parseEther("1"), 0, false);
 
     });
 
@@ -69,7 +69,8 @@ describe("Lottery Contract", function () {
         await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 10,
             nft.address, [1],
             ethers.utils.parseEther("1"),
-            1 // just one participant allowed
+            1, // just one participant allowed
+            false
         );
         await lottery.buyTickets(2, 1);
         // should fail on the second entry
@@ -160,7 +161,7 @@ describe("Lottery Contract", function () {
         // create a second lottery
         await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 3600 * 24,
             nft2.address, 1,
-            ethers.utils.parseEther("1"), 0);
+            ethers.utils.parseEther("1"), 0, false);
         await lottery.buyTickets(2, 1);
         await lottery.requestRandomNumber(2);
         expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(lottery, "ResponseReceived");
@@ -177,13 +178,13 @@ describe("Lottery Contract", function () {
             // creating lottery with id = 2
             await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 3600 * 24,
                 nft.address, 700,
-                ethers.utils.parseEther("1"), 0);
+                ethers.utils.parseEther("1"), 0, true);
             for (let i = 0; i < 400; i++) {
                 await lottery.connect(accounts[i]).buyTickets(2, 1);
             }
         });
 
-        it("Should run lottery with 700 entries and 700 prizes and allow to mint", async function () {
+        it("Should run lottery with large # of entries and default prize and allow to mint", async function () {
             for (let i = 400; i < 700; i++) {
                 await lottery.connect(accounts[i]).buyTickets(2, 1);
             }
