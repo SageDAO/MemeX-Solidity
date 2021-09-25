@@ -2,6 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-truffle4");
 require("hardhat-gas-reporter");
+require("@nomiclabs/hardhat-solhint");
 
 const { alchemy_key, deployer_pk, etherscan_key, ftm_key, ankr_key, account1, account2, coinmarketcap_key } = require('./secrets.json');
 
