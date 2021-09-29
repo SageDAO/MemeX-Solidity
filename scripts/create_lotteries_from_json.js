@@ -23,7 +23,7 @@ async function main() {
     for (const drop of json_content) {
         if (drop.metadata.lotteryId == null) {
             //deploy a new NFT contract for each new drop
-            const NFT = await hre.ethers.getContractFactory("MemeXNFT");
+            const NFT = await hre.ethers.getContractFactory("MemeXNFTBasic");
             const nftContract = await NFT.deploy(drop.metadata.dropName, "MMXNFT", lotteryAddress);
             await nftContract.deployed();
             console.log("New NFT contract deployed to:", nftContract.address);
@@ -42,6 +42,7 @@ async function main() {
                     drop.prizes, // amount of prizes
                     drop.metadata.boostCost * ethers.BigNumber.from(10 ** 18), // boost cost in ETH
                     drop.maxParticipants,
+                    drop.hasDefaultPrize,
                     {
                         gasLimit: 4000000,
                     });

@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -24,7 +25,7 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
         address _lotteryAddr,
         bytes32 _keyHash,
         uint256 _fee
-    ) public VRFConsumerBase(_vrfCoordinator, _linkToken) {
+    ) VRFConsumerBase(_vrfCoordinator, _linkToken) {
         keyHash = _keyHash;
         fee = _fee;
         lotteryAddr = _lotteryAddr;

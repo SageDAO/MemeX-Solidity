@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -132,7 +133,7 @@ contract Lottery is Ownable {
             rewardsToken.balanceOf(_user) >= _amount,
             "Not enough PINA tokens to enter the lottery"
         );
-        rewardsToken.burnPinas(_user, _amount);
+        rewardsToken.burn(_user, _amount);
     }
 
     function _burnUserPoints(address _user, uint256 _amount) internal {
@@ -513,8 +514,8 @@ contract Lottery is Ownable {
         payable
     {
         require(
-            _lotteryId <= lotteryCounter.current(),
-            "Lottery id does not exist"
+            lotteryHistory[_lotteryId].boostCost != 0,
+            "Lottery doesn't have a boost cost"
         );
         require(
             participants[_lotteryId][_participantAddress] != 0,
@@ -555,23 +556,6 @@ contract Lottery is Ownable {
         uint256 prizeId = prizeWinners[_lotteryId][_address];
         address owner = nftContract.getNFTOwner(prizeId);
         return (prizeId != 0, prizeId, owner != address(0));
-    }
-
-    /**
-     * @notice Function called to check if the caller won a prize.
-     * @param _lotteryId ID of the lottery to check if user won
-     * @return true if the winner won a prize, with the prize id and if the prize was already claimed
-     */
-    function isCallerWinner(uint256 _lotteryId)
-        public
-        view
-        returns (
-            bool,
-            uint256,
-            bool
-        )
-    {
-        return isAddressWinner(_lotteryId, msg.sender);
     }
 
     /**

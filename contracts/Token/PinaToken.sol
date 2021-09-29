@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
@@ -50,14 +51,14 @@ contract PinaToken is ERC20Burnable, Ownable {
         return lotteryContract;
     }
 
-    function mintPinas(address recipient, uint256 amount)
+    function mint(address recipient, uint256 amount)
         external
         onlyRewardsContract
     {
         _mint(recipient, amount);
     }
 
-    function burnPinas(address account, uint256 amount)
+    function burn(address account, uint256 amount)
         external
         onlyLotteryContract
     {

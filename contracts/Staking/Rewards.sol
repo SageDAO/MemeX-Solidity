@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -50,7 +51,7 @@ contract Rewards is Ownable, Pausable {
         IERC20 _liquidityAddress,
         uint256 _rewardRateToken,
         uint256 _rewardRateLiquidity
-    ) public {
+    ) {
         memeAddress = _memeAddress;
         liquidityAddress = _liquidityAddress;
         rewardRateToken = _rewardRateToken;
@@ -106,7 +107,7 @@ contract Rewards is Ownable, Pausable {
         uint256 pinas = user.pointsAvailableSnapshot;
         user.pointsAvailableSnapshot = 0;
         user.lastSnapshotTime = block.timestamp;
-        addressOfRewardToken.mintPinas(account, pinas);
+        addressOfRewardToken.mint(account, pinas);
         emit ClaimedTokenReward(account, pinas);
     }
 

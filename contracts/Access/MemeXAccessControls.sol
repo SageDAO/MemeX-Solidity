@@ -1,11 +1,12 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 import "./MemeXAdminAccess.sol";
-
 
 contract MemeXAccessControls is MemeXAdminAccess {
     /// @notice Role definitions
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant SMART_CONTRACT_ROLE = keccak256("SMART_CONTRACT_ROLE");
+    bytes32 public constant SMART_CONTRACT_ROLE =
+        keccak256("SMART_CONTRACT_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
     /// @notice Events for adding and removing various roles
@@ -43,9 +44,7 @@ contract MemeXAccessControls is MemeXAdminAccess {
     /**
      * @notice The deployer is automatically given the admin role which will allow them to then grant roles to other addresses
      */
-    constructor()  {
-    }
-
+    constructor() {}
 
     /////////////
     // Lookups //
@@ -141,5 +140,4 @@ contract MemeXAccessControls is MemeXAdminAccess {
         revokeRole(OPERATOR_ROLE, _address);
         emit OperatorRoleRemoved(_address, _msgSender());
     }
-
 }

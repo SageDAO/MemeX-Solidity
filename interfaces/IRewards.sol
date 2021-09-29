@@ -11,9 +11,9 @@ interface IRewards {
 
     function balanceOf(address account) external view returns (uint256);
 
-    function burnPinas(address account, uint256 amount) external;
+    function burn(address account, uint256 amount) external;
 
-    function mintPinas(address recipient, uint256 amount) external;
+    function mint(address recipient, uint256 amount) external;
 
     function getRewardToken() external view returns (IRewards);
 }

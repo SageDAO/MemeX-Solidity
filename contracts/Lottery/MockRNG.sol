@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -12,7 +13,7 @@ contract MockRNG is Ownable {
     address internal requester;
     uint256 public currentLotteryId;
 
-    constructor(address _lotteryAddr) public {
+    constructor(address _lotteryAddr) {
         lotteryAddr = _lotteryAddr;
     }
 

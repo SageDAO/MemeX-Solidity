@@ -1,9 +1,11 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Context.sol";
+
 library Roles {
     struct Role {
-        mapping (address => bool) bearer;
+        mapping(address => bool) bearer;
     }
 
     /**
@@ -26,7 +28,11 @@ library Roles {
      * @dev Check if an account has this role.
      * @return bool
      */
-    function has(Role storage role, address account) internal view returns (bool) {
+    function has(Role storage role, address account)
+        internal
+        view
+        returns (bool)
+    {
         require(account != address(0), "Roles: account is the zero address");
         return role.bearer[account];
     }
@@ -40,12 +46,15 @@ contract PauserRole is Context {
 
     Roles.Role private _pausers;
 
-    constructor () {
+    constructor() {
         _addPauser(_msgSender());
     }
 
     modifier onlyPauser() {
-        require(isPauser(_msgSender()), "PauserRole: caller does not have the Pauser role");
+        require(
+            isPauser(_msgSender()),
+            "PauserRole: caller does not have the Pauser role"
+        );
         _;
     }
 
@@ -98,7 +107,7 @@ contract Pausable is Context, PauserRole {
      * @dev Initializes the contract in unpaused state. Assigns the Pauser role
      * to the deployer.
      */
-    constructor () {
+    constructor() {
         _paused = false;
     }
 
