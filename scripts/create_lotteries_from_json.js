@@ -3,7 +3,8 @@ const hre = require("hardhat");
 const ethers = hre.ethers;
 const deployer = ethers.getSigner().address;
 
-const { lotteryAddress } = require('../contracts.json');
+const CONTRACTS = require('../contracts.js');
+const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
 
 const file_name = process.argv.slice(2)[0];
 

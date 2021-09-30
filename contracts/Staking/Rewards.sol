@@ -7,13 +7,13 @@ import "./Pausable.sol";
 import "../../interfaces/IRewards.sol";
 
 contract Rewards is Ownable, Pausable {
-    IERC20 memeAddress;
-    IERC20 liquidityAddress;
-    address internal lotteryAddr;
+    IERC20 public memeAddress;
+    IERC20 public liquidityAddress;
+    address public lotteryAddr;
 
-    uint256 rewardRateToken;
-    uint256 rewardRateLiquidity;
-    IRewards addressOfRewardToken;
+    uint256 public rewardRateToken;
+    uint256 public rewardRateLiquidity;
+    IRewards public rewardTokenAddress;
 
     address[] userList;
 
@@ -23,7 +23,7 @@ contract Rewards is Ownable, Pausable {
         uint256 lastSnapshotTime;
         uint256 pointsAvailableSnapshot;
     }
-    mapping(address => UserInfo) userInfo;
+    mapping(address => UserInfo) public userInfo;
 
     event Joined(
         address indexed user,
@@ -62,16 +62,8 @@ contract Rewards is Ownable, Pausable {
         lotteryAddr = _lotteryAddr;
     }
 
-    function getRewardRateToken() public view returns (uint256) {
-        return rewardRateToken;
-    }
-
-    function getRewardRateLiquidity() public view returns (uint256) {
-        return rewardRateLiquidity;
-    }
-
     function setRewardToken(address _rewardToken) public onlyOwner {
-        addressOfRewardToken = IRewards(_rewardToken);
+        rewardTokenAddress = IRewards(_rewardToken);
     }
 
     function setRewardRateToken(uint256 _rewardRateToken) public onlyOwner {
@@ -93,13 +85,9 @@ contract Rewards is Ownable, Pausable {
         liquidityAddress = _liquidityAddress;
     }
 
-    function getUserInfo(address _user) public view returns (UserInfo memory) {
-        return userInfo[_user];
-    }
-
     function claimTokenReward(address account) public updateReward(msg.sender) {
         require(
-            address(addressOfRewardToken) != address(0),
+            address(rewardTokenAddress) != address(0),
             "Cannot claim token. Rewards are only points so far"
         );
         UserInfo storage user = userInfo[account];
@@ -107,12 +95,8 @@ contract Rewards is Ownable, Pausable {
         uint256 pinas = user.pointsAvailableSnapshot;
         user.pointsAvailableSnapshot = 0;
         user.lastSnapshotTime = block.timestamp;
-        addressOfRewardToken.mint(account, pinas);
+        rewardTokenAddress.mint(account, pinas);
         emit ClaimedTokenReward(account, pinas);
-    }
-
-    function getRewardToken() public view returns (IRewards) {
-        return addressOfRewardToken;
     }
 
     function updateUserBalance(
@@ -147,8 +131,8 @@ contract Rewards is Ownable, Pausable {
         return pointsToken + pointsLiquidity + user.pointsAvailableSnapshot;
     }
 
-    function userJoined() public view returns (bool) {
-        return userInfo[msg.sender].lastSnapshotTime != 0;
+    function userJoined(address user) public view returns (bool) {
+        return userInfo[user].lastSnapshotTime != 0;
     }
 
     function getUserList() public view returns (address[] memory) {

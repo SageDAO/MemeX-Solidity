@@ -121,7 +121,7 @@ describe("Lottery Contract", function () {
         await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         await expect(lottery.boostParticipant(2, owner.address,
-            { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Lottery id does not exist");
+            { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
     });
 
     it("Should run the lottery with one participant and allow to mint the prize only once", async function () {
@@ -131,12 +131,12 @@ describe("Lottery Contract", function () {
         await lottery.requestRandomNumber(1);
         expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
         await lottery.definePrizeWinners(1, 1);
-        result = await lottery.isCallerWinner(1);
+        result = await lottery.isAddressWinner(1, owner.address);
         expect(result[0]).to.equal(true);  // winner
         expect(result[1]).to.equal(1);     // prize id 1
         expect(result[2]).to.equal(false); // not claimed
         await lottery.redeemNFT(1);
-        result = await lottery.isCallerWinner(1);
+        result = await lottery.isAddressWinner(1, owner.address);
         expect(result[0]).to.equal(true); // winner
         expect(result[1]).to.equal(1);    // prize id 1
         expect(result[2]).to.equal(true); // claimed
@@ -225,6 +225,20 @@ describe("Lottery Contract", function () {
         await expect(lottery.connect(addr1).requestRandomNumber(1)).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
+    it("Should not allow to boost if boostCost = 0", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        const blockNum = await ethers.provider.getBlockNumber();
+        const block = await ethers.provider.getBlock(blockNum);
+        await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 3600 * 24,
+            nft.address, 2,
+            0, // boostCost
+            0, false);
+        await lottery.buyTickets(2, 1);
+        await expect(lottery.boostParticipant(2, owner.address,
+            { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
+
+    });
 });
 
 async function waitAndMineBlock(seconds) {

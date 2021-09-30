@@ -5,7 +5,7 @@ CONTRACTS = {
         "pinaAddress": "0x2Da76A63d8b6D51dc29141524A18E0c28c74C340",
         "nftAddress": "0x8410645aeD27109c10e60088C1fD939aFeAE7203",
         "randomnessAddress": "0xB988eF0C42B682E59b0215b08a985a0d4C3225A9",
-        "rewardsAddress": "0x9548049930d48e44c0A74f377E502EF3456b1f43",
+        "rewardsAddress": "0xaDFd673Dee018629ba743a2fC050d6Da789b1012",
     },
     "fantomtestnet": {
         "lotteryAddress": "0x68D410c214A35a555E6fc496CFA36c56D8C56886",

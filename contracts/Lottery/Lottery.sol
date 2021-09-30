@@ -438,7 +438,7 @@ contract Lottery is Ownable {
         }
         require(lottery.status == Status.Open, "Lottery is not open");
 
-        IRewards rewardsToken = rewardsContract.getRewardToken();
+        IRewards rewardsToken = rewardsContract.rewardTokenAddress();
 
         uint256 totalCostInPoints = numberOfTickets * lottery.ticketCostPinas;
         if (totalCostInPoints > 0) {
@@ -515,7 +515,7 @@ contract Lottery is Ownable {
     {
         require(
             lotteryHistory[_lotteryId].boostCost != 0,
-            "Lottery doesn't have a boost cost"
+            "Can't boost on this lottery"
         );
         require(
             participants[_lotteryId][_participantAddress] != 0,
@@ -528,7 +528,7 @@ contract Lottery is Ownable {
         // check if the transaction contains the boost cost
         require(
             msg.value >= lotteryHistory[_lotteryId].boostCost,
-            "Not enough tokens to boost"
+            "Didn't send enough to boost"
         );
 
         boosters[_lotteryId][_participantAddress] = 1;

@@ -49,19 +49,12 @@ module.exports = {
         version: "0.8.7",
       },
     ],
-
     settings: {
       optimizer: {
         enabled: true,
         runs: 200
       }
     }
-
-  },
-  namedAccounts: {
-    deployer: {
-      default: 0,
-    },
   },
   gasReporter: {
     enabled: true,

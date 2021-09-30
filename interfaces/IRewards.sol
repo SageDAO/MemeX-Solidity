@@ -15,5 +15,5 @@ interface IRewards {
 
     function mint(address recipient, uint256 amount) external;
 
-    function getRewardToken() external view returns (IRewards);
+    function rewardTokenAddress() external view returns (IRewards);
 }
