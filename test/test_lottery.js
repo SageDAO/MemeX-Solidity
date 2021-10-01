@@ -110,7 +110,7 @@ describe("Lottery Contract", function () {
             { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Participant not found");
     });
 
-    it("Should not allow to buy ticktes with the wrong lottery id", async function () {
+    it("Should not allow to buy tickets with the wrong lottery id", async function () {
         await rewards.join();
         await waitAndMineBlock(15);
         await expect(lottery.buyTickets(2, 1)).to.be.revertedWith("Lottery is not open");
