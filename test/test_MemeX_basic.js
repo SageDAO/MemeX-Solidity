@@ -80,5 +80,10 @@ describe(' TokenMemeXNFT Basic Contract', () => {
             expect(roaytlyInfo[1]).to.equal(2);
         });
 
+        it("Should not allow royalty bigger than limit", async function () {
+            await deployedNFT.setArtist(addr1.address);
+            await expect(deployedNFT.setRoyaltyPercentage(5000)) // 50.00 %
+                .to.be.revertedWith("MemeXNFT: Percentage exceeds limit");
+        });
     })
 })

@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "../Access/MemeXAccessControls.sol";
 
 //TODO: Find out what proxy registry address is and implement it if required:ASK ET
-//TODO: Add Access Control:DONE
 //TODO: Add Lottery as admin?: Think
 //TODO: Add Max Supply for each token! IMP:DONE
 //TODO: Max Supply for Total Supply.
@@ -15,13 +14,14 @@ contract MemeXNFTBasic is ERC1155, MemeXAccessControls {
 
     string public name;
     address public artist;
-    uint8 public royaltyPercentage;
+    // percentage stored as basis points. e.g. 10% = 1000
+    uint16 public royaltyPercentage;
+    uint16 public constant maxRoyalty = 2000;
 
     mapping(uint256 => address) public creator;
     // Contract symbol
     string public symbol;
     address internal lotteryContract;
-    bool private initialized;
 
     mapping(uint256 => uint256) tokenSupply;
     mapping(uint256 => uint256) public tokenMaxSupply;
@@ -179,15 +179,6 @@ contract MemeXNFTBasic is ERC1155, MemeXAccessControls {
         _mintBatch(_to, _ids, _quantities, _data);
     }
 
-    ///SSS: Dont need this
-    // function _getNextTokenID() private view returns (uint256) {
-    //     return _currentTokenID.add(1);
-    // }
-
-    // function _incrementTokenTypeId() private  {
-    //     _currentTokenID++;
-    // }
-
     function getNFTOwner(uint256 _id) public view returns (address) {
         return nftInfos[_id].owner;
     }
@@ -203,14 +194,14 @@ contract MemeXNFTBasic is ERC1155, MemeXAccessControls {
         return creator[_id] != address(0);
     }
 
-    function setRoyaltyPercentage(uint8 _percentage) public {
+    function setRoyaltyPercentage(uint16 _percentage) public {
         require(
             hasAdminRole(msg.sender),
             "MemeXNFT: Only Admin can change royalties"
         );
         require(
-            _percentage <= 10000,
-            "MemeXNFT: Percentage should be less than 10000"
+            _percentage <= maxRoyalty,
+            "MemeXNFT: Percentage exceeds limit"
         );
         royaltyPercentage = _percentage;
     }
