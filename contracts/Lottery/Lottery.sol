@@ -27,9 +27,10 @@ contract Lottery is Ownable {
     //lotteryid => prizeIds
     mapping(uint256 => uint256) internal prizes;
 
-    //lotteryid => default prize id counter
+    //lotteryid => default prize id counter (increments when a new default prize is claimed)
     mapping(uint256 => uint256) internal nextDefaultPrizeId;
 
+    //lotteryid => winners address => prize id
     mapping(uint256 => mapping(address => uint256)) internal prizeWinners;
 
     //lotteryid => address => prize id claimed
@@ -47,7 +48,7 @@ contract Lottery is Ownable {
     //lotteryId => id of the next prize do be assigned
     mapping(uint256 => uint16) internal nextPrize;
 
-    //this maps the entries a user received when buying a ticket or boost
+    // if a user buys 10 tickets his address will occupy 10 positions in this array
     //lotteryId => address array
     mapping(uint256 => address[]) participantEntries;
 
@@ -59,14 +60,6 @@ contract Lottery is Ownable {
         Completed // The lottery has been completed and the numbers drawn
     }
 
-    struct ParticipantInfo {
-        address participantAddress;
-        bool isBooster;
-        uint256 prizeId;
-        bool prizeClaimed;
-        uint32 entries;
-    }
-
     // Information about lotteries
     struct LotteryInfo {
         uint256 lotteryID; // ID for lotto
@@ -74,12 +67,12 @@ contract Lottery is Ownable {
         uint256 ticketCostPinas; // Cost per ticket in points/tokens
         uint256 ticketCostCoins; // Cost per ticket in FTM
         uint256 boostCost; // cost to boost the odds
-        uint256 startingTime; // Timestamp to start the lottery
-        uint256 closingTime; // Timestamp for end of entries
+        uint256 startingTime; // Timestamp where users can start buying tickets
+        uint256 closingTime; // Timestamp where ticket sales end
         IMemeXNFT nftContract; // reference to the NFT Contract
         Counters.Counter participantsCount; // number of participants
         uint32 maxParticipants; // max number of participants
-        bool hasDefaultPrize; // if true, every participant will be allowed to mint a prize if they don't win anything
+        bool hasDefaultPrize; // if true, every participant will be allowed to mint a prize
     }
 
     event ResponseReceived(bytes32 _requestId);
@@ -314,10 +307,6 @@ contract Lottery is Ownable {
         bytes32 _requestId,
         uint256 _randomNumber
     ) external onlyRandomGenerator {
-        require(
-            _lotteryId <= lotteryCounter.current(),
-            "Lottery id does not exist"
-        );
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(lottery.status == Status.Closed, "Lottery must be closed");
         emit ResponseReceived(_requestId);

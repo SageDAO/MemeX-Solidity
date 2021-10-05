@@ -8,9 +8,7 @@ import "../../interfaces/ILottery.sol";
 contract RandomNumberConsumer is Ownable, VRFConsumerBase {
     bytes32 internal keyHash;
     uint256 internal fee;
-    uint256 public randomResult;
-    address internal lotteryAddr;
-    address internal requester;
+    address public lotteryAddr;
     uint256 public currentLotteryId;
 
     event lotteryAddressChanged(address oldAddr, address newAddr);
@@ -54,7 +52,6 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
             LINK.balanceOf(address(this)) >= fee,
             "Not enough LINK - fill contract"
         );
-        requester = msg.sender;
         currentLotteryId = lotteryId;
         return requestRandomness(keyHash, fee);
     }
@@ -66,12 +63,11 @@ contract RandomNumberConsumer is Ownable, VRFConsumerBase {
         internal
         override
     {
-        ILottery(requester).receiveRandomNumber(
+        ILottery(lotteryAddr).receiveRandomNumber(
             currentLotteryId,
             requestId,
             randomness
         );
-        randomResult = randomness;
     }
 
     /**
