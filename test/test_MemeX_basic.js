@@ -1,89 +1,58 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe(' TokenMemeXNFT Basic Contract', () => {
-    let Factory, factory, owner, addr1, addr2, addr3, NFT, nft, deployedNFT;
-
-
+describe('MemeXNFT Basic Contract', () => {
     beforeEach(async () => {
-        Factory = await ethers.getContractFactory('MemeXFactory');
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
-        factory = await Factory.deploy(owner.address);
         NFT = await ethers.getContractFactory("MemeXNFTBasic");
-
-
+        _name = "MemeXNFT"
+        _symbol = "MXN"
+        _admin = owner.address
+        _lotteryAddress = addr1.address
+        nft = await NFT.deploy("Memex", "MEMEX", "ipfs://", owner.address, 200);
+        nft.setLotteryContract(_lotteryAddress)
     })
 
 
-    describe(' NFT Contract Deploy', () => {
-        beforeEach(async () => {
-            _name = "MemeXNFT"
-            _symbol = "MXN"
-            _admin = owner.address
-            _lotteryAddress = addr1.address
-            tx = await factory.deployMemeXNFT(_name, _symbol)
-            const res = await tx.wait()
-            nftAddress = res.events[1].args[1]
-            deployedNFT = await NFT.attach(nftAddress)
-            const name = await deployedNFT.name()
-            deployedNFT.setLotteryContract(_lotteryAddress)
-            assert(name === "MemeXNFT")
-        })
+    it("Should mint with minter role", async function () {
+        await nft.connect(owner).addMinterRole(addr2.address)
+        _initialOwner = addr2
+        _id = 2
+        await nft.connect(addr1).safeMint(
+            _initialOwner.address,
+            _id,
+        )
 
-
-        it("Should mint with minter role", async function () {
-            await deployedNFT.connect(owner).addMinterRole(addr2.address)
-            _initialOwner = addr2
-            _id = 2
-            _initialSupply = 1
-            _maxSupply = 1
-            _data = []
-            _lotteryId = 1
-            await deployedNFT.connect(addr1).create(
-                _initialOwner.address,
-                _id,
-                _initialSupply,
-                _maxSupply,
-                _data,
-                _lotteryId
-            )
-
-            expect(await deployedNFT.exists(_id))
-        })
-
-        it("Should not mint without minter role", async function () {
-            _initialOwner = addr2
-            _id = 2
-            _initialSupply = 1
-            _maxSupply = 1
-            _uri = ""
-            _data = []
-            _lotteryId = 1
-
-            await expect(deployedNFT.connect(addr3).create(
-                _initialOwner.address,
-                _id,
-                _initialSupply,
-                _maxSupply,
-                _data,
-                _lotteryId
-            )).to.be.revertedWith("ERC1155.create only Lottery or Minter can create")
-
-            expect(await deployedNFT.exists(_id))
-        })
-
-        it("Should set and calculate royalties", async function () {
-            await deployedNFT.setArtist(addr1.address);
-            await deployedNFT.setRoyaltyPercentage(200); // 2.00 %
-            roaytlyInfo = await deployedNFT.royaltyInfo(1, 100);
-            expect(roaytlyInfo[0]).to.equal(addr1.address);
-            expect(roaytlyInfo[1]).to.equal(2);
-        });
-
-        it("Should not allow royalty bigger than limit", async function () {
-            await deployedNFT.setArtist(addr1.address);
-            await expect(deployedNFT.setRoyaltyPercentage(5000)) // 50.00 %
-                .to.be.revertedWith("MemeXNFT: Percentage exceeds limit");
-        });
+        expect(await nft.ownerOf(_id)).to.equal(_initialOwner.address);
     })
+
+    it("Should not mint without minter role", async function () {
+        _initialOwner = addr2
+        _id = 2
+        _initialSupply = 1
+        _maxSupply = 1
+        _uri = ""
+        _data = []
+        _lotteryId = 1
+
+        await expect(nft.connect(addr3).safeMint(
+            _initialOwner.address,
+            _id,
+        )
+        ).to.be.revertedWith("MemeXNFT: Only Lottery or Minter role can mint")
+    })
+
+    it("Should set and calculate royalties", async function () {
+        await nft.setRoyaltyAddress(addr1.address);
+        await nft.setRoyaltyPercentage(200); // 2.00 %
+        roaytlyInfo = await nft.royaltyInfo(1, 100);
+        expect(roaytlyInfo[0]).to.equal(addr1.address);
+        expect(roaytlyInfo[1]).to.equal(2);
+    });
+
+    it("Should not allow royalty bigger than limit", async function () {
+        await nft.setRoyaltyAddress(addr1.address);
+        await expect(nft.setRoyaltyPercentage(5000)) // 50.00 %
+            .to.be.revertedWith("MemeXNFT: Percentage exceeds limit");
+    });
 })

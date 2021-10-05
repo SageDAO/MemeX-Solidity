@@ -1,28 +1,18 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-
 contract MemeXAdminAccess is AccessControl {
-
     /// @dev Whether access is initialised.
     bool private initAccess;
 
     /// @notice Events for adding and removing various roles.
-    event AdminRoleGranted(
-        address indexed beneficiary,
-        address indexed caller
-    );
+    event AdminRoleGranted(address indexed beneficiary, address indexed caller);
 
-    event AdminRoleGranted2(
-        address indexed beneficiary
-    );
+    event AdminRoleGranted2(address indexed beneficiary);
 
-    event AdminRoleRemoved(
-        address indexed beneficiary,
-        address indexed caller
-    );
-
+    event AdminRoleRemoved(address indexed beneficiary, address indexed caller);
 
     /// @notice The deployer is automatically given the admin role which will allow them to then grant roles to other addresses.
     function initAccessControls(address _admin) public {
@@ -50,7 +40,7 @@ contract MemeXAdminAccess is AccessControl {
      * @param _address EOA or contract being checked.
      * @return bool True if the account has the role or false if it does not.
      */
-    function hasAdminRole(address _address) public  view returns (bool) {
+    function hasAdminRole(address _address) public view returns (bool) {
         return hasRole(DEFAULT_ADMIN_ROLE, _address);
     }
 
@@ -78,7 +68,7 @@ contract MemeXAdminAccess is AccessControl {
         emit AdminRoleRemoved(_address, _msgSender());
     }
 
-    function  msgSender() public view returns (address){
+    function msgSender() public view returns (address) {
         return _msgSender();
     }
 }

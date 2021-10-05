@@ -543,8 +543,11 @@ contract Lottery is Ownable {
         require(lottery.status == Status.Completed, "Lottery not completed");
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
         uint256 prizeId = prizeWinners[_lotteryId][_address];
-        address owner = nftContract.getNFTOwner(prizeId);
-        return (prizeId != 0, prizeId, owner != address(0));
+        try nftContract.ownerOf(prizeId) {
+            return (prizeId != 0, prizeId, true);
+        } catch {
+            return (prizeId != 0, prizeId, false);
+        }
     }
 
     /**
@@ -568,7 +571,7 @@ contract Lottery is Ownable {
             "Participant already claimed prize"
         );
         claimedPrizes[_lotteryId][msg.sender] = prizeId;
-        nftContract.create(msg.sender, prizeId, 1, 1, "", _lotteryId);
+        nftContract.safeMint(msg.sender, prizeId);
         emit PrizeClaimed(_lotteryId, msg.sender, prizeId);
     }
 
