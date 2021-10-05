@@ -20,12 +20,16 @@ npm install --save-dev hardhat
 
 When interacting with contracts on testnets you'll need an Alchemy API key: (Alchemy is preferred over Infura as they have archive nodes on the free tier).
 
-We store the Alchemy API key and the deployer account private key on the `secrets.json` file:
+We store the Alchemy API key, the deployer account private key and other secrests on the `secrets.json` file:
 
 {
     "alchemy_key": "<api_key>",
     "deployer_pk": "<pk>",
-    "etherscan_key": "<etherscan_api_key>"
+    "etherscan_key": "<etherscan_api_key (only used while testing on the rinkeby network)>",
+    "ankr_key": "<ankr_key  (used as an alternative to alchemy to interact with the Fantom network)>",
+    "account1": "<pk>",
+    "account2": "<pk>",
+    "coinmarketcap_key": "<coinmarketcap key> (used to fetch prices for gas estimation costs)"
 }
 
 ## Deploy contracts
