@@ -4,10 +4,10 @@
 
 MemeX is currently based on five contracts:
 
-* MemeX Token: ERC-20 compatible Token;
-* MemeX NFT: ERC-1155 compatible Non Fungible Tokens;
-* Lottery: Manages all the lottery logic. Defines random winners for our prizes and manages boost payments (subscription to increase the user odds). Next iteration would integrate with Superfluid stream payments;
-* Stake: manages the MemeX token staking process. Awards the users with PINAs, which on this iteration are points needed to enter the lottery. A future iteration will evolve PINA into an ERC-20 token;
+* MemeX Token: ERC-20 compatible Token (only used during tests to have control over the supply);
+* MemeX NFT: ERC-721 compatible Non Fungible Tokens;
+* Lottery: Manages all the lottery logic. Allows users to buy tickets, defines random winners for our prizes and lets users claim their prizes.
+* Rewards: manages the MemeX rewards process. Awards users holding MEME or providing liquidity with PINAs, which on this iteration are points needed to enter the lottery. A future iteration will evolve PINA into an ERC-20 token. As we're not requesting users to stake their funds, there is an external job to monitor users balances and update the rewards contract accordingly;
 * RandomNumberGenerator (RNG): adopts the trusted Chainlink VRF (Verifiable Random Function) oracle as a verifiable source of randomness to draw our lottery numbers.
 
 ## Setup instructions
@@ -20,12 +20,16 @@ npm install --save-dev hardhat
 
 When interacting with contracts on testnets you'll need an Alchemy API key: (Alchemy is preferred over Infura as they have archive nodes on the free tier).
 
-We store the Alchemy API key and the deployer account private key on the `secrets.json` file:
+We store the Alchemy API key, the deployer account private key and other secrets on the `secrets.json` file:
 
 {
     "alchemy_key": "<api_key>",
     "deployer_pk": "<pk>",
-    "etherscan_key": "<etherscan_api_key>"
+    "etherscan_key": "<etherscan_api_key (only used while testing on the rinkeby network)>",
+    "ankr_key": "<ankr_key  (used as an alternative to alchemy to interact with the Fantom network)>",
+    "account1": "<pk>",
+    "account2": "<pk>",
+    "coinmarketcap_key": "<coinmarketcap key> (used to fetch prices for gas estimation costs)"
 }
 
 ## Deploy contracts

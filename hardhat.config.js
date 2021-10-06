@@ -4,9 +4,7 @@ require("@nomiclabs/hardhat-truffle4");
 require("hardhat-gas-reporter");
 require("@nomiclabs/hardhat-solhint");
 
-const { alchemy_key, deployer_pk, etherscan_key, ftm_key, ankr_key, account1, account2, coinmarketcap_key } = require('./secrets.json');
-
-const fs = require("fs");
+const { alchemy_key, deployer_pk, etherscan_key, ankr_key, account1, account2, coinmarketcap_key } = require('./secrets.json');
 
 task("accounts", "Prints the list of accounts", async (args, hre) => {
   const accounts = await hre.ethers.getSigners();
@@ -28,6 +26,11 @@ module.exports = {
       url: `https://apis.ankr.com/${ankr_key}/fantom/full/test`,
       accounts: [`${deployer_pk}`, `${account1}`, `${account2}`],
       chainId: 0xfa2
+    },
+    fantom: {
+      url: `https://apis.ankr.com/${ankr_key}/fantom/full/main`,
+      accounts: [`${deployer_pk}`],
+      chainId: 0xfa
     },
     hardhat: {
       gas: 12000000,

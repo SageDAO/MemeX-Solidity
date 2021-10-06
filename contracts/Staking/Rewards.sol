@@ -164,7 +164,6 @@ contract Rewards is Ownable, Pausable {
         public
         onlyLottery
         updateReward(account)
-        returns (uint256)
     {
         require(amount > 0, "cannot use 0 points");
         UserInfo storage user = userInfo[account];
@@ -172,6 +171,5 @@ contract Rewards is Ownable, Pausable {
         user.pointsAvailableSnapshot = user.pointsAvailableSnapshot - amount;
 
         emit PointsUsed(account, amount);
-        return amount;
     }
 }
