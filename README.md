@@ -20,7 +20,7 @@ npm install --save-dev hardhat
 
 When interacting with contracts on testnets you'll need an Alchemy API key: (Alchemy is preferred over Infura as they have archive nodes on the free tier).
 
-We store the Alchemy API key, the deployer account private key and other secrests on the `secrets.json` file:
+We store the Alchemy API key, the deployer account private key and other secrets on the `secrets.json` file:
 
 {
     "alchemy_key": "<api_key>",
