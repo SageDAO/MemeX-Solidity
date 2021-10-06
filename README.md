@@ -6,8 +6,8 @@ MemeX is currently based on five contracts:
 
 * MemeX Token: ERC-20 compatible Token (only used during tests to have control over the supply);
 * MemeX NFT: ERC-721 compatible Non Fungible Tokens;
-* Lottery: Manages all the lottery logic. Defines random winners for our prizes and manages boost payments (subscription to increase the user odds). Next iteration would integrate with Superfluid stream payments;
-* Rewards: manages the MemeX rewards process. Awards users holding MEME or providing liquidity with PINAs, which on this iteration are points needed to enter the lottery. A future iteration will evolve PINA into an ERC-20 token;
+* Lottery: Manages all the lottery logic. Allows users to buy tickets, defines random winners for our prizes and lets users claim their prizes.
+* Rewards: manages the MemeX rewards process. Awards users holding MEME or providing liquidity with PINAs, which on this iteration are points needed to enter the lottery. A future iteration will evolve PINA into an ERC-20 token. As we're not requesting users to stake their funds, there is an external job to monitor users balances and update the rewards contract accordingly;
 * RandomNumberGenerator (RNG): adopts the trusted Chainlink VRF (Verifiable Random Function) oracle as a verifiable source of randomness to draw our lottery numbers.
 
 ## Setup instructions
