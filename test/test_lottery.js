@@ -17,8 +17,11 @@ describe("Lottery Contract", function () {
         Lottery = await ethers.getContractFactory("Lottery");
         lottery = await Lottery.deploy(rewards.address);
         await rewards.setLotteryAddress(lottery.address);
-        Nft = await ethers.getContractFactory("MemeXNFTBasic");
-        nft = await Nft.deploy("Memex", "MEMEX", "ipfs://", owner.address, 200);
+        Nft = await ethers.getContractFactory("MemeXNFT");
+        nft = await Nft.deploy("Memex", "MEMEX", owner.address);
+        nft.addMinterRole(owner.address);
+        // nft.create(1, 1, 1, owner.address);
+        // nft.create(2, 5000, 1, owner.address);
         await nft.setLotteryContract(lottery.address);
         MockRNG = await ethers.getContractFactory("MockRNG");
         mockRng = await MockRNG.deploy(lottery.address);
@@ -28,13 +31,13 @@ describe("Lottery Contract", function () {
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
         await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 3600 * 24,
-            nft.address, 2,
-            ethers.utils.parseEther("1"), 0, false);
-
+            nft.address,
+            ethers.utils.parseEther("1"), 0, 0);
+        lottery.setPrizes(1, [1, 2], [1, 1], owner.address);
     });
 
     it("Should create a lottery game", async function () {
-        expect(await lottery.getCurrentLotteryId()).to.equal(1);
+        expect(await lottery.lotteryCounter()).to.equal(1);
     });
 
     it("Should allow user to buy 1 lottery ticket", async function () {
@@ -67,10 +70,10 @@ describe("Lottery Contract", function () {
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
         await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 10,
-            nft.address, [1],
+            nft.address,
             ethers.utils.parseEther("1"),
             1, // just one participant allowed
-            false
+            0
         );
         await lottery.buyTickets(2, 1);
         // should fail on the second entry
@@ -154,20 +157,15 @@ describe("Lottery Contract", function () {
         await lottery.redeemNFT(1);
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
-        // deploy a second NFT contract
-        Nft2 = await ethers.getContractFactory("MemeXNFTBasic");
-        nft2 = await Nft2.deploy("Memex2", "MEMEX2", "ipfs://", owner.address, 200);
-        await nft2.setLotteryContract(lottery.address);
         // create a second lottery
         await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 3600 * 24,
-            nft2.address, 1,
-            ethers.utils.parseEther("1"), 0, false);
+            nft.address,
+            ethers.utils.parseEther("1"), 0, 0);
         await lottery.buyTickets(2, 1);
         await lottery.requestRandomNumber(2);
         expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(lottery, "ResponseReceived");
         await lottery.definePrizeWinners(2, 1);
         await lottery.redeemNFT(2);
-
     });
 
     describe("Big Lottery", () => {
@@ -177,8 +175,8 @@ describe("Lottery Contract", function () {
             const block = await ethers.provider.getBlock(blockNum);
             // creating lottery with id = 2
             await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 3600 * 24,
-                nft.address, 700,
-                ethers.utils.parseEther("1"), 0, true);
+                nft.address,
+                ethers.utils.parseEther("1"), 0, 2);
             for (let i = 0; i < 400; i++) {
                 await lottery.connect(accounts[i]).buyTickets(2, 1);
             }
@@ -231,9 +229,9 @@ describe("Lottery Contract", function () {
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
         await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 3600 * 24,
-            nft.address, 2,
+            nft.address,
             0, // boostCost
-            0, false);
+            0, 0);
         await lottery.buyTickets(2, 1);
         await expect(lottery.boostParticipant(2, owner.address,
             { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
