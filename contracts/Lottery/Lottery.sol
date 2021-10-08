@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
@@ -11,7 +12,7 @@ import "../../interfaces/IMemeXNFT.sol";
 contract Lottery is Ownable {
     using Counters for Counters.Counter;
 
-    uint256 public lotteryCounter;
+    uint8 public constant maxEntries = 5;
 
     bytes32 internal requestId_;
 
@@ -20,6 +21,10 @@ contract Lottery is Ownable {
     IRewards public rewardsContract;
 
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
+
+    uint256[] internal lotteries;
+
+    mapping(uint256 => bytes32) internal merkleRoots;
 
     // participant address => lottery ids he entered
     mapping(address => uint256[]) public participantHistory;
@@ -49,9 +54,6 @@ contract Lottery is Ownable {
     //loteryId => randomNumber received from RNG
     mapping(uint256 => uint256) public randomSeeds;
 
-    //lotteryId => id of the next prize do be assigned
-    mapping(uint256 => uint16) internal nextPrize;
-
     // if a user buys 10 tickets his address will occupy 10 positions in this array
     //lotteryId => address array
     mapping(uint256 => address[]) participantEntries;
@@ -71,7 +73,7 @@ contract Lottery is Ownable {
         uint256 ticketCostPinas; // Cost per ticket in points/tokens
         uint256 ticketCostCoins; // Cost per ticket in FTM
         uint256 boostCost; // cost to boost the odds
-        uint256 startingTime; // Timestamp where users can start buying tickets
+        uint256 startTime; // Timestamp where users can start buying tickets
         uint256 closingTime; // Timestamp where ticket sales end
         IMemeXNFT nftContract; // reference to the NFT Contract
         uint32 participantsCount; // number of participants
@@ -137,6 +139,19 @@ contract Lottery is Ownable {
         rewardsContract = IRewards(_rewardsContract);
     }
 
+    function changeCloseTime(uint256 _lotteryId, uint256 _time)
+        public
+        onlyOwner
+    {
+        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        require(lottery.startTime > 0, "Lottery id not found");
+        require(
+            _time > lottery.startTime,
+            "Close time must be after start time"
+        );
+        lotteryHistory[_lotteryId].closingTime = _time;
+    }
+
     function setRandomGenerator(address _IRandomNumberGenerator)
         external
         onlyOwner
@@ -172,6 +187,14 @@ contract Lottery is Ownable {
      */
     function getTotalEntries(uint256 _lotteryId) public view returns (uint256) {
         return participantEntries[_lotteryId].length;
+    }
+
+    function getLotteryCount() public view returns (uint256) {
+        return lotteries.length;
+    }
+
+    function getLotteryIds() public view returns (uint256[] memory) {
+        return lotteries;
     }
 
     /**
@@ -211,27 +234,24 @@ contract Lottery is Ownable {
      * @param _prizeIds array with prize ids
      * @param _prizeAmounts array with prize supply
      */
-    function setPrizes(
+    function addPrizes(
         uint256 _lotteryId,
         uint256[] calldata _prizeIds,
-        uint16[] calldata _prizeAmounts,
-        address artist
+        uint16[] calldata _prizeAmounts
     ) public onlyOwner {
-        require(_lotteryId <= lotteryCounter, "Lottery id does not exist");
+        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
+        require(lottery.startTime > 0, "Lottery does not exist");
         require(_prizeIds.length > 0, "Number of prizes can't be 0");
         require(
             _prizeIds.length == _prizeAmounts.length,
             "Number of prize ids and amounts must be equal"
         );
-        IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
-        // clean up old prizes
-        delete prizes[_lotteryId];
+        IMemeXNFT nftContract = lottery.nftContract;
         for (uint8 i = 0; i < _prizeIds.length; i++) {
-            nftContract.create(
+            nftContract.createTokenType(
                 _prizeIds[i],
                 _prizeAmounts[i],
-                _lotteryId,
-                artist
+                _lotteryId
             );
             prizes[_lotteryId].push(PrizeInfo(_prizeIds[i], _prizeAmounts[i]));
         }
@@ -243,8 +263,7 @@ contract Lottery is Ownable {
      * @notice Creates a new lottery.
      * @param _costPerTicketPinas cost in wei per ticket in points/tokens (token only when using ERC20 on the rewards contract)
      * @param _costPerTicketCoins cost in wei per ticket in FTM
-     * @param _startingTime timestamp to begin lottery entries
-     * @param _closingTime timestamp for end of entries
+     * @param _startTime timestamp to begin lottery entries
      * @param _nftContract reference to the NFT contract
      * @param _boostCost cost in wei (FTM) for users to boost their odds
      * @param _maxParticipants max number of participants. Use 0 for unlimited
@@ -252,41 +271,42 @@ contract Lottery is Ownable {
     function createNewLottery(
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
-        uint256 _startingTime,
-        uint256 _closingTime,
+        uint256 _startTime,
         IMemeXNFT _nftContract,
         uint256 _boostCost,
         uint16 _maxParticipants,
-        uint256 _defaultPrizeId
+        uint256 _defaultPrizeId,
+        address _artistAddress,
+        string calldata _dropMetadataURI
     ) public onlyOwner returns (uint256 lotteryId) {
-        require(
-            _startingTime != 0 && _startingTime < _closingTime,
-            "Timestamps for lottery invalid"
-        );
         // Incrementing lottery ID
-        lotteryCounter++;
         Status lotteryStatus;
-        if (_startingTime <= block.timestamp) {
+        if (_startTime <= block.timestamp) {
             lotteryStatus = Status.Open;
         } else {
             lotteryStatus = Status.Planned;
         }
         // Saving data in struct
+        lotteryId = _nftContract.createCollection(
+            _artistAddress,
+            _dropMetadataURI
+        );
         LotteryInfo memory newLottery = LotteryInfo(
-            lotteryCounter,
+            lotteryId,
             lotteryStatus,
             _costPerTicketPinas,
             _costPerTicketCoins,
             _boostCost,
-            _startingTime,
-            _closingTime,
+            _startTime,
+            _startTime + 259200, // 3 days
             _nftContract,
             0,
             _maxParticipants,
             _defaultPrizeId
         );
-        lotteryHistory[lotteryCounter] = newLottery;
-        return lotteryCounter;
+        lotteryHistory[lotteryId] = newLottery;
+        lotteries.push(lotteryId);
+        return lotteryId;
     }
 
     /**
@@ -343,25 +363,24 @@ contract Lottery is Ownable {
         return lotteryHistory[_lotteryId].participantsCount;
     }
 
-    function definePrizeWinners(uint256 _lotteryId, uint8 amount)
-        public
-        onlyOwner
-    {
+    function definePrizeWinners(uint256 _lotteryId) public onlyOwner {
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
         uint256 randomNumber = randomSeeds[_lotteryId];
 
         uint256 totalParticipants_ = lottery.participantsCount;
         uint256 totalPrizes = getTotalPrizes(_lotteryId);
+        PrizeInfo[] memory prizeInfo = prizes[_lotteryId];
         // if there are less participants than prizes, reduce the number of prizes
         if (totalParticipants_ < totalPrizes) {
             totalPrizes = totalParticipants_;
         }
         // Loops through each prize assigning to a position on the entries array
-        for (
-            uint16 i = nextPrize[_lotteryId];
-            i <= totalPrizes && i < nextPrize[_lotteryId] + amount;
-            i++
-        ) {
+        uint8 index = 0;
+        for (uint16 i = 0; i < totalPrizes; i++) {
+            if (i == prizeInfo[index].maxSupply) {
+                index++;
+                i = 0;
+            }
             uint256 totalEntries = participantEntries[_lotteryId].length;
             // Encodes the random number with its position in loop
             bytes32 hashOfRandom = keccak256(abi.encodePacked(randomNumber, i));
@@ -375,8 +394,14 @@ contract Lottery is Ownable {
                 address winnerAddress = participantEntries[_lotteryId][
                     winningNumber
                 ];
-                if (participants[_lotteryId][winnerAddress].prizeId == 0) {
-                    participants[_lotteryId][winnerAddress].prizeId = i;
+                if (
+                    // checks if this random position is already a winner
+                    participants[_lotteryId][winnerAddress].prizeId ==
+                    lottery.defaultPrizeId
+                ) {
+                    participants[_lotteryId][winnerAddress].prizeId = prizeInfo[
+                        index
+                    ].prizeId;
                     winnerFound = true;
                     // move the last position to remove the entry from the array
                     participantEntries[_lotteryId][
@@ -390,7 +415,6 @@ contract Lottery is Ownable {
                 }
             } while (winnerFound == false);
         }
-        nextPrize[_lotteryId] = nextPrize[_lotteryId] + amount;
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
@@ -426,7 +450,7 @@ contract Lottery is Ownable {
         }
         if (
             lottery.status == Status.Planned &&
-            lottery.startingTime < block.timestamp
+            lottery.startTime <= block.timestamp
         ) {
             lottery.status = Status.Open;
             emit LotteryStatusChanged(_lotteryId, lottery.status);
@@ -568,7 +592,7 @@ contract Lottery is Ownable {
      * @notice Called by a winner participant to claim his prize.
      * @param _lotteryId ID of the lottery to claim prize
      */
-    function redeemNFT(uint256 _lotteryId) public {
+    function claimPrize(uint256 _lotteryId) public {
         require(
             lotteryHistory[_lotteryId].status == Status.Completed,
             "Status Not Completed"
@@ -585,12 +609,53 @@ contract Lottery is Ownable {
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
         participant.prizeClaimed = true;
-        nftContract.mint(msg.sender, participant.prizeId, "");
+        nftContract.mint(msg.sender, participant.prizeId, 1, "");
         emit PrizeClaimed(_lotteryId, msg.sender, participant.prizeId);
     }
 
+    function claimWithProof(
+        uint256 _lotteryId,
+        address _winner,
+        uint256 _prizeId,
+        bytes32[] calldata _proof
+    ) public {
+        require(
+            _verify(_leaf(_lotteryId, _winner, _prizeId), _lotteryId, _proof),
+            "Invalid merkle proof"
+        );
+        ParticipantInfo storage participant = participants[_lotteryId][
+            msg.sender
+        ];
+        require(
+            participant.prizeClaimed == false,
+            "Participant already claimed prize"
+        );
+
+        IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
+        
+        participant.prizeClaimed = true;
+        nftContract.mint(msg.sender, _prizeId, 1, "");
+        emit PrizeClaimed(_lotteryId, msg.sender, _prizeId);
+    }
+
+    function _leaf(
+        uint256 _lotteryId,
+        address _winner,
+        uint256 _prizeId
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_lotteryId, _winner, _prizeId));
+    }
+
+    function _verify(
+        bytes32 _leafHash,
+        uint256 _lotteryId,
+        bytes32[] memory proof
+    ) internal view returns (bool) {
+        return MerkleProof.verify(proof, merkleRoots[_lotteryId], _leafHash);
+    }
+
     /**
-     * @notice Function called to withdraw funds (FTM) from the contract.
+     * @notice Function called to withdraw funds (native tokens) from the contract.
      * @param _to Recipient of the funds
      * @param _amount Amount to withdraw
      */

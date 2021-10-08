@@ -30,14 +30,18 @@ describe("Lottery Contract", function () {
         // create a new lottery
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
-        await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 3600 * 24,
+        await lottery.createNewLottery(15, 0, block.timestamp,
             nft.address,
-            ethers.utils.parseEther("1"), 0, 0);
-        lottery.setPrizes(1, [1, 2], [1, 1], owner.address);
+            ethers.utils.parseEther("1"), 0, 0, owner.address, "ipfs://path/");
+        lottery.addPrizes(1, [1, 2], [1, 1000]);
     });
 
     it("Should create a lottery game", async function () {
-        expect(await lottery.lotteryCounter()).to.equal(1);
+        expect(await lottery.getLotteryCount()).to.equal(1);
+    });
+
+    it("Should check total amount of prizes", async function () {
+        expect(await lottery.getTotalPrizes(1)).to.equal(1001);
     });
 
     it("Should allow user to buy 1 lottery ticket", async function () {
@@ -69,11 +73,11 @@ describe("Lottery Contract", function () {
     it("Should not let users join when Lottery is full", async function () {
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
-        await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 10,
+        await lottery.createNewLottery(0, 0, block.timestamp,
             nft.address,
             ethers.utils.parseEther("1"),
             1, // just one participant allowed
-            0
+            0, owner.address, "ipfs://path/"
         );
         await lottery.buyTickets(2, 1);
         // should fail on the second entry
@@ -133,7 +137,7 @@ describe("Lottery Contract", function () {
         await lottery.buyTickets(1, 1);
         await lottery.requestRandomNumber(1);
         expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
-        await lottery.definePrizeWinners(1, 1);
+        await lottery.definePrizeWinners(1);
         result = await lottery.isAddressWinner(1, owner.address);
         expect(result[0]).to.equal(true);  // winner
         expect(result[1]).to.equal(1);     // prize id 1
@@ -153,18 +157,19 @@ describe("Lottery Contract", function () {
         await lottery.buyTickets(1, 1);
         await lottery.requestRandomNumber(1);
         expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
-        await lottery.definePrizeWinners(1, 1);
+        await lottery.definePrizeWinners(1);
         await lottery.redeemNFT(1);
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
         // create a second lottery
-        await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 3600 * 24,
+        await lottery.createNewLottery(0, 0, block.timestamp,
             nft.address,
-            ethers.utils.parseEther("1"), 0, 0);
+            ethers.utils.parseEther("1"), 0, 0, owner.address, "ipfs://path/");
+        lottery.addPrizes(2, [3, 4], [1, 1]);
         await lottery.buyTickets(2, 1);
         await lottery.requestRandomNumber(2);
         expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(lottery, "ResponseReceived");
-        await lottery.definePrizeWinners(2, 1);
+        await lottery.definePrizeWinners(2);
         await lottery.redeemNFT(2);
     });
 
@@ -174,9 +179,10 @@ describe("Lottery Contract", function () {
             const blockNum = await ethers.provider.getBlockNumber();
             const block = await ethers.provider.getBlock(blockNum);
             // creating lottery with id = 2
-            await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 3600 * 24,
+            await lottery.createNewLottery(0, 0, block.timestamp,
                 nft.address,
-                ethers.utils.parseEther("1"), 0, 2);
+                ethers.utils.parseEther("1"), 0, 2, owner.address, "ipfs://path/");
+            await lottery.addPrizes(2, [3], [100]);
             for (let i = 0; i < 400; i++) {
                 await lottery.connect(accounts[i]).buyTickets(2, 1);
             }
@@ -189,13 +195,8 @@ describe("Lottery Contract", function () {
             await lottery.requestRandomNumber(2);
             expect(await mockRng.fulfillRequest(2, 256)).to.have.emit(lottery, "LotteryStatusChanged");
             // distribute the prizes in batches
-            await lottery.definePrizeWinners(2, 100);
-            await lottery.definePrizeWinners(2, 100);
-            await lottery.definePrizeWinners(2, 100);
-            await lottery.definePrizeWinners(2, 100);
-            await lottery.definePrizeWinners(2, 100);
-            await lottery.definePrizeWinners(2, 100);
-            await lottery.definePrizeWinners(2, 100);
+            await lottery.definePrizeWinners(2);
+
             await lottery.redeemNFT(2);
         });
     });
@@ -228,10 +229,10 @@ describe("Lottery Contract", function () {
         await waitAndMineBlock(15);
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
-        await lottery.createNewLottery(15, 0, block.timestamp, block.timestamp + 3600 * 24,
+        await lottery.createNewLottery(15, 0, block.timestamp,
             nft.address,
             0, // boostCost
-            0, 0);
+            0, 0, owner.address, "ipfs://path/");
         await lottery.buyTickets(2, 1);
         await expect(lottery.boostParticipant(2, owner.address,
             { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
