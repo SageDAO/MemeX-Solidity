@@ -7,7 +7,6 @@ import "../Utils/StringUtils.sol";
 
 contract MemeXNFT is ERC1155, MemeXAccessControls {
     uint256 public collectionCount;
-    string internal baseMetadataURI;
 
     uint16 public defaultRoyaltyPercentage = 200;
 
@@ -88,6 +87,23 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         emit LotteryContractUpdated(oldAddr, lotteryContract);
     }
 
+    function setCollection(
+        uint256 _collectionId,
+        address _artistAddress,
+        uint16 _royalty,
+        string memory _dropMetadataURI
+    ) public {
+        require(
+            hasAdminRole(msg.sender) ||
+                msg.sender == collections[_collectionId].artistAddress,
+            "MemeXNFT: Only Admin can set collection info"
+        );
+        require(_artistAddress != address(0));
+        collections[_collectionId].artistAddress = _artistAddress;
+        collections[_collectionId].royalty = _royalty;
+        collections[_collectionId].dropMetadataURI = _dropMetadataURI;
+    }
+
     /**
      * @dev Creates a new token type
      * @param _maxSupply maximum amount of tokens that can be created
@@ -154,14 +170,6 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         _mint(_to, _id, _quantity, _data);
     }
 
-    function _setBaseMetadataURI(string memory _newBaseMetadataURI) public {
-        require(
-            hasAdminRole(msg.sender),
-            "MemeXNFT: Only Admin can change metadata"
-        );
-        baseMetadataURI = _newBaseMetadataURI;
-    }
-
     function setCollectionBaseMetadataURI(
         uint256 _collectionId,
         string memory _newBaseMetadataURI
@@ -183,9 +191,6 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         string memory baseURI = collections[tokenInfo[_id].collectionId]
             .dropMetadataURI;
 
-        if (bytes(baseURI).length == 0) {
-            baseURI = baseMetadataURI;
-        }
         return StringUtils.strConcat(baseURI, StringUtils.uint2str(_id));
     }
 
