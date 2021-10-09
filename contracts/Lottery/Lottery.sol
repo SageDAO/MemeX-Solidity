@@ -630,9 +630,10 @@ contract Lottery is Ownable {
             participant.prizeClaimed == false,
             "Participant already claimed prize"
         );
+        require(msg.sender == _winner, "Sender is not the winner address");
 
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
-        
+
         participant.prizeClaimed = true;
         nftContract.mint(msg.sender, _prizeId, 1, "");
         emit PrizeClaimed(_lotteryId, msg.sender, _prizeId);
