@@ -41,229 +41,225 @@ describe("Lottery Contract", function () {
     it("Should claim with merkle proof", async function () {
         var abiCoder = ethers.utils.defaultAbiCoder;
         var leafA = abiCoder.encode(["uint256", "address", "uint256"], [1, addr1.address, 1]);
-        console.log(leafA);
         var leafB = abiCoder.encode(["uint256", "address", "uint256"], [1, addr2.address, 2]);
         var leafC = abiCoder.encode(["uint256", "address", "uint256"], [1, addr3.address, 3]);
         var leafD = abiCoder.encode(["uint256", "address", "uint256"], [1, addr4.address, 4]);
-        const buf2hex = x => '0x' + x.toString('hex')
+        const buf2hex = x => '0x' + x.toString('hex');
         const leaves = [leafA, leafB, leafC, leafD].map(leaf => keccak256(leaf));
         const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
-        // get the trees merkle root to store in the contract 
+        // get the merkle root and store in the contract 
         const root = tree.getHexRoot().toString('hex');
-        console.log(root);
         await lottery.setMerkleRoot(1, root);
 
-        // const proof = tree.getHexProof(keccak256(leafA));
         const hexproof = tree.getProof(keccak256(leafA)).map(x => buf2hex(x.data))
-        const positions = tree.getProof(keccak256(leafA)).map(x => x.position === 'right' ? 1 : 0)
 
         // expect(tree.verify(proof, keccak256(Buffer.from(leafA)), root)).to.equal(true);
-        await lottery.claimWithProof(1, addr1.address, 1, hexproof, positions);
-        // expect(await nft.balanceOf(addr1.address, 1)).to.equal(1);
+        await lottery.connect(addr1).claimWithProof(1, addr1.address, 1, hexproof);
+        expect(await nft.balanceOf(addr1.address, 1)).to.equal(1);
     });
 
-    // it("Should create a lottery game", async function () {
-    //     expect(await lottery.getLotteryCount()).to.equal(1);
-    // });
+    it("Should create a lottery game", async function () {
+        expect(await lottery.getLotteryCount()).to.equal(1);
+    });
 
-    // it("Should check total amount of prizes", async function () {
-    //     expect(await lottery.getTotalPrizes(1)).to.equal(1001);
-    // });
+    it("Should check total amount of prizes", async function () {
+        expect(await lottery.getTotalPrizes(1)).to.equal(1001);
+    });
 
-    // it("Should allow user to buy 1 lottery ticket", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(15);
-    //     await lottery.buyTickets(1, 1);
-    //     expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
-    //     expect(await lottery.getTotalEntries(1)).to.equal(1);
-    // });
+    it("Should allow user to buy 1 lottery ticket", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await lottery.buyTickets(1, 1);
+        expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
+        expect(await lottery.getTotalEntries(1)).to.equal(1);
+    });
 
-    // it("Should allow user to buy more tickets on a separate transaction", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(30);
-    //     await lottery.buyTickets(1, 1);
-    //     await lottery.buyTickets(1, 1);
-    //     expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
-    //     expect(await lottery.getTotalEntries(1)).to.equal(2);
-    // });
-
-
-    // it("Should let user buy 10 lottery tickets", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(150);
-    //     await lottery.buyTickets(1, 10);
-    //     expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
-    //     expect(await lottery.getTotalEntries(1)).to.equal(10);
-    // });
-
-    // it("Should not let users join when Lottery is full", async function () {
-    //     const blockNum = await ethers.provider.getBlockNumber();
-    //     const block = await ethers.provider.getBlock(blockNum);
-    //     await lottery.createNewLottery(0, 0, block.timestamp,
-    //         nft.address,
-    //         ethers.utils.parseEther("1"),
-    //         1, // just one participant allowed
-    //         0, artist.address, "ipfs://path/"
-    //     );
-    //     await lottery.buyTickets(2, 1);
-    //     // should fail on the second entry
-    //     await expect(lottery.connect(addr1).buyTickets(2, 1)).to.be.revertedWith("Lottery is full");
-    // });
-
-    // it("Should allow user to boost", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(15);
-    //     await lottery.buyTickets(1, 1);
-    //     await lottery.boostParticipant(1, owner.address,
-    //         { value: ethers.utils.parseEther("1") });
-    //     expect(await lottery.getTotalEntries(1)).to.equal(2);
-    //     expect(await lottery.isBooster(1, owner.address)).to.equal(true);
-    // });
-
-    // it("Should not allow user to buy ticket when lottery is not open", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(10000000000); // long wait, enough to be after the end of the lottery
-    //     await ethers.provider.send("evm_mine", []);
-    //     await expect(lottery.buyTickets(1, 1)).to.be.revertedWith("Lottery is not open");
-    // });
+    it("Should allow user to buy more tickets on a separate transaction", async function () {
+        await rewards.join();
+        await waitAndMineBlock(30);
+        await lottery.buyTickets(1, 1);
+        await lottery.buyTickets(1, 1);
+        expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
+        expect(await lottery.getTotalEntries(1)).to.equal(2);
+    });
 
 
-    // it("Should not allow to boost without sending funds", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(15);
-    //     await lottery.buyTickets(1, 1);
-    //     await expect(lottery.boostParticipant(1, owner.address,
-    //         { value: ethers.utils.parseEther("0") })).to.be.reverted;
-    // });
+    it("Should let user buy 10 lottery tickets", async function () {
+        await rewards.join();
+        await waitAndMineBlock(150);
+        await lottery.buyTickets(1, 10);
+        expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
+        expect(await lottery.getTotalEntries(1)).to.equal(10);
+    });
 
-    // it("Should not allow to boost without buying ticket", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(15);
-    //     await expect(lottery.boostParticipant(1, owner.address,
-    //         { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Participant not found");
-    // });
+    it("Should not let users join when Lottery is full", async function () {
+        const blockNum = await ethers.provider.getBlockNumber();
+        const block = await ethers.provider.getBlock(blockNum);
+        await lottery.createNewLottery(0, 0, block.timestamp,
+            nft.address,
+            ethers.utils.parseEther("1"),
+            1, // just one participant allowed
+            0, artist.address, "ipfs://path/"
+        );
+        await lottery.buyTickets(2, 1);
+        // should fail on the second entry
+        await expect(lottery.connect(addr1).buyTickets(2, 1)).to.be.revertedWith("Lottery is full");
+    });
 
-    // it("Should not allow to buy tickets with the wrong lottery id", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(15);
-    //     await expect(lottery.buyTickets(2, 1)).to.be.revertedWith("Lottery is not open");
-    // });
+    it("Should allow user to boost", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await lottery.buyTickets(1, 1);
+        await lottery.boostParticipant(1, owner.address,
+            { value: ethers.utils.parseEther("1") });
+        expect(await lottery.getTotalEntries(1)).to.equal(2);
+        expect(await lottery.isBooster(1, owner.address)).to.equal(true);
+    });
 
-    // it("Should not allow to boost using wrong lottery id", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(15);
-    //     await lottery.buyTickets(1, 1);
-    //     await expect(lottery.boostParticipant(2, owner.address,
-    //         { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
-    // });
+    it("Should not allow user to buy ticket when lottery is not open", async function () {
+        await rewards.join();
+        await waitAndMineBlock(10000000000); // long wait, enough to be after the end of the lottery
+        await ethers.provider.send("evm_mine", []);
+        await expect(lottery.buyTickets(1, 1)).to.be.revertedWith("Lottery is not open");
+    });
 
-    // it("Should run the lottery with one participant and allow to mint the prize only once", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(15);
-    //     await lottery.buyTickets(1, 1);
-    //     await lottery.requestRandomNumber(1);
-    //     expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
-    //     await lottery.definePrizeWinners(1);
-    //     result = await lottery.isAddressWinner(1, owner.address);
-    //     expect(result[0]).to.equal(true);  // winner
-    //     expect(result[1]).to.equal(1);     // prize id 1
-    //     expect(result[2]).to.equal(false); // not claimed
-    //     await lottery.claimPrize(1);
-    //     result = await lottery.isAddressWinner(1, owner.address);
-    //     expect(result[0]).to.equal(true); // winner
-    //     expect(result[1]).to.equal(1);    // prize id 1
-    //     expect(result[2]).to.equal(true); // claimed
-    //     // should allow to mint only once
-    //     await expect(lottery.claimPrize(1)).to.be.revertedWith("Participant already claimed prize");
-    // });
 
-    // it("Should run more than one lottery", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(15);
-    //     await lottery.buyTickets(1, 1);
-    //     await lottery.requestRandomNumber(1);
-    //     expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
-    //     await lottery.definePrizeWinners(1);
-    //     await lottery.claimPrize(1);
-    //     const blockNum = await ethers.provider.getBlockNumber();
-    //     const block = await ethers.provider.getBlock(blockNum);
-    //     // create a second lottery
-    //     await lottery.createNewLottery(0, 0, block.timestamp,
-    //         nft.address,
-    //         ethers.utils.parseEther("1"), 0, 0, artist.address, "ipfs://path/");
-    //     lottery.addPrizes(2, [3, 4], [1, 1]);
-    //     await lottery.buyTickets(2, 1);
-    //     await lottery.requestRandomNumber(2);
-    //     expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(lottery, "ResponseReceived");
-    //     await lottery.definePrizeWinners(2);
-    //     await lottery.claimPrize(2);
-    // });
+    it("Should not allow to boost without sending funds", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await lottery.buyTickets(1, 1);
+        await expect(lottery.boostParticipant(1, owner.address,
+            { value: ethers.utils.parseEther("0") })).to.be.reverted;
+    });
 
-    // describe("Big Lottery", () => {
-    //     beforeEach(async () => {
-    //         accounts = await ethers.getSigners()
-    //         const blockNum = await ethers.provider.getBlockNumber();
-    //         const block = await ethers.provider.getBlock(blockNum);
-    //         // creating lottery with id = 2
-    //         await lottery.createNewLottery(0, 0, block.timestamp,
-    //             nft.address,
-    //             ethers.utils.parseEther("1"), 0, 2, artist.address, "ipfs://path/");
-    //         await lottery.addPrizes(2, [3], [100]);
-    //         for (let i = 0; i < 400; i++) {
-    //             await lottery.connect(accounts[i]).buyTickets(2, 1);
-    //         }
-    //     });
+    it("Should not allow to boost without buying ticket", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await expect(lottery.boostParticipant(1, owner.address,
+            { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Participant not found");
+    });
 
-    //     it("Should run lottery with large # of entries and default prize and allow to mint", async function () {
-    //         for (let i = 400; i < 700; i++) {
-    //             await lottery.connect(accounts[i]).buyTickets(2, 1);
-    //         }
-    //         await lottery.requestRandomNumber(2);
-    //         expect(await mockRng.fulfillRequest(2, 256)).to.have.emit(lottery, "LotteryStatusChanged");
-    //         // distribute the prizes in batches
-    //         await lottery.definePrizeWinners(2);
+    it("Should not allow to buy tickets with the wrong lottery id", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await expect(lottery.buyTickets(2, 1)).to.be.revertedWith("Lottery is not open");
+    });
 
-    //         await lottery.claimPrize(2);
-    //     });
-    // });
+    it("Should not allow to boost using wrong lottery id", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await lottery.buyTickets(1, 1);
+        await expect(lottery.boostParticipant(2, owner.address,
+            { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
+    });
 
-    // it("Should not allow a second RNG request after response received", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(15);
-    //     await lottery.buyTickets(1, 1);
-    //     await lottery.requestRandomNumber(1);
-    //     await mockRng.fulfillRequest(1, 1);
-    //     await expect(lottery.requestRandomNumber(1)).to.be.revertedWith("Lottery must be closed");
-    // });
+    it("Should run the lottery with one participant and allow to mint the prize only once", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await lottery.buyTickets(1, 1);
+        await lottery.requestRandomNumber(1);
+        expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
+        await lottery.definePrizeWinners(1);
+        result = await lottery.isAddressWinner(1, owner.address);
+        expect(result[0]).to.equal(true);  // winner
+        expect(result[1]).to.equal(1);     // prize id 1
+        expect(result[2]).to.equal(false); // not claimed
+        await lottery.claimPrize(1);
+        result = await lottery.isAddressWinner(1, owner.address);
+        expect(result[0]).to.equal(true); // winner
+        expect(result[1]).to.equal(1);    // prize id 1
+        expect(result[2]).to.equal(true); // claimed
+        // should allow to mint only once
+        await expect(lottery.claimPrize(1)).to.be.revertedWith("Participant already claimed prize");
+    });
 
-    // it("Should allow a second RNG request if no response was received", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(15);
-    //     await lottery.buyTickets(1, 1);
-    //     await lottery.requestRandomNumber(1);
-    //     await ethers.provider.send("evm_mine", []);
-    //     await lottery.requestRandomNumber(1);
-    //     expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "LotteryStatusChanged");
-    // });
+    it("Should run more than one lottery", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await lottery.buyTickets(1, 1);
+        await lottery.requestRandomNumber(1);
+        expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
+        await lottery.definePrizeWinners(1);
+        await lottery.claimPrize(1);
+        const blockNum = await ethers.provider.getBlockNumber();
+        const block = await ethers.provider.getBlock(blockNum);
+        // create a second lottery
+        await lottery.createNewLottery(0, 0, block.timestamp,
+            nft.address,
+            ethers.utils.parseEther("1"), 0, 0, artist.address, "ipfs://path/");
+        lottery.addPrizes(2, [3, 4], [1, 1]);
+        await lottery.buyTickets(2, 1);
+        await lottery.requestRandomNumber(2);
+        expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(lottery, "ResponseReceived");
+        await lottery.definePrizeWinners(2);
+        await lottery.claimPrize(2);
+    });
 
-    // it("Should not call requestRandomNumber if not owner", async function () {
-    //     await expect(lottery.connect(addr1).requestRandomNumber(1)).to.be.revertedWith("Ownable: caller is not the owner");
-    // });
+    describe("Big Lottery", () => {
+        beforeEach(async () => {
+            accounts = await ethers.getSigners()
+            const blockNum = await ethers.provider.getBlockNumber();
+            const block = await ethers.provider.getBlock(blockNum);
+            // creating lottery with id = 2
+            await lottery.createNewLottery(0, 0, block.timestamp,
+                nft.address,
+                ethers.utils.parseEther("1"), 0, 2, artist.address, "ipfs://path/");
+            await lottery.addPrizes(2, [3], [100]);
+            for (let i = 0; i < 400; i++) {
+                await lottery.connect(accounts[i]).buyTickets(2, 1);
+            }
+        });
 
-    // it("Should not allow to boost if boostCost = 0", async function () {
-    //     await rewards.join();
-    //     await waitAndMineBlock(15);
-    //     const blockNum = await ethers.provider.getBlockNumber();
-    //     const block = await ethers.provider.getBlock(blockNum);
-    //     await lottery.createNewLottery(15, 0, block.timestamp,
-    //         nft.address,
-    //         0, // boostCost
-    //         0, 0, artist.address, "ipfs://path/");
-    //     await lottery.buyTickets(2, 1);
-    //     await expect(lottery.boostParticipant(2, owner.address,
-    //         { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
+        it("Should run lottery with large # of entries and default prize and allow to mint", async function () {
+            for (let i = 400; i < 700; i++) {
+                await lottery.connect(accounts[i]).buyTickets(2, 1);
+            }
+            await lottery.requestRandomNumber(2);
+            expect(await mockRng.fulfillRequest(2, 256)).to.have.emit(lottery, "LotteryStatusChanged");
+            // distribute the prizes in batches
+            await lottery.definePrizeWinners(2);
 
-    // });
+            await lottery.claimPrize(2);
+        });
+    });
+
+    it("Should not allow a second RNG request after response received", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await lottery.buyTickets(1, 1);
+        await lottery.requestRandomNumber(1);
+        await mockRng.fulfillRequest(1, 1);
+        await expect(lottery.requestRandomNumber(1)).to.be.revertedWith("Lottery must be closed");
+    });
+
+    it("Should allow a second RNG request if no response was received", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await lottery.buyTickets(1, 1);
+        await lottery.requestRandomNumber(1);
+        await ethers.provider.send("evm_mine", []);
+        await lottery.requestRandomNumber(1);
+        expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "LotteryStatusChanged");
+    });
+
+    it("Should not call requestRandomNumber if not owner", async function () {
+        await expect(lottery.connect(addr1).requestRandomNumber(1)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not allow to boost if boostCost = 0", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        const blockNum = await ethers.provider.getBlockNumber();
+        const block = await ethers.provider.getBlock(blockNum);
+        await lottery.createNewLottery(15, 0, block.timestamp,
+            nft.address,
+            0, // boostCost
+            0, 0, artist.address, "ipfs://path/");
+        await lottery.buyTickets(2, 1);
+        await expect(lottery.boostParticipant(2, owner.address,
+            { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
+
+    });
 
 });
 

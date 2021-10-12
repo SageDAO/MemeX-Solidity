@@ -6,10 +6,6 @@ const deployer = ethers.getSigner().address;
 const CONTRACTS = require('../contracts.js');
 const rewardsAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
 
-const file_name = process.argv.slice(2)[0];
-
-const timer = ms => new Promise(res => setTimeout(res, ms));
-
 const erc20AbiFragment = [
     {
         name: 'balanceOf',

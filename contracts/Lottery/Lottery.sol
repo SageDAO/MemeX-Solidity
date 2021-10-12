@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
@@ -123,10 +123,6 @@ contract Lottery is Ownable {
         merkleRoots[_lotteryId] = _root;
     }
 
-    function getMerkleRoot(uint256 _lotteryId) public view returns (bytes32) {
-        return merkleRoots[_lotteryId];
-    }
-
     function _burnPinasToken(
         address _user,
         IRewards rewardsToken,
@@ -169,6 +165,14 @@ contract Lottery is Ownable {
             "Contracts cannot be 0 address"
         );
         randomGenerator = IRandomNumberGenerator(_IRandomNumberGenerator);
+    }
+
+    function getPrizes(uint256 _lotteryId)
+        public
+        view
+        returns (PrizeInfo[] memory)
+    {
+        return prizes[_lotteryId];
     }
 
     function getParticipantHistory(address _participantAddress)
@@ -294,7 +298,6 @@ contract Lottery is Ownable {
         } else {
             lotteryStatus = Status.Planned;
         }
-        // Saving data in struct
         lotteryId = _nftContract.createCollection(
             _artistAddress,
             _dropMetadataURI
@@ -625,15 +628,13 @@ contract Lottery is Ownable {
         uint256 _lotteryId,
         address _winner,
         uint256 _prizeId,
-        bytes32[] calldata _proof,
-        uint256[] calldata _positions
+        bytes32[] calldata _proof
     ) public {
         require(
             _verify(
                 _leaf(_lotteryId, _winner, _prizeId),
-                _lotteryId,
-                _proof,
-                _positions
+                merkleRoots[_lotteryId],
+                _proof
             ),
             "Invalid merkle proof"
         );
@@ -663,37 +664,10 @@ contract Lottery is Ownable {
 
     function _verify(
         bytes32 _leafHash,
-        uint256 _lotteryId,
-        bytes32[] memory _proof,
-        uint256[] memory _positions
-    ) internal view returns (bool) {
-        return
-            verifyProof(_proof, _positions, merkleRoots[_lotteryId], _leafHash);
-    }
-
-    function verifyProof(
-        bytes32[] memory proof,
-        uint256[] memory positions,
-        bytes32 root,
-        bytes32 leaf
+        bytes32 _root,
+        bytes32[] memory _proof
     ) internal pure returns (bool) {
-        bytes32 computedHash = leaf;
-
-        for (uint256 i = 0; i < proof.length; i++) {
-            bytes32 proofElement = proof[i];
-
-            if (positions[i] == 1) {
-                computedHash = keccak256(
-                    abi.encode(computedHash, proofElement)
-                );
-            } else {
-                computedHash = keccak256(
-                    abi.encode(proofElement, computedHash)
-                );
-            }
-        }
-
-        return computedHash == root;
+        return MerkleProof.verify(_proof, _root, _leafHash);
     }
 
     /**
