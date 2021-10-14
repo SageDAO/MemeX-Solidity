@@ -3,8 +3,8 @@ require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-truffle4");
 require("hardhat-gas-reporter");
 require("@nomiclabs/hardhat-solhint");
+require("dotenv").config();
 
-const { alchemy_key, deployer_pk, etherscan_key, ankr_key, account1, account2, coinmarketcap_key } = require('./secrets.json');
 
 task("accounts", "Prints the list of accounts", async (args, hre) => {
   const accounts = await hre.ethers.getSigners();
@@ -19,17 +19,17 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
 module.exports = {
   networks: {
     rinkeby: {
-      url: `https://eth-rinkeby.alchemyapi.io/v2/${alchemy_key}`,
-      accounts: [`${deployer_pk}`, `${account1}`, `${account2}`],
+      url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
+      accounts: [`${process.env.DEPLOYER_PK}`, `${process.env.ACCOUNT1}`, `${process.env.ACCOUNT2}`],
     },
     fantomtestnet: {
-      url: `https://apis.ankr.com/${ankr_key}/fantom/full/test`,
-      accounts: [`${deployer_pk}`, `${account1}`, `${account2}`],
+      url: `https://apis.ankr.com/${process.env.ANKR_KEY}/fantom/full/test`,
+      accounts: [`${process.env.DEPLOYER_PK}`, `${process.env.ACCOUNT1}`, `${process.env.ACCOUNT2}`],
       chainId: 0xfa2
     },
     fantom: {
-      url: `https://apis.ankr.com/${ankr_key}/fantom/full/main`,
-      accounts: [`${deployer_pk}`],
+      url: `https://apis.ankr.com/${process.env.ANKR_KEY}/fantom/full/main`,
+      accounts: [`${process.env.DEPLOYER_PK}`],
       chainId: 0xfa
     },
     hardhat: {
@@ -43,7 +43,7 @@ module.exports = {
 
   },
   etherscan: {
-    apiKey: etherscan_key
+    apiKey: process.env.etherscan_key
   },
 
   solidity: {
@@ -62,6 +62,6 @@ module.exports = {
   gasReporter: {
     enabled: true,
     currency: "USD",
-    coinmarketcap: `${coinmarketcap_key}`
+    coinmarketcap: `${process.env.COINMARKETCAP_KEY}`
   }
 };
