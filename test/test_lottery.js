@@ -38,32 +38,12 @@ describe("Lottery Contract", function () {
         lottery.addPrizes(1, [1, 2], [1, 100]);
     });
 
-    it("Should claim with merkle proof", async function () {
-        var abiCoder = ethers.utils.defaultAbiCoder;
-        var leafA = abiCoder.encode(["uint256", "address", "uint256"], [1, addr1.address, 1]);
-        var leafB = abiCoder.encode(["uint256", "address", "uint256"], [1, addr2.address, 2]);
-        var leafC = abiCoder.encode(["uint256", "address", "uint256"], [1, addr3.address, 3]);
-        var leafD = abiCoder.encode(["uint256", "address", "uint256"], [1, addr4.address, 4]);
-        const buf2hex = x => '0x' + x.toString('hex');
-        const leaves = [leafA, leafB, leafC, leafD].map(leaf => keccak256(leaf));
-        const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
-        // get the merkle root and store in the contract 
-        const root = tree.getHexRoot().toString('hex');
-        await lottery.setMerkleRoot(1, root);
-
-        const hexproof = tree.getProof(keccak256(leafA)).map(x => buf2hex(x.data))
-
-        // expect(tree.verify(proof, keccak256(Buffer.from(leafA)), root)).to.equal(true);
-        await lottery.connect(addr1).claimWithProof(1, addr1.address, 1, hexproof);
-        expect(await nft.balanceOf(addr1.address, 1)).to.equal(1);
-    });
-
     it("Should create a lottery game", async function () {
         expect(await lottery.getLotteryCount()).to.equal(1);
     });
 
     it("Should check total amount of prizes", async function () {
-        expect(await lottery.getTotalPrizes(1)).to.equal(1001);
+        expect(await lottery.getTotalPrizes(1)).to.equal(101);
     });
 
     it("Should allow user to buy 1 lottery ticket", async function () {
@@ -261,6 +241,36 @@ describe("Lottery Contract", function () {
 
     });
 
+    describe("Merkle tree", () => {
+        beforeEach(async () => {
+            abiCoder = ethers.utils.defaultAbiCoder;
+            leafA = abiCoder.encode(["uint256", "address", "uint256"], [1, addr1.address, 1]);
+            leafB = abiCoder.encode(["uint256", "address", "uint256"], [1, addr2.address, 2]);
+            leafC = abiCoder.encode(["uint256", "address", "uint256"], [1, addr3.address, 3]);
+            leafD = abiCoder.encode(["uint256", "address", "uint256"], [1, addr4.address, 4]);
+            buf2hex = x => '0x' + x.toString('hex');
+            leaves = [leafA, leafB, leafC, leafD].map(leaf => keccak256(leaf));
+            tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
+            // get the merkle root and store in the contract 
+            root = tree.getHexRoot().toString('hex');
+            await lottery.setMerkleRoot(1, root);
+            hexproof = tree.getProof(keccak256(leafA)).map(x => buf2hex(x.data))
+        });
+
+        it("Should claim with merkle proof", async function () {
+            await lottery.connect(addr1).claimWithProof(1, addr1.address, 1, hexproof);
+            expect(await nft.balanceOf(addr1.address, 1)).to.equal(1);
+        });
+
+        it("Should throw using third person proof", async function () {
+            await expect(lottery.connect(addr2).claimWithProof(1, addr1.address, 1, hexproof)).to.be.revertedWith("Sender is not the winner address");
+        });
+
+        it("Should throw trying to claim twice", async function () {
+            await lottery.connect(addr1).claimWithProof(1, addr1.address, 1, hexproof);
+            await expect(lottery.connect(addr1).claimWithProof(1, addr1.address, 1, hexproof)).to.be.revertedWith("Participant already claimed prize");
+        });
+    });
 });
 
 async function waitAndMineBlock(seconds) {

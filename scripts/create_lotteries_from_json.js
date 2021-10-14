@@ -5,6 +5,7 @@ const deployer = ethers.getSigner().address;
 
 const CONTRACTS = require('../contracts.js');
 const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
+const nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
 
 const file_name = process.argv.slice(2)[0];
 
@@ -23,11 +24,8 @@ async function main() {
     // iterate over json content
     for (const drop of json_content) {
         if (drop.metadata.lotteryId == null) {
-            //deploy a new NFT contract for each new drop
             const NFT = await hre.ethers.getContractFactory("MemeXNFTBasic");
-            const nftContract = await NFT.deploy(drop.metadata.dropName, "MMXNFT", lotteryAddress);
-            await nftContract.deployed();
-            console.log("New NFT contract deployed to:", nftContract.address);
+            const nftContract = await NFT.attach(nftAddress);
 
             // create new lottery and update metadata with lotteryId
             drop.metadata.lotteryId = (await lottery.getCurrentLotteryId()).toNumber() + 1;
