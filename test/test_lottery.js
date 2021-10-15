@@ -42,16 +42,19 @@ describe("Lottery Contract", function () {
         expect(await lottery.getLotteryCount()).to.equal(1);
     });
 
-    it("Should check total amount of prizes", async function () {
-        expect(await lottery.getTotalPrizes(1)).to.equal(101);
-    });
-
     it("Should allow user to buy 1 lottery ticket", async function () {
         await rewards.join();
         await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
         expect(await lottery.getTotalEntries(1)).to.equal(1);
+    });
+
+    it("Should throw if buyting more tickets than maxEntries", async function () {
+        await rewards.join();
+        await waitAndMineBlock(15);
+        await lottery.setMaxEntries(1);
+        await expect(lottery.buyTickets(1, 2)).to.be.revertedWith("Can't buy this amount of tickets");
     });
 
     it("Should allow user to buy more tickets on a separate transaction", async function () {
@@ -133,34 +136,12 @@ describe("Lottery Contract", function () {
             { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
     });
 
-    it("Should run the lottery with one participant and allow to mint the prize only once", async function () {
-        await rewards.join();
-        await waitAndMineBlock(15);
-        await lottery.buyTickets(1, 1);
-        await lottery.requestRandomNumber(1);
-        expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
-        await lottery.definePrizeWinners(1);
-        result = await lottery.isAddressWinner(1, owner.address);
-        expect(result[0]).to.equal(true);  // winner
-        expect(result[1]).to.equal(1);     // prize id 1
-        expect(result[2]).to.equal(false); // not claimed
-        await lottery.claimPrize(1);
-        result = await lottery.isAddressWinner(1, owner.address);
-        expect(result[0]).to.equal(true); // winner
-        expect(result[1]).to.equal(1);    // prize id 1
-        expect(result[2]).to.equal(true); // claimed
-        // should allow to mint only once
-        await expect(lottery.claimPrize(1)).to.be.revertedWith("Participant already claimed prize");
-    });
-
     it("Should run more than one lottery", async function () {
         await rewards.join();
         await waitAndMineBlock(15);
         await lottery.buyTickets(1, 1);
         await lottery.requestRandomNumber(1);
         expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
-        await lottery.definePrizeWinners(1);
-        await lottery.claimPrize(1);
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
         // create a second lottery
@@ -171,8 +152,6 @@ describe("Lottery Contract", function () {
         await lottery.buyTickets(2, 1);
         await lottery.requestRandomNumber(2);
         expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(lottery, "ResponseReceived");
-        await lottery.definePrizeWinners(2);
-        await lottery.claimPrize(2);
     });
 
     describe("Big Lottery", () => {
@@ -196,10 +175,6 @@ describe("Lottery Contract", function () {
             }
             await lottery.requestRandomNumber(2);
             expect(await mockRng.fulfillRequest(2, 256)).to.have.emit(lottery, "LotteryStatusChanged");
-            // distribute the prizes in batches
-            await lottery.definePrizeWinners(2);
-
-            await lottery.claimPrize(2);
         });
     });
 

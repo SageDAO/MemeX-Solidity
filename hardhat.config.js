@@ -5,7 +5,6 @@ require("hardhat-gas-reporter");
 require("@nomiclabs/hardhat-solhint");
 require("dotenv").config();
 
-
 task("accounts", "Prints the list of accounts", async (args, hre) => {
   const accounts = await hre.ethers.getSigners();
   for (const account of accounts) {
@@ -43,15 +42,11 @@ module.exports = {
 
   },
   etherscan: {
-    apiKey: process.env.etherscan_key
+    apiKey: process.env.FTMSCAN_KEY
   },
 
   solidity: {
-    compilers: [
-      {
-        version: "0.8.7",
-      },
-    ],
+    version: "0.8.9",
     settings: {
       optimizer: {
         enabled: true,

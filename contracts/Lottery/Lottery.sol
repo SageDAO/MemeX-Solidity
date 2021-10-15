@@ -12,7 +12,7 @@ import "../../interfaces/IMemeXNFT.sol";
 contract Lottery is Ownable {
     using Counters for Counters.Counter;
 
-    uint8 public constant maxEntries = 5;
+    uint8 public maxEntries;
 
     bytes32 internal requestId_;
 
@@ -123,6 +123,10 @@ contract Lottery is Ownable {
         merkleRoots[_lotteryId] = _root;
     }
 
+    function setMaxEntries(uint8 _maxEntries) public onlyOwner {
+        maxEntries = _maxEntries;
+    }
+
     function _burnPinasToken(
         address _user,
         IRewards rewardsToken,
@@ -181,15 +185,6 @@ contract Lottery is Ownable {
         returns (uint256[] memory)
     {
         return participantHistory[_participantAddress];
-    }
-
-    function getTotalPrizes(uint256 _lotteryId) public view returns (uint16) {
-        uint16 acc;
-        PrizeInfo[] memory prizeArr = prizes[_lotteryId];
-        for (uint16 i = 0; i < prizeArr.length; i++) {
-            acc += prizeArr[i].maxSupply;
-        }
-        return acc;
     }
 
     /**
@@ -374,61 +369,6 @@ contract Lottery is Ownable {
         return lotteryHistory[_lotteryId].participantsCount;
     }
 
-    function definePrizeWinners(uint256 _lotteryId) public onlyOwner {
-        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
-        uint256 randomNumber = randomSeeds[_lotteryId];
-
-        uint256 totalParticipants_ = lottery.participantsCount;
-        uint256 totalPrizes = getTotalPrizes(_lotteryId);
-        PrizeInfo[] memory prizeInfo = prizes[_lotteryId];
-        // if there are less participants than prizes, reduce the number of prizes
-        if (totalParticipants_ < totalPrizes) {
-            totalPrizes = totalParticipants_;
-        }
-        // Loops through each prize assigning to a position on the entries array
-        uint8 index = 0;
-        for (uint16 i = 0; i < totalPrizes; i++) {
-            if (i == prizeInfo[index].maxSupply) {
-                index++;
-                i = 0;
-            }
-            uint256 totalEntries = participantEntries[_lotteryId].length;
-            // Encodes the random number with its position in loop
-            bytes32 hashOfRandom = keccak256(abi.encodePacked(randomNumber, i));
-            // Sets the winning number position to a uint16 of random hash number
-            uint256 winningNumber = uint256(
-                uint256(hashOfRandom) % totalEntries
-            );
-            // defines the winner
-            bool winnerFound = false;
-            do {
-                address winnerAddress = participantEntries[_lotteryId][
-                    winningNumber
-                ];
-                if (
-                    // checks if this random position is already a winner
-                    participants[_lotteryId][winnerAddress].prizeId ==
-                    lottery.defaultPrizeId
-                ) {
-                    participants[_lotteryId][winnerAddress].prizeId = prizeInfo[
-                        index
-                    ].prizeId;
-                    winnerFound = true;
-                    // move the last position to remove the entry from the array
-                    participantEntries[_lotteryId][
-                        winningNumber
-                    ] = participantEntries[_lotteryId][totalEntries - 1];
-                    participantEntries[_lotteryId].pop();
-                } else {
-                    // If address is already a winner pick the next number until a new winner is found
-                    winningNumber++;
-                    winningNumber = winningNumber % totalEntries;
-                }
-            } while (winnerFound == false);
-        }
-        emit LotteryStatusChanged(_lotteryId, lottery.status);
-    }
-
     /**
      * @notice Change the lottery state to canceled.
      * @param _lotteryId ID of the lottery to canccel
@@ -457,6 +397,14 @@ contract Lottery is Ownable {
             require(
                 lottery.participantsCount < lottery.maxParticipants,
                 "Lottery is full"
+            );
+        }
+        if (maxEntries > 0) {
+            require(
+                participants[_lotteryId][msg.sender].entries +
+                    numberOfTickets <=
+                    maxEntries,
+                "Can't buy this amount of tickets"
             );
         }
         if (
@@ -572,56 +520,6 @@ contract Lottery is Ownable {
 
         participant.isBooster = true;
         assignNewEntryToParticipant(_lotteryId, _participantAddress);
-    }
-
-    /**
-     * @notice Function called to check if a user won a prize.
-     * @param _lotteryId ID of the lottery to check if user won
-     * @param _address Address of the participant to check
-     * @return true if the winner won a prize, with the prize id and if the prize was already claimed
-     */
-    function isAddressWinner(uint256 _lotteryId, address _address)
-        public
-        view
-        returns (
-            bool,
-            uint256,
-            bool
-        )
-    {
-        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
-        require(lottery.status == Status.Completed, "Lottery not completed");
-        ParticipantInfo memory participant = participants[_lotteryId][_address];
-        return (
-            participant.prizeId != 0,
-            participant.prizeId,
-            participant.prizeClaimed
-        );
-    }
-
-    /**
-     * @notice Called by a winner participant to claim his prize.
-     * @param _lotteryId ID of the lottery to claim prize
-     */
-    function claimPrize(uint256 _lotteryId) public {
-        require(
-            lotteryHistory[_lotteryId].status == Status.Completed,
-            "Status Not Completed"
-        );
-        ParticipantInfo storage participant = participants[_lotteryId][
-            msg.sender
-        ];
-        require(participant.prizeId != 0, "Participant is not a winner");
-        require(
-            participant.prizeClaimed == false,
-            "Participant already claimed prize"
-        );
-
-        IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
-
-        participant.prizeClaimed = true;
-        nftContract.mint(msg.sender, participant.prizeId, 1, "");
-        emit PrizeClaimed(_lotteryId, msg.sender, participant.prizeId);
     }
 
     function claimWithProof(

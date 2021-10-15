@@ -3,12 +3,13 @@ const { assert } = require("chai");
 const hre = require("hardhat");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require('keccak256');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 const ethers = hre.ethers;
 const deployer = ethers.getSigner().address;
 
 const CONTRACTS = require('../contracts.js');
-
 
 const lotteryId = process.argv.slice(2)[0];
 var abiCoder = ethers.utils.defaultAbiCoder;
@@ -117,6 +118,12 @@ async function main() {
     const root = tree.getHexRoot().toString('hex');
     console.log(`Storing Merkle tree root in the contract: ${root}`);
     await lottery.setMerkleRoot(lotteryId, root);
+    // clean any previous results stored for this lottery
+    await prisma.proof.deleteMany({
+        where: {
+            lotteryId: Number(lotteryId)
+        }
+    });
     // generate proofs for each winner
     for (index in leaves) {
         leaf = leaves[index];
@@ -124,7 +131,14 @@ async function main() {
         console.log(`Prize id: ${leaf.prize} Winner: ${leaf.address} Proof: ${leaf.hexProof}`)
 
         // store proof on the DB so it can be easily queried
-
+        await prisma.proof.create({
+            data: {
+                lotteryId: Number(lotteryId),
+                winnerAddress: leaf.address,
+                proof: leaf.hexProof.toString(),
+                prizeId: leaf.prize.toNumber()
+            }
+        });
     }
 }
 

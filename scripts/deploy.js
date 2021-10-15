@@ -6,7 +6,6 @@
 
 const { ethers } = require("hardhat");
 const hre = require("hardhat");
-const { factory } = require("typescript");
 const CONTRACTS = require('../contracts.js')
 //TODO: CHECK HOW TO INITIALIZE Token Supply
 
@@ -31,26 +30,6 @@ deployMemeXToken = async (deployer) => {
     token = await MemeToken.attach(token_address);
   }
   return token
-}
-
-deployMemeXFactory = async (owner) => {
-  memeXFactory_address = CONTRACTS[hre.network.name]["memeXFactoryAddress"]
-  const MemeXFactory = await hre.ethers.getContractFactory("MemeXFactory")
-  if (memeXFactoryAddress == "") {
-    memeXFactory = await MemeXFactory.deploy(owner.address)
-    await memeXFactory.deployed()
-    console.log("MemeXFactory deployed to: ", memeXFactory.address)
-    await timer(60000);
-    await hre.run("verify:verify", {
-      address: memeXFactory.address,
-      contract: "contracts/Factory/MemeXFactory.sol:MemeXFactory",
-      constructorArguments: [memeXFactory.address]
-    });
-  } else {
-    memeXFactory = await MemeXFactory.attach(memeXFactory_address)
-  }
-
-  return memeXFactory
 }
 
 deployPinaToken = async (deployer, rewards) => {
@@ -94,16 +73,16 @@ deployRewards = async (deployer, token) => {
 
 deployNFT = async (lottery) => {
   nft_address = CONTRACTS[hre.network.name]["nftAddress"]
-  const Nft = await hre.ethers.getContractFactory("MemeXNFTBasic");
+  const Nft = await hre.ethers.getContractFactory("MemeXNFT");
   if (nft_address == "") {
     console.log("deploying NFT token")
-    nft = await Nft.deploy("MMXNFT", "MMXNFT", lottery);
+    nft = await Nft.deploy("MemeX", "MMXNFT", lottery);
     await nft.deployed();
     console.log("NFT deployed to:", nft.address);
     await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
     await hre.run("verify:verify", {
       address: nft.address,
-      constructorArguments: ["MMXNFT", "MMXNFT", lottery],
+      constructorArguments: ["MemeX", "MMXNFT", lottery],
     });
   } else {
     nft = await Nft.attach(nft_address);
