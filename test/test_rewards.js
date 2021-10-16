@@ -25,10 +25,6 @@ describe("Rewards Contract", function () {
         expect(await rewards.userJoined(owner.address)).to.equal(false);
     });
 
-    it("Should not allow to join without MEME or liquidity position", async function () {
-        await expect(rewards.connect(addr1).join()).to.be.revertedWith("MEME or MEMELP position required to join");
-    });
-
     it("Should allow users to join memex", async function () {
         await rewards.join();
         expect(await rewards.userJoined(owner.address)).to.equal(true);
