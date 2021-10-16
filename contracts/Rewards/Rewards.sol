@@ -146,10 +146,6 @@ contract Rewards is Ownable, Pausable {
         userList.push(msg.sender);
         uint256 memeBalance = memeAddress.balanceOf(msg.sender);
         uint256 liquidityBalance = liquidityAddress.balanceOf(msg.sender);
-        require(
-            memeBalance > 0 || liquidityBalance > 0,
-            "MEME or MEMELP position required to join"
-        );
         UserInfo memory user = UserInfo(
             memeBalance,
             liquidityBalance,

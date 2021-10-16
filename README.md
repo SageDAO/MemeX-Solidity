@@ -6,8 +6,8 @@ MemeX is currently based on five contracts:
 
 * MemeX Token: ERC-20 compatible Token (only used during tests to have control over the supply);
 * MemeX NFT: ERC-1155 compatible Non Fungible Tokens;
-* Lottery: Manages all the lottery logic. Allows users to buy tickets, defines random winners for our prizes and lets users claim their prizes.
-* Rewards: manages the MemeX rewards process. Awards users holding MEME or providing liquidity with PINAs, which on this iteration are points needed to enter the lottery. A future iteration will evolve PINA into an ERC-20 token. As we're not requesting users to stake their funds, there is an external job to monitor users balances and update the rewards contract accordingly;
+* Lottery: Manages all the lottery logic. Allows users to buy tickets and lets users claim their prizes.
+* Rewards: manages the MemeX rewards process. Awards users holding MEME or providing liquidity with PINAs, which on this iteration are points needed to enter lottery games. A future iteration will evolve PINA into an ERC-20 token. As we're not requesting users to stake their funds, there is an external job to monitor users balances and update the rewards contract accordingly;
 * RandomNumberGenerator (RNG): adopts the trusted Chainlink VRF (Verifiable Random Function) oracle as a verifiable source of randomness to draw our lottery numbers.
 
 ## Setup instructions
@@ -18,25 +18,19 @@ To install hardhat:
 npm install --save-dev hardhat
 ```
 
-When interacting with contracts on testnets you'll need an Alchemy API key: (Alchemy is preferred over Infura as they have archive nodes on the free tier).
+When interacting with contracts on testnets you'll need Alchemy and Etherscan API keys for the Ethereum network and ANKR, FTMScan keys for the Fantom network.
 
-We store the Alchemy API key, the deployer account private key and other secrets on the `secrets.json` file:
-
-{
-    "alchemy_key": "<api_key>",
-    "deployer_pk": "<pk>",
-    "etherscan_key": "<etherscan_api_key (only used while testing on the rinkeby network)>",
-    "ankr_key": "<ankr_key  (used as an alternative to alchemy to interact with the Fantom network)>",
-    "account1": "<pk>",
-    "account2": "<pk>",
-    "coinmarketcap_key": "<coinmarketcap key> (used to fetch prices for gas estimation costs)"
-}
+We store all used secrets in the `.env` file. This file structure can be found in the `.env.sample` file:
 
 ## Deploy contracts
 
-To deploy all the contracts to the Rinkeby testnet and update their references to each other (only needs to run once):
+During tests, contracts are deployed to the Rinkeby testnet or Fantom testnet and update their references to each other (only needs to run once):
 
 `npx hardhat run scripts/deploy.js --network rinkeby`
+
+or 
+
+`npx hardhat run scripts/deploy.js --network fantomtestnet`
 
 
 The `contracts.json` file contains the addresses of the already deployed contracts. If a contract address is in this file, the scripts would interact with the deployed contract, otherwhise a new contract will be deployed.
@@ -47,7 +41,15 @@ Executing the script
 
 `node scripts/create_lotteries_from_json.js <path_to_drops_json_file>`
 
-will deploy a new NFT contract and create a new lottery for each new drop, updating the json with the created lotteryId.
+will create a new lottery for each new drop, updating the json with the created lotteryId.
+
+## Creating Merkle Trees with lottery results
+
+The script to run prize distributions can be called with the following command:
+
+`node scripts/prize_distribution.js <lotteryId>`
+
+It will find prize winners, create the merkle tree and update the lottery contract with the root hash. It also saves proofs on our database. After that lottery results can be queried from the database fetching the proofs required when claiming a prize.
 
 ## Unit tests
 
