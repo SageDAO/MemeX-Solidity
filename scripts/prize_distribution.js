@@ -64,6 +64,8 @@ async function main() {
     lotteryInfo = await lottery.getLotteryInfo(lotteryId);
     assert(lotteryInfo.status == 4, "Lottery must be closed to distribute prizes");
 
+    defaultPrizeId = lotteryInfo.defaultPrizeId;
+
     randomSeed = await lottery.randomSeeds(lotteryId);
     console.log(`Random seed stored for this lottery: ${randomSeed}`);
 
@@ -110,6 +112,18 @@ async function main() {
                     [lotteryId, entries[randomPosition], prizes[prizeIndex].prizeId]), hexProof: ""
             };
             leaves.push(leaf);
+        }
+    }
+    // if lottery has defaultPrize, distribute it to all participants that did not win a prize so far
+    if (defaultPrizeId != 0) {
+        for (i = 0; i < entries.length; i++) {
+            if (!winners.has(entries[i])) {
+                var leaf = {
+                    lottery: lotteryId, address: entries[i], prize: defaultPrizeId, encoded: abiCoder.encode(["uint256", "address", "uint256"],
+                        [lotteryId, entries[i], defaultPrizeId]), hexProof: ""
+                };
+                leaves.push(leaf);
+            }
         }
     }
     console.log(`All prizes awarded. Building the merkle tree`);
