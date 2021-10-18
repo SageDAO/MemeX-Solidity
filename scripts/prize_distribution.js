@@ -42,8 +42,8 @@ async function main() {
         const block = await ethers.provider.getBlock(blockNum);
         await lottery.createNewLottery(0, 0, block.timestamp,
             nft.address,
-            0, 0, 0, artist.address, "ipfs://path/");
-        await lottery.addPrizes(1, [1, 2], [1, 10]);
+            0, 0, 3, artist.address, "ipfs://path/");
+        await lottery.addPrizes(1, [1, 2], [1, 1]);
         await lottery.buyTickets(1, 2);
         await lottery.connect(addr2).buyTickets(1, 1);
         await lottery.connect(addr3).buyTickets(1, 1);
