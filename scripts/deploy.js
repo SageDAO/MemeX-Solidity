@@ -32,27 +32,6 @@ deployMemeXToken = async (deployer) => {
   return token
 }
 
-deployPinaToken = async (deployer, rewards) => {
-  pina_address = CONTRACTS[hre.network.name]["pinaAddress"]
-  const PinaToken = await hre.ethers.getContractFactory("PinaToken");
-  if (pina_address == "") {
-    console.log("deploying pina token")
-    pinaToken = await PinaToken.deploy("PINA", "Pina", 0,
-      deployer.address, rewards.address);
-    await pinaToken.deployed();
-    console.log("Pina token deployed to:", pinaToken.address);
-    await timer(30000); // wait so the etherscan index can be updated, then verify the contract code
-    await hre.run("verify:verify", {
-      address: pinaToken.address,
-      constructorArguments: ["PINA", "Pina", 0,
-        deployer.address, rewards.address],
-    });
-  } else {
-    pinaToken = await PinaToken.attach(pina_address);
-  }
-  return pinaToken
-}
-
 deployRewards = async (deployer, token) => {
   rewards_address = CONTRACTS[hre.network.name]["rewardsAddress"]
   const Rewards = await hre.ethers.getContractFactory("Rewards");
@@ -90,28 +69,6 @@ deployNFT = async (lottery) => {
   return nft
 }
 
-
-deployNFTByFactory = async (MemeXFactory, name, symbol, admin, lottery) => {
-  nft_address = CONTRACTS[hre.network.name]["nftAddress"]
-  const NFT = await hre.ethers.getContractFactory("MemeXNFTBasic")
-
-  if (nft_address == "") {
-
-    tx = await MemeXFactory.connect(admin).deployMemeXNFT(name, symbol)
-    const res = await tx.wait()
-    nft_address = res.events[1].args[1]
-    deployedNFT = await NFT.attach(nft_address)
-    deployedNFT.setLotteryContract(_lotteryAddress)
-    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
-    await hre.run("verify:verify", {
-      address: deployedNFT.address,
-      constructorArguments: [name, symbol],
-    });
-  } else {
-    deployedNFT = await NFT.attach(nft_address)
-  }
-  return nft
-}
 deployLottery = async (rewards) => {
   lottery_address = CONTRACTS[hre.network.name]["lotteryAddress"]
   const Lottery = await hre.ethers.getContractFactory("Lottery");
@@ -131,7 +88,6 @@ deployLottery = async (rewards) => {
 }
 
 deployRandomness = async () => {
-
   rand_address = CONTRACTS[hre.network.name]["randomnessAddress"]
   const Randomness = await hre.ethers.getContractFactory("RandomNumberConsumer");
   if (rand_address == "") {
@@ -163,17 +119,11 @@ deployRandomness = async () => {
   return randomness
 }
 
-setLottery = async (lottery, randomness, pina, nft, rewards) => {
+setLottery = async (lottery, randomness, nft, rewards) => {
   console.log(`Setting lottery ${lottery.address} on randomness ${randomness.address}`)
   await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
-  await pina.setLotteryContract(lottery.address, { gasLimit: 4000000 })
   await nft.setLotteryContract(lottery.address, { gasLimit: 4000000 })
   await rewards.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
-}
-
-setRewards = async (pina, rewards) => {
-  console.log(`Setting rewards contract ${rewards.address} on pina ${pina.address}`);
-  await pina.setRewardsContract(rewards.address, { gasLimit: 4000000 });
 }
 
 setRandomGenerator = async (lottery, rng) => {
@@ -194,15 +144,11 @@ async function main() {
 
   token = await deployMemeXToken(deployer);
   rewards = await deployRewards(deployer, token);
-  pina = await deployPinaToken(deployer, rewards);
   lottery = await deployLottery(rewards);
-
-
 
   nft = await deployNFT(lottery.address);
   randomness = await deployRandomness();
-  await setLottery(lottery, randomness, pina, nft, rewards);
-  await setRewards(pina, rewards);
+  await setLottery(lottery, randomness, nft, rewards);
   await setRandomGenerator(lottery, randomness.address);
 }
 
