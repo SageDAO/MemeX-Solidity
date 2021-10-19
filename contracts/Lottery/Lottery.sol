@@ -179,6 +179,14 @@ contract Lottery is Ownable {
         return prizes[_lotteryId];
     }
 
+    function prizeClaimed(uint256 _lotteryId, address _participant)
+        public
+        view
+        returns (bool)
+    {
+        return participants[_lotteryId][_participant].prizeClaimed;
+    }
+
     function getParticipantHistory(address _participantAddress)
         public
         view
