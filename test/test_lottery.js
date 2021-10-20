@@ -226,6 +226,42 @@ describe("Lottery Contract", function () {
         await expect(lottery.connect(addr1).requestRandomNumber(1)).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
+    it("Should not call definePrizeWinners if not owner", async function () {
+        await expect(lottery.connect(addr1).definePrizeWinners(1)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call setTicketCostPinas if not owner", async function () {
+        await expect(lottery.connect(addr1).setTicketCostPinas(1, 1)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call cancelLottery if not owner", async function () {
+        await expect(lottery.connect(addr1).cancelLottery(1)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call withdraw if not owner", async function () {
+        await expect(lottery.connect(addr1).withdraw(owner.address, 1)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call setRewardsContract if not owner", async function () {
+        await expect(lottery.connect(addr1).setRewardsContract(rewards.address)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call changeCloseTime if not owner", async function () {
+        await expect(lottery.connect(addr1).changeCloseTime(1, 1)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call setMerkleRoot if not owner", async function () {
+        await expect(lottery.connect(addr1).setMerkleRoot(1, keccak256('some text'))).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call addPrizes if not owner", async function () {
+        await expect(lottery.connect(addr1).addPrizes(1, [1], [1])).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call createNewLottery if not owner", async function () {
+        await expect(lottery.connect(addr1).createNewLottery(1, 1, 1, nft.address, 1, 1, 1, lottery.address, "ipfs string")).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
     it("Should not allow to boost if boostCost = 0", async function () {
         await rewards.join();
         await waitAndMineBlock(15);
