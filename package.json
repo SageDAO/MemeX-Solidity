@@ -10,7 +10,7 @@
     "chai": "^4.3.4",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.4.6",
-    "hardhat": "^2.6.1",
+    "hardhat": "^2.6.6",
     "hardhat-gas-reporter": "^1.0.4",
     "ts-node": "^10.2.1",
     "web3": "^0.20.0"
@@ -19,7 +19,10 @@
     "@chainlink/contracts": "^0.2.1",
     "@openzeppelin/contracts": "^4.3.1",
     "@prisma/client": "^3.0.2",
+<<<<<<< HEAD
     "dotenv": "^10.0.0",
+=======
+>>>>>>> 8e458662344d05d44e59cb39a0c0f6b65b99a77e
     "keccak256": "^1.0.3",
     "merkletreejs": "^0.2.24"
   }

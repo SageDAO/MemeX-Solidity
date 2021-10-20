@@ -138,6 +138,38 @@ describe("Rewards Contract", function () {
         const blockNumAfter = await ethers.provider.getBlockNumber();
         expect(await rewards.earned(owner.address)).to.equal(blockNumAfter - blockNumBefore); // should be 0 + extra rewards if there are new blocks
     });
+
+    it("Should not call setLotteryAddress if not owner", async function () {
+        await expect(rewards.connect(addr1).setLotteryAddress(owner.address)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call setRewardToken if not owner", async function () {
+        await expect(rewards.connect(addr1).setRewardToken(rewards.address)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call setRewardRateToken if not owner", async function () {
+        await expect(rewards.connect(addr1).setRewardRateToken(rewardRateToken)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call setRewardRateLiquidity if not owner", async function () {
+        await expect(rewards.connect(addr1).setRewardRateLiquidity(rewardRateLiquidity)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call setMemeAddresS if not owner", async function () {
+        await expect(rewards.connect(addr1).setMemeAddresS(rewards.address)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call setLiquidityAddress if not owner", async function () {
+        await expect(rewards.connect(addr1).setLiquidityAddress(rewards.address)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call updateUserRewards if not owner", async function () {
+        await expect(rewards.connect(addr1).updateUserRewards(rewards.address, 1)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should not call updateUserBalance if not owner", async function () {
+        await expect(rewards.connect(addr1).updateUserBalance(rewards.address, 1, 1)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
 });
 
 async function waitAndMineBlock(seconds) {
