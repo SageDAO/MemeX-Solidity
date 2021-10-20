@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../../interfaces/IRewards.sol";
@@ -10,8 +9,6 @@ import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 
 contract Lottery is Ownable {
-    using Counters for Counters.Counter;
-
     uint8 public maxEntries;
 
     bytes32 internal requestId_;
@@ -125,18 +122,6 @@ contract Lottery is Ownable {
 
     function setMaxEntries(uint8 _maxEntries) public onlyOwner {
         maxEntries = _maxEntries;
-    }
-
-    function _burnPinasToken(
-        address _user,
-        IRewards rewardsToken,
-        uint256 _amount
-    ) internal {
-        require(
-            rewardsToken.balanceOf(_user) >= _amount,
-            "Not enough PINA tokens to enter the lottery"
-        );
-        rewardsToken.burn(_user, _amount);
     }
 
     function _burnUserPoints(address _user, uint256 _amount) internal {
@@ -431,17 +416,9 @@ contract Lottery is Ownable {
         }
         require(lottery.status == Status.Open, "Lottery is not open");
 
-        IRewards rewardsToken = rewardsContract.rewardTokenAddress();
-
         uint256 totalCostInPoints = numberOfTickets * lottery.ticketCostPinas;
         if (totalCostInPoints > 0) {
-            // if the pool in use is rewarding ERC-20 tokens we burn the ticket cost
-            if (address(rewardsToken) != address(0)) {
-                _burnPinasToken(msg.sender, rewardsToken, totalCostInPoints);
-            } else {
-                // if the pool is not using tokens we just handle the reward as points
-                _burnUserPoints(msg.sender, totalCostInPoints);
-            }
+            _burnUserPoints(msg.sender, totalCostInPoints);
         }
         uint256 totalCostInCoins = numberOfTickets * lottery.ticketCostCoins;
         if (totalCostInCoins > 0) {
