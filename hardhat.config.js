@@ -36,7 +36,7 @@ module.exports = {
       allowUnlimitedContractSize: true,
       timeout: 1800000,
       accounts: {
-        count: 700
+        count: 10000
       }
     }
 
