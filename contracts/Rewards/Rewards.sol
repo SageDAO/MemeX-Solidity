@@ -1,152 +1,78 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./Pausable.sol";
-import "../../interfaces/IRewards.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-contract Rewards is Ownable, Pausable {
-    IERC20 public memeAddress;
-    IERC20 public liquidityAddress;
+contract Rewards is Ownable {
     address public lotteryAddr;
 
-    uint256 public rewardRateToken;
-    uint256 public rewardRateLiquidity;
+    bytes32 public merkleRoot;
 
-    address[] userList;
+    mapping(address => uint256) public pointsAvailable;
 
-    struct UserInfo {
-        uint256 memeOnWallet;
-        uint256 liquidityOnWallet;
-        uint256 lastSnapshotTime;
-        uint256 pointsAvailableSnapshot;
-    }
-    mapping(address => UserInfo) public userInfo;
+    mapping(address => uint256) public totalPointsClaimed;
 
-    event Joined(
-        address indexed user,
-        uint256 amountToken,
-        uint256 amountLiquidity
-    );
     event PointsUsed(address indexed user, uint256 amount);
-    event ClaimedTokenReward(address indexed user, uint256 amount);
-
-    modifier updateReward(address account) {
-        UserInfo storage user = userInfo[account];
-        require(user.lastSnapshotTime >= 0, "User didn't join Memex yet");
-        user.pointsAvailableSnapshot = earned(account);
-        user.lastSnapshotTime = block.timestamp;
-        _;
-    }
+    event ClaimedReward(address indexed user, uint256 amount);
 
     modifier onlyLottery() {
         require(msg.sender == lotteryAddr, "Lottery calls only");
         _;
     }
 
-    constructor(
-        IERC20 _memeAddress,
-        IERC20 _liquidityAddress,
-        uint256 _rewardRateToken,
-        uint256 _rewardRateLiquidity
-    ) {
-        memeAddress = _memeAddress;
-        liquidityAddress = _liquidityAddress;
-        rewardRateToken = _rewardRateToken;
-        rewardRateLiquidity = _rewardRateLiquidity;
-    }
+    constructor() {}
 
     function setLotteryAddress(address _lotteryAddr) public onlyOwner {
         lotteryAddr = _lotteryAddr;
     }
 
-    function setRewardRateToken(uint256 _rewardRateToken) public onlyOwner {
-        rewardRateToken = _rewardRateToken;
-    }
-
-    function setRewardRateLiquidity(uint256 _rewardRateLiquidity)
-        public
-        onlyOwner
-    {
-        rewardRateLiquidity = _rewardRateLiquidity;
-    }
-
-    function setMemeAddresS(IERC20 _memeAddress) public onlyOwner {
-        memeAddress = _memeAddress;
-    }
-
-    function setLiquidityAddress(IERC20 _liquidityAddress) public onlyOwner {
-        liquidityAddress = _liquidityAddress;
-    }
-
-    function updateUserBalance(
-        address account,
-        uint256 tokenBalance,
-        uint256 liquidityBalance
-    ) public onlyOwner updateReward(account) {
-        UserInfo storage user = userInfo[account];
-        user.memeOnWallet = tokenBalance;
-        user.liquidityOnWallet = liquidityBalance;
-    }
-
-    function updateUserRewards(address account, uint256 rewards)
-        public
-        onlyOwner
-        updateReward(account)
-    {
-        UserInfo storage user = userInfo[account];
-        user.pointsAvailableSnapshot = rewards;
-    }
-
-    function earned(address account) public view returns (uint256) {
-        UserInfo memory user = userInfo[account];
-        require(user.lastSnapshotTime > 0, "User didn't join Memex yet");
-        uint256 blockTime = block.timestamp;
-        uint256 pointsToken = ((user.memeOnWallet) *
-            (blockTime - user.lastSnapshotTime) *
-            rewardRateToken) / 1e8; // divide by the decimals of the token used
-        uint256 pointsLiquidity = ((user.liquidityOnWallet) *
-            (blockTime - user.lastSnapshotTime) *
-            rewardRateLiquidity) / 1e8; // divide by the decimals of the token used
-        return pointsToken + pointsLiquidity + user.pointsAvailableSnapshot;
-    }
-
-    function userJoined(address user) public view returns (bool) {
-        return userInfo[user].lastSnapshotTime != 0;
-    }
-
-    function getUserList() public view returns (address[] memory) {
-        return userList;
-    }
-
-    function join() public whenNotPaused {
-        require(
-            userInfo[msg.sender].lastSnapshotTime == 0,
-            "User already joined"
-        );
-        userList.push(msg.sender);
-        uint256 memeBalance = memeAddress.balanceOf(msg.sender);
-        uint256 liquidityBalance = liquidityAddress.balanceOf(msg.sender);
-        UserInfo memory user = UserInfo(
-            memeBalance,
-            liquidityBalance,
-            block.timestamp,
-            0
-        );
-        userInfo[msg.sender] = user;
-        emit Joined(msg.sender, memeBalance, liquidityBalance);
-    }
-
-    function burnUserPoints(address account, uint256 amount)
+    function burnUserPoints(address _account, uint256 _amount)
         public
         onlyLottery
-        updateReward(account)
     {
-        require(amount > 0, "cannot use 0 points");
-        UserInfo storage user = userInfo[account];
-        require(amount <= user.pointsAvailableSnapshot, "not enough points");
-        user.pointsAvailableSnapshot = user.pointsAvailableSnapshot - amount;
+        require(_amount > 0, "Can't use 0 points");
+        require(_amount <= pointsAvailable[_account], "Not enough points");
+        pointsAvailable[_account] -= _amount;
 
-        emit PointsUsed(account, amount);
+        emit PointsUsed(_account, _amount);
+    }
+
+    function setMerkleRoot(bytes32 _root) public onlyOwner {
+        merkleRoot = _root;
+    }
+
+    function claimRewardWithProof(
+        address _address,
+        uint256 _points,
+        bytes32[] calldata _proof
+    ) public {
+        require(
+            _verify(_leaf(_address, _points), merkleRoot, _proof),
+            "Invalid merkle proof"
+        );
+        require(
+            totalPointsClaimed[_address] < _points,
+            "Participant already claimed all points"
+        );
+        uint256 availablePoints = _points - totalPointsClaimed[_address];
+        totalPointsClaimed[_address] = _points;
+        pointsAvailable[_address] += availablePoints;
+        emit ClaimedReward(_address, _points);
+    }
+
+    function _leaf(address _address, uint256 _points)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(_address, _points));
+    }
+
+    function _verify(
+        bytes32 _leafHash,
+        bytes32 _root,
+        bytes32[] memory _proof
+    ) internal pure returns (bool) {
+        return MerkleProof.verify(_proof, _root, _leafHash);
     }
 }

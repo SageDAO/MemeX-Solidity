@@ -5,15 +5,5 @@ interface IRewards {
     /**
      * Pina points earned by the player.
      */
-    function earned(address account) external returns (uint256);
-
     function burnUserPoints(address account, uint256 amount) external;
-
-    function balanceOf(address account) external view returns (uint256);
-
-    function burn(address account, uint256 amount) external;
-
-    function mint(address recipient, uint256 amount) external;
-
-    function rewardTokenAddress() external view returns (IRewards);
 }
