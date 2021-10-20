@@ -12,7 +12,6 @@ contract Rewards is Ownable, Pausable {
 
     uint256 public rewardRateToken;
     uint256 public rewardRateLiquidity;
-    IRewards public rewardTokenAddress;
 
     address[] userList;
 
@@ -61,10 +60,6 @@ contract Rewards is Ownable, Pausable {
         lotteryAddr = _lotteryAddr;
     }
 
-    function setRewardToken(address _rewardToken) public onlyOwner {
-        rewardTokenAddress = IRewards(_rewardToken);
-    }
-
     function setRewardRateToken(uint256 _rewardRateToken) public onlyOwner {
         rewardRateToken = _rewardRateToken;
     }
@@ -82,20 +77,6 @@ contract Rewards is Ownable, Pausable {
 
     function setLiquidityAddress(IERC20 _liquidityAddress) public onlyOwner {
         liquidityAddress = _liquidityAddress;
-    }
-
-    function claimTokenReward(address account) public updateReward(msg.sender) {
-        require(
-            address(rewardTokenAddress) != address(0),
-            "Cannot claim token. Rewards are only points so far"
-        );
-        UserInfo storage user = userInfo[account];
-        require(user.pointsAvailableSnapshot > 0, "no pinas to withdraw");
-        uint256 pinas = user.pointsAvailableSnapshot;
-        user.pointsAvailableSnapshot = 0;
-        user.lastSnapshotTime = block.timestamp;
-        rewardTokenAddress.mint(account, pinas);
-        emit ClaimedTokenReward(account, pinas);
     }
 
     function updateUserBalance(
