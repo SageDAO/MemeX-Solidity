@@ -43,7 +43,6 @@ contract Lottery is Ownable {
 
     struct ParticipantInfo {
         bool isBooster;
-        uint256 prizeId;
         bool prizeClaimed;
         uint8 entries;
     }
@@ -75,7 +74,6 @@ contract Lottery is Ownable {
         IMemeXNFT nftContract; // reference to the NFT Contract
         uint32 participantsCount; // number of participants
         uint32 maxParticipants; // max number of participants
-        uint256 defaultPrizeId; // prize that every participant will be able to mint
     }
 
     event ResponseReceived(bytes32 _requestId);
@@ -272,14 +270,13 @@ contract Lottery is Ownable {
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
         uint256 _startTime,
+        uint256 _closeTime,
         IMemeXNFT _nftContract,
         uint256 _boostCost,
         uint16 _maxParticipants,
-        uint256 _defaultPrizeId,
         address _artistAddress,
         string calldata _dropMetadataURI
     ) public onlyOwner returns (uint256 lotteryId) {
-        // Incrementing lottery ID
         Status lotteryStatus;
         if (_startTime <= block.timestamp) {
             lotteryStatus = Status.Open;
@@ -297,11 +294,10 @@ contract Lottery is Ownable {
             _costPerTicketCoins,
             _boostCost,
             _startTime,
-            _startTime + 259200, // 3 days
+            _closeTime,
             _nftContract,
             0,
-            _maxParticipants,
-            _defaultPrizeId
+            _maxParticipants
         );
         lotteryHistory[lotteryId] = newLottery;
         lotteries.push(lotteryId);
@@ -433,7 +429,6 @@ contract Lottery is Ownable {
             lottery.participantsCount++;
             ParticipantInfo memory participant = ParticipantInfo(
                 false,
-                lottery.defaultPrizeId,
                 false,
                 numberOfTickets
             );
