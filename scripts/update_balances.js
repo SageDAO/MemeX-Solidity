@@ -1,62 +1,66 @@
+const fetch = require('node-fetch');
+require("dotenv").config();
 
-const hre = require("hardhat");
-const ethers = hre.ethers;
-const deployer = ethers.getSigner().address;
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-const CONTRACTS = require('../contracts.js');
-const rewardsAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
-
-const erc20AbiFragment = [
-    {
-        name: 'balanceOf',
-        type: 'function',
-        inputs: [
-            {
-                name: '_owner',
-                type: 'address',
-            },
-        ],
-        outputs: [
-            {
-                name: 'balance',
-                type: 'uint256',
-            },
-        ],
-        constant: true,
-        payable: false,
-    },
-];
+memeAddressEth = "0xd5525d397898e5502075ea5e830d8914f6f0affe";
+memeAddressFantom = "";
+provider = new ethers.providers.JsonRpcProvider(`https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY_PROD}`);
 
 async function main() {
-    await hre.run('compile');
+    // get last block number
+    const blockNumber = await provider.getBlockNumber();
 
-    const Rewards = await ethers.getContractFactory("Rewards");
-    const rewards = await Rewards.attach(rewardsAddress);
-    const memeAddress = await rewards.memeAddress();
-    const liquidityAddress = await rewards.liquidityAddress();
-    console.log(`MEME address: ${memeAddress}`);
-    console.log(`Liquidity address: ${liquidityAddress}`);
-    const memeContract = new ethers.Contract(memeAddress, erc20AbiFragment, ethers.getDefaultProvider(hre.network.name));
-    const liquidityContract = new ethers.Contract(liquidityAddress, erc20AbiFragment, ethers.getDefaultProvider(hre.network.name));
+    // get last block timestamp
+    const lastBlockData = await provider.getBlock(blockNumber);
+    const lastBlockTimestamp = lastBlockData.timestamp;
 
-    console.log("Getting user list...");
-    joinedUsers = await rewards.getUserList();
-    console.log(`A total of ${joinedUsers.length} users joined Memex`);
-    for (const user of joinedUsers) {
-        console.log(`Checking balances for user ${user}`);
-        userInfo = await rewards.userInfo(user);
-        const memeBalance = await memeContract.balanceOf(user);
-        const liquidityBalance = await liquidityContract.balanceOf(user);
-        console.log(`MEME balance stored on contract: ${memeBalance}, balance on wallet ${userInfo.memeOnWallet}`);
-        console.log(`Liquidity balance stored on contract: ${liquidityBalance}, balance on wallet ${userInfo.liquidityOnWallet}`);
-        if (!memeBalance.eq(userInfo.memeOnWallet) ||
-            !liquidityBalance.eq(userInfo.liquidityOnWallet)) {
-            console.log(`Updating balances for ${user}`);
-            await rewards.updateUserBalance(user, memeBalance, liquidityBalance);
+    console.log(`Fetching MEME holders on the Ethereum network block ${blockNumber}`);
+    const memeEthURL = `https://api.covalenthq.com/v1/1/tokens/${memeAddressEth}/token_holders/?block-height=${blockNumber}&page-number=0&page-size=999999999&key=${process.env.COVALENT_KEY} -H "Accept: application/json`
+
+    // fetch url and store json result
+    const memeEthResult = await fetch(memeEthURL);
+    const memeEthJson = await memeEthResult.json();
+
+    // fetch all Users - only users on the DB will receive points
+    dbUsers = await prisma.user.findMany({
+        select: {
+            walletAddress: true,
+        }
+    });
+    // store user wallets on a set
+    usersSet = new Set();
+    for (user of dbUsers) {
+        usersSet.add(user.walletAddress);
+    }
+
+    // iterate through result from Covalent
+    for (let i = 0; i < memeEthJson.data.items.length; i++) {
+        // get address
+        const address = memeEthJson.data.items[i].address;
+        // get balance
+        const balance = memeEthJson.data.items[i].balance;
+        // if user is on the Covalent list and our Users set, update his balance on the reward table
+        if (usersSet.has(address)) {
+            console.log(`Updating balance - user: ${address}`)
+            await prisma.reward.upsert({
+                where: {
+                    address: address
+                },
+                create: {
+                    address: address,
+                    memeETH: BigInt(balance),
+                    snapshotTS: lastBlockTimestamp,
+                },
+                update: {
+                    memeETH: BigInt(balance),
+                    snapshotTS: lastBlockTimestamp,
+                }
+            });
         }
     }
 }
-
 main()
     .then(() => process.exit(0))
     .catch((error) => {

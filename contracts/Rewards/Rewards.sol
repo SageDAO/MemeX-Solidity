@@ -45,7 +45,7 @@ contract Rewards is Ownable {
         address _address,
         uint256 _points,
         bytes32[] calldata _proof
-    ) public {
+    ) public returns (uint256) {
         require(
             _verify(_leaf(_address, _points), merkleRoot, _proof),
             "Invalid merkle proof"
@@ -58,6 +58,7 @@ contract Rewards is Ownable {
         totalPointsClaimed[_address] = _points;
         pointsAvailable[_address] += availablePoints;
         emit ClaimedReward(_address, _points);
+        return pointsAvailable[_address];
     }
 
     function _leaf(address _address, uint256 _points)
