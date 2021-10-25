@@ -13,7 +13,7 @@ describe("Rewards Contract", function () {
     });
 
     it("Users start with 0 rewards", async function () {
-        expect(await rewards.pointsAvailable(owner.address)).to.equal(0);
+        expect(await rewards.availablePoints(owner.address)).to.equal(0);
     });
 
     it("Should throw if burn points called not by lottery contract", async function () {
@@ -36,7 +36,7 @@ describe("Rewards Contract", function () {
 
         it("Should claim reward with merkle proof", async function () {
             await rewards.connect(addr1).claimRewardWithProof(addr1.address, 1500000000, hexproof);
-            expect(await rewards.pointsAvailable(addr1.address)).to.equal(1500000000);
+            expect(await rewards.availablePoints(addr1.address)).to.equal(1500000000);
             expect(await rewards.totalPointsClaimed(addr1.address)).to.equal(1500000000);
         });
 
@@ -53,7 +53,7 @@ describe("Rewards Contract", function () {
         it("Should update points available after burning points", async function () {
             await rewards.connect(addr1).claimRewardWithProof(addr1.address, 1500000000, hexproof);
             await rewards.connect(addr2).burnUserPoints(addr1.address, 1500000000);
-            expect(await rewards.pointsAvailable(addr1.address)).to.equal(0);
+            expect(await rewards.availablePoints(addr1.address)).to.equal(0);
         });
 
         it("Should throw if not enough points to burn", async function () {

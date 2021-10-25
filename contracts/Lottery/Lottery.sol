@@ -385,7 +385,7 @@ contract Lottery is Ownable {
         uint256 _points,
         bytes32[] calldata _proof
     ) public payable {
-        if (rewardsContract.getTotalPointsClaimed(msg.sender) < _points) {
+        if (rewardsContract.totalPointsClaimed(msg.sender) < _points) {
             rewardsContract.claimRewardWithProof(msg.sender, _points, _proof);
         }
         buyTickets(_lotteryId, numberOfTickets);
@@ -433,7 +433,7 @@ contract Lottery is Ownable {
 
         uint256 totalCostInPoints = numberOfTickets * lottery.ticketCostPinas;
         if (totalCostInPoints > 0) {
-            uint256 availablePoints = rewardsContract.getAvailablePoints(
+            uint256 availablePoints = rewardsContract.availablePoints(
                 msg.sender
             );
             require(

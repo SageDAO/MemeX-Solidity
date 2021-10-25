@@ -26,18 +26,6 @@ contract Rewards is Ownable {
         lotteryAddr = _lotteryAddr;
     }
 
-    function getAvailablePoints(address _user) public view returns (uint256) {
-        return availablePoints[_user];
-    }
-
-    function getTotalPointsClaimed(address _user)
-        public
-        view
-        returns (uint256)
-    {
-        return totalPointsClaimed[_user];
-    }
-
     function burnUserPoints(address _account, uint256 _amount)
         public
         onlyLottery

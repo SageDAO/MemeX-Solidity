@@ -164,7 +164,7 @@ describe("Lottery Contract", function () {
         await lottery.connect(addr2).claimRewardAndBuyTickets(2, 1, 15000000000, hexproofB);
         await lottery.requestRandomNumber(2);
         expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(lottery, "ResponseReceived");
-        expect(await rewards.getAvailablePoints(addr2.address)).to.equal(12000000000);
+        expect(await rewards.availablePoints(addr2.address)).to.equal(12000000000);
     });
 
     it("Should not allow a second RNG request after response received", async function () {
