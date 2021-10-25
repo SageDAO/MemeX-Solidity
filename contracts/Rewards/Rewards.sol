@@ -8,7 +8,7 @@ contract Rewards is Ownable {
 
     bytes32 public merkleRoot;
 
-    mapping(address => uint256) public pointsAvailable;
+    mapping(address => uint256) public availablePoints;
 
     mapping(address => uint256) public totalPointsClaimed;
 
@@ -26,13 +26,25 @@ contract Rewards is Ownable {
         lotteryAddr = _lotteryAddr;
     }
 
+    function getAvailablePoints(address _user) public view returns (uint256) {
+        return availablePoints[_user];
+    }
+
+    function getTotalPointsClaimed(address _user)
+        public
+        view
+        returns (uint256)
+    {
+        return totalPointsClaimed[_user];
+    }
+
     function burnUserPoints(address _account, uint256 _amount)
         public
         onlyLottery
     {
         require(_amount > 0, "Can't use 0 points");
-        require(_amount <= pointsAvailable[_account], "Not enough points");
-        pointsAvailable[_account] -= _amount;
+        require(_amount <= availablePoints[_account], "Not enough points");
+        availablePoints[_account] -= _amount;
 
         emit PointsUsed(_account, _amount);
     }
@@ -54,11 +66,11 @@ contract Rewards is Ownable {
             totalPointsClaimed[_address] < _points,
             "Participant already claimed all points"
         );
-        uint256 availablePoints = _points - totalPointsClaimed[_address];
+        uint256 claimPoints = _points - totalPointsClaimed[_address];
         totalPointsClaimed[_address] = _points;
-        pointsAvailable[_address] += availablePoints;
-        emit ClaimedReward(_address, _points);
-        return pointsAvailable[_address];
+        availablePoints[_address] += claimPoints;
+        emit ClaimedReward(_address, claimPoints);
+        return availablePoints[_address];
     }
 
     function _leaf(address _address, uint256 _points)
