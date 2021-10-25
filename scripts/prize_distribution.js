@@ -13,13 +13,11 @@ const CONTRACTS = require('../contracts.js');
 
 const lotteryId = process.argv.slice(2)[0];
 var abiCoder = ethers.utils.defaultAbiCoder;
-var lotteryAddress;
 const buf2hex = x => '0x' + x.toString('hex');
 
 async function main() {
     await hre.run('compile');
     const Lottery = await ethers.getContractFactory("Lottery");
-    var lottery;
     if (hre.network.name == "hardhat") {
         // if running on memory, deploy the contracts and initialize 
         [owner, addr1, addr2, addr3, addr4, ...addrs] = await ethers.getSigners();
@@ -28,7 +26,7 @@ async function main() {
         Token = await ethers.getContractFactory("MemeXToken");
         token = await Token.deploy("MEMEX", "MemeX", 1, owner.address);
         Rewards = await ethers.getContractFactory('Rewards');
-        rewards = await Rewards.deploy(token.address, token.address, 1, 0);
+        rewards = await Rewards.deploy();
         lottery = await Lottery.deploy(rewards.address);
         await rewards.setLotteryAddress(lottery.address);
         Nft = await ethers.getContractFactory("MemeXNFT");
@@ -45,13 +43,11 @@ async function main() {
             0, 0, 3, artist.address, "ipfs://path/");
         await lottery.addPrizes(1, [1, 2], [1, 1000]);
 
-        for (i = 0; i < 10000; i++) {
+        for (i = 0; i < 1000; i++) {
             console.log(`Buying ticket with account ${i}`);
             await lottery.connect(accounts[i]).buyTickets(1, 1);
         }
 
-        // await lottery.connect(addr2).buyTickets(1, 1);
-        // await lottery.connect(addr3).buyTickets(1, 1);
         await lottery.requestRandomNumber(1);
         await mockRng.fulfillRequest(1, 1);
 
@@ -61,7 +57,7 @@ async function main() {
     }
 
     console.log("Getting lottery entries...");
-    entries = await lottery.getParticipantEntries(lotteryId, { gasLimit: 50000000 });
+    entries = await lottery.getParticipantEntries(lotteryId, { gasLimit: 500000000 });
     totalEntries = entries.length;
     console.log(entries);
     console.log(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);

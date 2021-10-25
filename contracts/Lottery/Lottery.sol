@@ -43,7 +43,6 @@ contract Lottery is Ownable {
 
     struct ParticipantInfo {
         bool isBooster;
-        uint256 prizeId;
         bool prizeClaimed;
         uint8 entries;
     }
@@ -75,7 +74,6 @@ contract Lottery is Ownable {
         IMemeXNFT nftContract; // reference to the NFT Contract
         uint32 participantsCount; // number of participants
         uint32 maxParticipants; // max number of participants
-        uint256 defaultPrizeId; // prize that every participant will be able to mint
     }
 
     event ResponseReceived(bytes32 _requestId);
@@ -272,14 +270,13 @@ contract Lottery is Ownable {
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
         uint256 _startTime,
+        uint256 _closeTime,
         IMemeXNFT _nftContract,
         uint256 _boostCost,
         uint16 _maxParticipants,
-        uint256 _defaultPrizeId,
         address _artistAddress,
         string calldata _dropMetadataURI
     ) public onlyOwner returns (uint256 lotteryId) {
-        // Incrementing lottery ID
         Status lotteryStatus;
         if (_startTime <= block.timestamp) {
             lotteryStatus = Status.Open;
@@ -297,11 +294,10 @@ contract Lottery is Ownable {
             _costPerTicketCoins,
             _boostCost,
             _startTime,
-            _startTime + 259200, // 3 days
+            _closeTime,
             _nftContract,
             0,
-            _maxParticipants,
-            _defaultPrizeId
+            _maxParticipants
         );
         lotteryHistory[lotteryId] = newLottery;
         lotteries.push(lotteryId);
@@ -380,11 +376,15 @@ contract Lottery is Ownable {
      * @notice Function called by users to buy lottery tickets
      * @param _lotteryId ID of the lottery to buy tickets for
      * @param numberOfTickets Number of tickets to buy
+     * @param _points Total user claimable points
+     * @param _proof Proof of the user's claimable points
      */
-    function buyTickets(uint256 _lotteryId, uint8 numberOfTickets)
-        public
-        payable
-    {
+    function buyTickets(
+        uint256 _lotteryId,
+        uint8 numberOfTickets,
+        uint256 _points,
+        bytes32[] calldata _proof
+    ) public payable {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         if (lottery.maxParticipants != 0) {
             require(
@@ -418,6 +418,15 @@ contract Lottery is Ownable {
 
         uint256 totalCostInPoints = numberOfTickets * lottery.ticketCostPinas;
         if (totalCostInPoints > 0) {
+            uint256 availablePoints = rewardsContract.claimRewardWithProof(
+                msg.sender,
+                _points,
+                _proof
+            );
+            require(
+                availablePoints >= totalCostInPoints,
+                "Not enough points to buy tickets"
+            );
             _burnUserPoints(msg.sender, totalCostInPoints);
         }
         uint256 totalCostInCoins = numberOfTickets * lottery.ticketCostCoins;
@@ -433,7 +442,6 @@ contract Lottery is Ownable {
             lottery.participantsCount++;
             ParticipantInfo memory participant = ParticipantInfo(
                 false,
-                lottery.defaultPrizeId,
                 false,
                 numberOfTickets
             );

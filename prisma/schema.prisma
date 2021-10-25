@@ -16,6 +16,7 @@ model Nft {
   rarity      String
   ipfsPath    String
   s3Path      String
+  tags        String
   drop        Drop   @relation(fields: [dropId], references: [id])
   users       User[] @relation("UserFavoriteNFT")
 }
@@ -36,16 +37,8 @@ model Drop {
   bannerImageS3Path   String
   metadataIpfsPath    String
   metadataS3Path      String
+  tags                String
   Nft                 Nft[]
-}
-
-model Proof {
-  lotteryId     Int
-  winnerAddress String @db.Char(42)
-  prizeId       Int
-  proof         String
-
-  @@id([lotteryId, winnerAddress, prizeId])
 }
 
 model User {
@@ -55,6 +48,26 @@ model User {
   createdAt     DateTime @default(now())
   role          Role     @default(USER)
   favorites     Nft[]    @relation("UserFavoriteNFT")
+}
+
+model PrizeProof {
+  lotteryId     Int
+  winnerAddress String  @db.Char(42)
+  prizeId       Int
+  proof         String
+  claimed       Boolean @default(false)
+
+  @@id([lotteryId, winnerAddress, prizeId])
+}
+
+model Reward {
+  address        String  @id @db.Char(42)
+  proof          String?
+  liquidityFTM   BigInt  @default(0)
+  memeETH        BigInt  @default(0)
+  memeFTM        BigInt  @default(0)
+  snapshotPoints BigInt  @default(0)
+  snapshotTS     Int     @default(0)
 }
 
 enum Role {

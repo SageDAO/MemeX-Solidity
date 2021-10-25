@@ -1,174 +1,68 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-
-// const rewardRateToken = 11574074074000;
-// const rewardRateLiquidity = 115740740740000;
-
-const rewardRateToken = 1;
-const rewardRateLiquidity = 2;
+const { MerkleTree } = require("merkletreejs");
+const keccak256 = require('keccak256')
 
 describe("Rewards Contract", function () {
     beforeEach(async () => {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
-        Token = await ethers.getContractFactory("MemeXToken");
-        token = await Token.deploy("MEMEX", "MemeX", 1, owner.address);
         Rewards = await ethers.getContractFactory('Rewards');
-        rewards = await Rewards.deploy(token.address, token.address, rewardRateToken, rewardRateLiquidity);
+        rewards = await Rewards.deploy();
+        // addr2 will simulate the lottery contract
+        await rewards.setLotteryAddress(addr2.address);
     });
 
-    it("Should use the reward rate from the constructor", async function () {
-        expect(await rewards.rewardRateToken()).to.equal(rewardRateToken);
-        expect(await rewards.rewardRateLiquidity()).to.equal(rewardRateLiquidity);
+    it("Users start with 0 rewards", async function () {
+        expect(await rewards.pointsAvailable(owner.address)).to.equal(0);
     });
 
-    it("Should respond that an unknow user didn't join", async function () {
-        expect(await rewards.userJoined(owner.address)).to.equal(false);
+    it("Should throw if burn points called not by lottery contract", async function () {
+        await expect(rewards.connect(addr1).burnUserPoints(addr1.address, 1500000000)).to.be.revertedWith("Lottery calls only");
     });
 
-    it("Should allow users to join memex", async function () {
-        await rewards.join();
-        expect(await rewards.userJoined(owner.address)).to.equal(true);
+    describe("Merkle tree", () => {
+        beforeEach(async () => {
+            abiCoder = ethers.utils.defaultAbiCoder;
+            leafA = abiCoder.encode(["address", "uint256"], [addr1.address, 1500000000]);
+            leafB = abiCoder.encode(["address", "uint256"], [addr2.address, 3000000000]);
+            buf2hex = x => '0x' + x.toString('hex');
+            leaves = [leafA, leafB].map(leaf => keccak256(leaf));
+            tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
+            // get the merkle root and store in the contract 
+            root = tree.getHexRoot().toString('hex');
+            await rewards.setMerkleRoot(root);
+            hexproof = tree.getProof(keccak256(leafA)).map(x => buf2hex(x.data))
+        });
+
+        it("Should claim reward with merkle proof", async function () {
+            await rewards.connect(addr1).claimRewardWithProof(addr1.address, 1500000000, hexproof);
+            expect(await rewards.pointsAvailable(addr1.address)).to.equal(1500000000);
+            expect(await rewards.totalPointsClaimed(addr1.address)).to.equal(1500000000);
+        });
+
+
+        it("Should not claim twice with same proof", async function () {
+            await rewards.connect(addr1).claimRewardWithProof(addr1.address, 1500000000, hexproof);
+            await expect(rewards.connect(addr1).claimRewardWithProof(addr1.address, 1500000000, hexproof)).to.be.revertedWith("Participant already claimed all points");
+        });
+
+        it("Should not claim with wrong proof", async function () {
+            await expect(rewards.connect(addr1).claimRewardWithProof(addr1.address, 3000000000, hexproof)).to.be.revertedWith("Invalid proof");
+        });
+
+        it("Should update points available after burning points", async function () {
+            await rewards.connect(addr1).claimRewardWithProof(addr1.address, 1500000000, hexproof);
+            await rewards.connect(addr2).burnUserPoints(addr1.address, 1500000000);
+            expect(await rewards.pointsAvailable(addr1.address)).to.equal(0);
+        });
+
+        it("Should throw if not enough points to burn", async function () {
+            await rewards.connect(addr1).claimRewardWithProof(addr1.address, 1500000000, hexproof);
+            await expect(rewards.connect(addr2).burnUserPoints(addr1.address, 3000000000)).to.be.revertedWith("Not enough points");
+        });
     });
-
-    it("Should not allow users to join twice", async function () {
-        await rewards.join();
-        await expect(rewards.join()).to.be.revertedWith("User already joined");
-
-    });
-
-    it("Should allow users to join and start with 0 rewards", async function () {
-        await rewards.join();
-        expect(await rewards.earned(owner.address)).to.equal(0);
-    });
-
-    it("Should update rewards after a block", async function () {
-        await rewards.join();
-        await ethers.provider.send("evm_mine", []);
-        expect(await rewards.earned(owner.address)).to.not.equal(0);
-    });
-
-    it("Should allow to manually update user balance", async function () {
-        await rewards.join();
-        info = await rewards.userInfo(owner.address);
-        await rewards.updateUserBalance(owner.address, 1, 1);
-        expect(await rewards.userInfo(owner.address)).to.not.equal(info);
-    });
-
-    it("Should not call burnUserPoints if not lottery", async function () {
-        await rewards.join();
-        await expect(rewards.burnUserPoints(owner.address, 1)).to.be.revertedWith("Lottery calls only");
-    });
-
-    it("Should not allow to spend 0 points", async function () {
-        await rewards.setLotteryAddress(addr1.address);
-        await expect(rewards.connect(addr1).burnUserPoints(owner.address, 0)).to.be.revertedWith("User didn't join Memex yet");
-    });
-
-    it("Should not allow to spend points if user didn't join", async function () {
-        // simulate addr1 is the lottery contract
-        await rewards.setLotteryAddress(addr1.address);
-        // send a transaction as the lottery contract
-        await expect(rewards.connect(addr1).burnUserPoints(owner.address, 100)).to.be.revertedWith("User didn't join Memex yet");
-    });
-
-    it("Should not allow to spend more than points earned", async function () {
-        // simulate addr1 is the lottery contract
-        await rewards.setLotteryAddress(addr1.address);
-        await rewards.join();
-        // send a transaction as the lottery contract
-        await expect(rewards.connect(addr1).burnUserPoints(owner.address, 100000000000)).to.be.revertedWith("not enough points");
-    });
-
-    it("Should emit event after spending points", async function () {
-        await rewards.join();
-        await rewards.setLotteryAddress(addr1.address);
-        await ethers.provider.send("evm_mine", []);
-        await expect(rewards.connect(addr1).
-            burnUserPoints(owner.address, 1)).to.have.emit(rewards, "PointsUsed").withArgs(owner.address, 1);
-    });
-
-    it("Should update the user list", async function () {
-        await rewards.join();
-        userList = await rewards.getUserList();
-        expect(userList.length).to.equal(1);
-    });
-
-    it("Should update balance 10 seconds after joining holding the meme token", async function () {
-        // simulate addr1 is the lottery contract
-        await rewards.setLotteryAddress(addr1.address);
-        await rewards.join();
-        await rewards.updateUserBalance(owner.address, 100000000, 0);
-        await rewards.updateUserRewards(owner.address, 0);
-        // const blockNumBefore = await ethers.provider.getBlockNumber();
-        // const blockBefore = await ethers.provider.getBlock(blockNumBefore);
-        // const timestampBefore = blockBefore.timestamp;
-        // console.log(timestampBefore)
-        await waitAndMineBlock(10); // increase next block timestamp in 10 seconds
-        // const blockNumAfter = await ethers.provider.getBlockNumber();
-        // const blockAfter = await ethers.provider.getBlock(blockNumAfter);
-        // const timestampAfter = blockAfter.timestamp;
-        // console.log(timestampAfter)
-        expect(await rewards.earned(owner.address)).to.equal(10);
-    });
-
-    it("Should update balance 10 seconds after joining holding the liquidity token", async function () {
-        // simulate addr1 is the lottery contract
-        await rewards.setLotteryAddress(addr1.address);
-        await rewards.join();
-        await rewards.updateUserBalance(owner.address, 0, 100000000);
-        await rewards.updateUserRewards(owner.address, 0);
-        await waitAndMineBlock(10); // increase next block timestamp in 10 seconds
-        expect(await rewards.earned(owner.address)).to.equal(20);
-    });
-
-    it("Should update rewards balance after lottery burns points", async function () {
-        var provider = ethers.providers.getDefaultProvider();
-        await rewards.setLotteryAddress(addr1.address);
-        await rewards.join();
-        await rewards.updateUserBalance(owner.address, 100000000, 0);
-        await rewards.updateUserRewards(owner.address, 0);
-        await waitAndMineBlock(10);
-        const blockNumBefore = await ethers.provider.getBlockNumber();
-        // if one block is mined here, would be one extra second of rewards
-        await rewards.connect(addr1).burnUserPoints(owner.address, 10);
-        const blockNumAfter = await ethers.provider.getBlockNumber();
-        expect(await rewards.earned(owner.address)).to.equal(blockNumAfter - blockNumBefore); // should be 0 + extra rewards if there are new blocks
-    });
-
     it("Should not call setLotteryAddress if not owner", async function () {
         await expect(rewards.connect(addr1).setLotteryAddress(owner.address)).to.be.revertedWith("Ownable: caller is not the owner");
     });
-
-    it("Should not call setRewardToken if not owner", async function () {
-        await expect(rewards.connect(addr1).setRewardToken(rewards.address)).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Should not call setRewardRateToken if not owner", async function () {
-        await expect(rewards.connect(addr1).setRewardRateToken(rewardRateToken)).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Should not call setRewardRateLiquidity if not owner", async function () {
-        await expect(rewards.connect(addr1).setRewardRateLiquidity(rewardRateLiquidity)).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Should not call setMemeAddresS if not owner", async function () {
-        await expect(rewards.connect(addr1).setMemeAddresS(rewards.address)).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Should not call setLiquidityAddress if not owner", async function () {
-        await expect(rewards.connect(addr1).setLiquidityAddress(rewards.address)).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Should not call updateUserRewards if not owner", async function () {
-        await expect(rewards.connect(addr1).updateUserRewards(rewards.address, 1)).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Should not call updateUserBalance if not owner", async function () {
-        await expect(rewards.connect(addr1).updateUserBalance(rewards.address, 1, 1)).to.be.revertedWith("Ownable: caller is not the owner");
-    });
 });
 
-async function waitAndMineBlock(seconds) {
-    await ethers.provider.send("evm_increaseTime", [seconds]);
-    await ethers.provider.send("evm_mine", []);
-}
