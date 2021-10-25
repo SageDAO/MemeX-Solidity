@@ -34,7 +34,7 @@ async function main() {
     console.log(`Fetching MEME holders on the Ethereum network block ${blockNumber}`);
     const memeEthURL = `https://api.covalenthq.com/v1/1/tokens/${memeAddressEth}/token_holders/?block-height=${blockNumber}&page-number=0&page-size=999999999&key=${process.env.COVALENT_KEY} -H "Accept: application/json`
 
-    // fetch url and store json result
+    // query Covalent for all MEME holders and store json result
     const memeEthResult = await fetch(memeEthURL);
     const memeEthJson = await memeEthResult.json();
 
@@ -60,7 +60,7 @@ async function main() {
         // get balance
         const balance = memeEthJson.data.items[i].balance;
 
-        // if user is on the Covalent list and our Users set, update his balance on the reward table
+        // if user is on the Covalent list AND on our DB, update his balance 
         if (dbUsersSet.has(address)) {
             console.log(`Updating balance - user: ${address}`)
             await prisma.reward.update({

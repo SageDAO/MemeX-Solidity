@@ -48,7 +48,7 @@ contract Rewards is Ownable {
     ) public returns (uint256) {
         require(
             _verify(_leaf(_address, _points), merkleRoot, _proof),
-            "Invalid merkle proof"
+            "Invalid proof"
         );
         require(
             totalPointsClaimed[_address] < _points,
