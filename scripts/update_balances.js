@@ -72,18 +72,12 @@ async function main() {
                     snapshotTS: lastBlockTimestamp,
                 }
             });
-            earnedPoints = await prisma.$queryRawUnsafe(`SELECT earned('${address}', ${lastBlockTimestamp});`);
-            console.log("earned: " + earnedPoints[0].earned);
-            leaves.push({
-                address: address,
-                points: earnedPoints[0].earned,
-            });
         }
     }
     // if a user had balance stored but now he's not on the Covalent list, update his balance to 0
     for (user of dbUsers) {
         if (user.memeETH != 0 && !tokenHolders.has(user.address)) {
-            console.log(`Updating balance - user: ${user.address}`)
+            console.log(`Updating balance - user: ${user.address}`);
             await prisma.reward.update({
                 where: {
                     address: user.address
@@ -94,6 +88,12 @@ async function main() {
                 }
             });
         }
+        earnedPoints = await prisma.$queryRawUnsafe(`SELECT earned('${user.address}', ${lastBlockTimestamp});`);
+        console.log("earned: " + earnedPoints[0].earned);
+        leaves.push({
+            address: user.address,
+            points: earnedPoints[0].earned,
+        });
     }
 
     if (publishRewardTree) {
@@ -114,7 +114,7 @@ async function main() {
             // store proof in the DB so it can be easily queried
             await prisma.reward.update({
                 where: {
-                    address: user.address
+                    address: leaf.address
                 },
                 data: {
                     proof: proof,

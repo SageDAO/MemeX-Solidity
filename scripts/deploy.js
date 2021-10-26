@@ -7,11 +7,8 @@
 const { ethers } = require("hardhat");
 const hre = require("hardhat");
 const CONTRACTS = require('../contracts.js')
-//TODO: CHECK HOW TO INITIALIZE Token Supply
 
 const timer = ms => new Promise(res => setTimeout(res, ms));
-
-const TEN_POW_18 = "1000000000000000000";
 
 deployMemeXToken = async (deployer) => {
   token_address = CONTRACTS[hre.network.name]["tokenAddress"]
@@ -50,19 +47,20 @@ deployRewards = async (deployer, token) => {
   return rewards
 }
 
-deployNFT = async (lottery) => {
+deployNFT = async (deployer, lottery) => {
   nft_address = CONTRACTS[hre.network.name]["nftAddress"]
   const Nft = await hre.ethers.getContractFactory("MemeXNFT");
   if (nft_address == "") {
     console.log("deploying NFT token")
-    nft = await Nft.deploy("MemeX", "MMXNFT", lottery);
+    nft = await Nft.deploy("MemeX", "MMXNFT", deployer.address);
     await nft.deployed();
     console.log("NFT deployed to:", nft.address);
     await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
     await hre.run("verify:verify", {
       address: nft.address,
-      constructorArguments: ["MemeX", "MMXNFT", lottery],
+      constructorArguments: ["MemeX", "MMXNFT", deployer.address],
     });
+    await nft.setLotteryContract(lottery.address, { gasLimit: 4000000 })
   } else {
     nft = await Nft.attach(nft_address);
   }
@@ -81,6 +79,7 @@ deployLottery = async (rewards) => {
       address: lottery.address,
       constructorArguments: [rewards.address],
     });
+    await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
   } else {
     lottery = await Lottery.attach(lottery_address);
   }
@@ -111,19 +110,13 @@ deployRandomness = async () => {
         _keyHash,
         _fee],
     });
+    return [randomness, true]
   }
   else {
     randomness = await Randomness.attach(rand_address)
   }
 
-  return randomness
-}
-
-setLottery = async (lottery, randomness, nft, rewards) => {
-  console.log(`Setting lottery ${lottery.address} on randomness ${randomness.address}`)
-  await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
-  await nft.setLotteryContract(lottery.address, { gasLimit: 4000000 })
-  await rewards.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
+  return [randomness, false]
 }
 
 setRandomGenerator = async (lottery, rng) => {
@@ -144,12 +137,16 @@ async function main() {
 
   token = await deployMemeXToken(deployer);
   rewards = await deployRewards(deployer, token);
-  lottery = await deployLottery(rewards);
+  values = await deployRandomness();
+  randomness = values[0];
+  newRandomness = values[1];
 
-  nft = await deployNFT(lottery.address);
-  randomness = await deployRandomness();
-  await setLottery(lottery, randomness, nft, rewards);
-  await setRandomGenerator(lottery, randomness.address);
+  lottery = await deployLottery(rewards, randomness);
+
+  if (newRandomness) {
+    await setRandomGenerator(lottery, randomness.address);
+  }
+  nft = await deployNFT(deployer, lottery);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
