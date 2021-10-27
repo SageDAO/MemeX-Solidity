@@ -376,25 +376,6 @@ contract Lottery is Ownable {
     }
 
     /**
-     * @notice Function called by users to claim rewards and buy lottery tickets on same tx
-     * @param _lotteryId ID of the lottery to buy tickets for
-     * @param numberOfTickets Number of tickets to buy
-     * @param _points Total user claimable points
-     * @param _proof Proof of the user's claimable points
-     */
-    function claimRewardAndBuyTickets(
-        uint256 _lotteryId,
-        uint8 numberOfTickets,
-        uint256 _points,
-        bytes32[] calldata _proof
-    ) public payable returns (uint256) {
-        if (rewardsContract.totalPointsClaimed(msg.sender) < _points) {
-            rewardsContract.claimRewardWithProof(msg.sender, _points, _proof);
-        }
-        return buyTickets(_lotteryId, numberOfTickets);
-    }
-
-    /**
      * @notice Function called by users to buy lottery tickets
      * @param _lotteryId ID of the lottery to buy tickets for
      * @param numberOfTickets Number of tickets to buy
@@ -438,7 +419,7 @@ contract Lottery is Ownable {
 
         uint256 totalCostInPoints = numberOfTickets * lottery.ticketCostPinas;
         if (totalCostInPoints > 0) {
-            remainingPoints = rewardsContract.availablePoints(msg.sender);
+            remainingPoints = rewardsContract.pointsAvailable(msg.sender);
             require(
                 remainingPoints >= totalCostInPoints,
                 "Not enough points to buy tickets"
