@@ -122,8 +122,11 @@ contract Lottery is Ownable {
         maxEntries = _maxEntries;
     }
 
-    function _burnUserPoints(address _user, uint256 _amount) internal {
-        rewardsContract.burnUserPoints(_user, _amount);
+    function _burnUserPoints(address _user, uint256 _amount)
+        internal
+        returns (uint256)
+    {
+        return rewardsContract.burnUserPoints(_user, _amount);
     }
 
     function setRewardsContract(address _rewardsContract) public onlyOwner {
@@ -384,11 +387,11 @@ contract Lottery is Ownable {
         uint8 numberOfTickets,
         uint256 _points,
         bytes32[] calldata _proof
-    ) public payable {
+    ) public payable returns (uint256) {
         if (rewardsContract.totalPointsClaimed(msg.sender) < _points) {
             rewardsContract.claimRewardWithProof(msg.sender, _points, _proof);
         }
-        buyTickets(_lotteryId, numberOfTickets);
+        return buyTickets(_lotteryId, numberOfTickets);
     }
 
     /**
@@ -399,8 +402,10 @@ contract Lottery is Ownable {
     function buyTickets(uint256 _lotteryId, uint8 numberOfTickets)
         public
         payable
+        returns (uint256)
     {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        uint256 remainingPoints;
         if (lottery.maxParticipants != 0) {
             require(
                 lottery.participantsCount < lottery.maxParticipants,
@@ -433,14 +438,12 @@ contract Lottery is Ownable {
 
         uint256 totalCostInPoints = numberOfTickets * lottery.ticketCostPinas;
         if (totalCostInPoints > 0) {
-            uint256 availablePoints = rewardsContract.availablePoints(
-                msg.sender
-            );
+            remainingPoints = rewardsContract.availablePoints(msg.sender);
             require(
-                availablePoints >= totalCostInPoints,
+                remainingPoints >= totalCostInPoints,
                 "Not enough points to buy tickets"
             );
-            _burnUserPoints(msg.sender, totalCostInPoints);
+            remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
         }
         uint256 totalCostInCoins = numberOfTickets * lottery.ticketCostCoins;
         if (totalCostInCoins > 0) {
@@ -465,6 +468,7 @@ contract Lottery is Ownable {
         for (uint8 i = 0; i < numberOfTickets; i++) {
             assignNewEntryToParticipant(_lotteryId, msg.sender);
         }
+        return remainingPoints;
     }
 
     /**

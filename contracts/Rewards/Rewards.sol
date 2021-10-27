@@ -12,7 +12,7 @@ contract Rewards is Ownable {
 
     mapping(address => uint256) public totalPointsClaimed;
 
-    event PointsUsed(address indexed user, uint256 amount);
+    event PointsUsed(address indexed user, uint256 amount, uint256 remaining);
     event ClaimedReward(address indexed user, uint256 amount);
 
     modifier onlyLottery() {
@@ -29,12 +29,15 @@ contract Rewards is Ownable {
     function burnUserPoints(address _account, uint256 _amount)
         public
         onlyLottery
+        returns (uint256)
     {
+        uint256 startPoints = availablePoints[_account];
         require(_amount > 0, "Can't use 0 points");
-        require(_amount <= availablePoints[_account], "Not enough points");
-        availablePoints[_account] -= _amount;
+        require(_amount <= startPoints, "Not enough points");
+        availablePoints[_account] = startPoints - _amount;
 
-        emit PointsUsed(_account, _amount);
+        emit PointsUsed(_account, _amount, startPoints - _amount);
+        return startPoints - _amount;
     }
 
     function setMerkleRoot(bytes32 _root) public onlyOwner {
