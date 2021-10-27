@@ -57,7 +57,6 @@ contract Rewards is Ownable {
 
     function pointsAvailable(address _account) public view returns (uint256) {
         UserInfo memory user = userInfo[_account];
-        require(user.lastSnapshotTime > 0, "User snapshot not available");
         uint256 blockTime = block.timestamp;
         uint256 pointsToken = ((user.memeOnWallet) *
             (blockTime - user.lastSnapshotTime) *
@@ -76,7 +75,7 @@ contract Rewards is Ownable {
     {
         require(_amount > 0, "cannot use 0 points");
         UserInfo storage user = userInfo[_account];
-        require(_amount <= user.pointsAvailableSnapshot, "not enough points");
+        require(_amount <= user.pointsAvailableSnapshot, "Not enough points");
         uint256 remainingPoints = user.pointsAvailableSnapshot - _amount;
         user.pointsAvailableSnapshot = remainingPoints;
 
