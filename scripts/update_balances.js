@@ -1,7 +1,5 @@
 const fetch = require('node-fetch');
 require("dotenv").config();
-const { MerkleTree } = require("merkletreejs");
-const keccak256 = require('keccak256');
 const hre = require("hardhat");
 const ethers = hre.ethers;
 
@@ -10,23 +8,21 @@ const prisma = new PrismaClient();
 
 const memeAddressEth = "0xd5525d397898e5502075ea5e830d8914f6f0affe";
 const memeAddressFantom = "";
-const provider = new ethers.providers.JsonRpcProvider(`https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY_PROD}`);
+const providerEth = new ethers.providers.JsonRpcProvider(`https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY_PROD}`);
 
 const CONTRACTS = require('../contracts.js');
-var abiCoder = ethers.utils.defaultAbiCoder;
-const publishRewardTree = process.argv.slice(2)[0];
 
 async function main() {
     await hre.run('compile');
     const Rewards = await ethers.getContractFactory("Rewards");
     rewardsAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
     rewardsContract = await Rewards.attach(rewardsAddress);
-    leaves = new Array();
+
     // get last block number
-    const blockNumber = await provider.getBlockNumber();
+    const blockNumber = await providerEth.getBlockNumber();
 
     // get last block timestamp
-    const lastBlockData = await provider.getBlock(blockNumber);
+    const lastBlockData = await providerEth.getBlock(blockNumber);
     const lastBlockTimestamp = lastBlockData.timestamp;
 
     const buf2hex = x => '0x' + x.toString('hex');
@@ -43,92 +39,44 @@ async function main() {
         select: {
             address: true,
             memeETH: true,
+            memeFTM: true,
         }
     });
-    // store user wallets in a set
-    dbUsersSet = new Set();
-    for (user of dbUsers) {
-        dbUsersSet.add(user.address);
-    }
-    tokenHolders = new Set();
+
+    memeEthHolders = new Map();
     // iterate through result from Covalent
     for (let i = 0; i < memeEthJson.data.items.length; i++) {
         // get address
         const address = memeEthJson.data.items[i].address;
-        tokenHolders.add(address);
-
         // get balance
         const balance = memeEthJson.data.items[i].balance;
 
-        // if user is on the Covalent list AND on our DB, update his balance 
-        if (dbUsersSet.has(address)) {
-            console.log(`Updating balance - user: ${address}`)
-            await prisma.reward.update({
-                where: {
-                    address: address
-                },
-                data: {
-                    memeETH: BigInt(balance),
-                    snapshotTS: lastBlockTimestamp,
-                }
-            });
-        }
+        memeEthHolders.set(address, balance);
     }
-    // if a user had balance stored but now he's not on the Covalent list, update his balance to 0
+
+    addresses = [];
+    balances = [];
+    liquidity = [];
+
     for (user of dbUsers) {
-        if (user.memeETH != 0 && !tokenHolders.has(user.address)) {
+        memeEthUpdatedBalance = memeEthHolders.has(user.address) ? memeEthHolders.get(user.address) : 0;
+        if (user.memeETH != memeEthUpdatedBalance) {
             console.log(`Updating balance - user: ${user.address}`);
+            addresses.push(user.address);
+            balances.push(memeEthUpdatedBalance);
+            liquidity.push(0);
             await prisma.reward.update({
                 where: {
                     address: user.address
                 },
                 data: {
-                    memeETH: BigInt(0),
-                    snapshotTS: lastBlockTimestamp,
-                }
-            });
-        }
-        earnedPoints = await prisma.$queryRawUnsafe(`SELECT earned('${user.address}', ${lastBlockTimestamp});`);
-        console.log("earned: " + earnedPoints[0].earned);
-        leaves.push({
-            address: user.address,
-            points: earnedPoints[0].earned,
-        });
-    }
-
-    if (publishRewardTree) {
-        console.log(`Publishing rewards`);
-        hashedLeaves = leaves.map(leaf => getEncodedLeaf(leaf));
-        const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
-
-        const root = tree.getHexRoot().toString('hex');
-        console.log(`Storing Merkle tree root in the contract: ${root}`);
-        await rewardsContract.setMerkleRoot(root);
-
-        // generate proofs for each reward
-        for (index in leaves) {
-            leaf = leaves[index];
-            proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
-            console.log(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
-
-            // store proof in the DB so it can be easily queried
-            await prisma.reward.update({
-                where: {
-                    address: leaf.address
-                },
-                data: {
-                    proof: proof,
+                    memeETH: Number(memeEthUpdatedBalance),
                 }
             });
         }
     }
+    await rewardsContract.updateBalanceBatch(addresses, balances, liquidity);
 }
-
-function getEncodedLeaf(leaf) {
-    return keccak256(abiCoder.encode(["address", "uint256"],
-        [leaf.address, leaf.points]));
-}
-
 
 main()
     .then(() => process.exit(0))

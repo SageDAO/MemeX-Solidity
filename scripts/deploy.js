@@ -32,14 +32,16 @@ deployMemeXToken = async (deployer) => {
 deployRewards = async (deployer, token) => {
   rewards_address = CONTRACTS[hre.network.name]["rewardsAddress"]
   const Rewards = await hre.ethers.getContractFactory("Rewards");
+  const rewardRateToken = 11574074074074;
+  const rewardRateLiquidity = 115740740740740;
   if (rewards_address == "") {
-    rewards = await Rewards.deploy();
+    rewards = await Rewards.deploy(rewardRateToken, rewardRateLiquidity);
     await rewards.deployed();
     console.log("Rewards contract deployed to:", rewards.address);
     await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
     await hre.run("verify:verify", {
       address: rewards.address,
-      constructorArguments: [],
+      constructorArguments: [rewardRateToken, rewardRateLiquidity],
     });
   } else {
     rewards = await Rewards.attach(rewards_address);
