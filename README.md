@@ -51,6 +51,13 @@ The script to run prize distributions can be called with the following command:
 
 It will find prize winners, create the merkle tree and update the lottery contract with the root hash. It also saves proofs on our database. After that lottery results can be queried from the database fetching the proofs required when claiming a prize.
 
+## Rewards
+
+Rewards are based on users holding the MEME token on their wallet (either on Ethereum or Fantom). We don't require users to stake those tokens, instead, there is a script to check and update all balances on a certain interval:
+
+`export HARDHAT_NETWORK=rinkeby; node scripts/update_balances.js`
+
+
 ## Unit tests
 
 To run unit tests:

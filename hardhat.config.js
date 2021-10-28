@@ -19,11 +19,11 @@ module.exports = {
   networks: {
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
-      accounts: [`${process.env.DEPLOYER_PK}`, `${process.env.ACCOUNT1}`, `${process.env.ACCOUNT2}`],
+      accounts: [`${process.env.DEPLOYER_PK}`],
     },
     fantomtestnet: {
       url: `https://apis.ankr.com/${process.env.ANKR_KEY}/fantom/full/test`,
-      accounts: [`${process.env.DEPLOYER_PK}`, `${process.env.ACCOUNT1}`, `${process.env.ACCOUNT2}`],
+      accounts: [`${process.env.DEPLOYER_PK}`],
       chainId: 0xfa2
     },
     fantom: {
@@ -36,13 +36,13 @@ module.exports = {
       allowUnlimitedContractSize: true,
       timeout: 1800000,
       accounts: {
-        count: 1000
+        count: 100
       }
     }
 
   },
   etherscan: {
-    apiKey: process.env.FTMSCAN_KEY
+    apiKey: process.env.ETHERSCAN_KEY
   },
 
   solidity: {

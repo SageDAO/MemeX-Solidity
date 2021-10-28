@@ -63,10 +63,9 @@ model PrizeProof {
 }
 
 model Reward {
-  address      String @id @db.Char(42)
-  liquidityFTM BigInt @default(0)
-  memeETH      BigInt @default(0)
-  memeFTM      BigInt @default(0)
+  address   String @id @db.Char(42)
+  liquidity BigInt @default(0)
+  meme      BigInt @default(0)
 }
 
 enum Role {

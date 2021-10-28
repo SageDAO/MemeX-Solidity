@@ -18,26 +18,29 @@ const buf2hex = x => '0x' + x.toString('hex');
 async function main() {
     await hre.run('compile');
     const Lottery = await ethers.getContractFactory("Lottery");
+    const blockNum = await ethers.provider.getBlockNumber();
+    const block = await ethers.provider.getBlock(blockNum);
+    [owner, addr1, addr2, addr3, addr4, ...addrs] = await ethers.getSigners();
+    accounts = await ethers.getSigners();
+    artist = addr1;
+    Rewards = await ethers.getContractFactory('Rewards');
+    Nft = await ethers.getContractFactory("MemeXNFT");
     if (hre.network.name == "hardhat") {
         // if running on memory, deploy the contracts and initialize 
-        [owner, addr1, addr2, addr3, addr4, ...addrs] = await ethers.getSigners();
-        accounts = await ethers.getSigners();
-        artist = addr1;
+
         Token = await ethers.getContractFactory("MemeXToken");
         token = await Token.deploy("MEMEX", "MemeX", 1, owner.address);
-        Rewards = await ethers.getContractFactory('Rewards');
+
         rewards = await Rewards.deploy();
         lottery = await Lottery.deploy(rewards.address);
         await rewards.setLotteryAddress(lottery.address);
-        Nft = await ethers.getContractFactory("MemeXNFT");
+
         nft = await Nft.deploy("Memex", "MEMEX", owner.address);
         nft.addMinterRole(owner.address);
         await nft.setLotteryContract(lottery.address);
         MockRNG = await ethers.getContractFactory("MockRNG");
         mockRng = await MockRNG.deploy(lottery.address);
         await lottery.setRandomGenerator(mockRng.address);
-        const blockNum = await ethers.provider.getBlockNumber();
-        const block = await ethers.provider.getBlock(blockNum);
         await lottery.createNewLottery(0, 0, block.timestamp,
             nft.address,
             0, 0, 3, artist.address, "ipfs://path/");
@@ -54,6 +57,12 @@ async function main() {
     } else {
         lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
         lottery = await Lottery.attach(lotteryAddress);
+        // nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
+        // nft = await Nft.attach(nftAddress);
+        // await lottery.createNewLottery(100000000, 0, block.timestamp, block.timestamp + 86400 * 10,
+        //     nft.address,
+        //     0, 0, artist.address, "ipfs://path/");
+        // process.exit(0);
     }
 
     console.log("Getting lottery entries...");

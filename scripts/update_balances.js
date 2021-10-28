@@ -7,9 +7,9 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const memeAddressEth = "0xd5525d397898e5502075ea5e830d8914f6f0affe";
-const memeAddressFantom = "";
+const memeAddressFantom = "0xe3d7a068a7d99ee79d9112d989c5aff4e7594a21";
 const providerEth = new ethers.providers.JsonRpcProvider(`https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY_PROD}`);
-
+const providerAnkr = new ethers.providers.JsonRpcProvider(`https://apis.ankr.com/${process.env.ANKR_KEY_MAINNET}/fantom/full/main`);
 const CONTRACTS = require('../contracts.js');
 
 async function main() {
@@ -18,64 +18,44 @@ async function main() {
     rewardsAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
     rewardsContract = await Rewards.attach(rewardsAddress);
 
-    // get last block number
-    const blockNumber = await providerEth.getBlockNumber();
-
-    // get last block timestamp
-    const lastBlockData = await providerEth.getBlock(blockNumber);
-    const lastBlockTimestamp = lastBlockData.timestamp;
-
-    const buf2hex = x => '0x' + x.toString('hex');
-
-    console.log(`Fetching MEME holders on the Ethereum network block ${blockNumber}`);
-    const memeEthURL = `https://api.covalenthq.com/v1/1/tokens/${memeAddressEth}/token_holders/?block-height=${blockNumber}&page-number=0&page-size=999999999&key=${process.env.COVALENT_KEY} -H "Accept: application/json`
-
-    // query Covalent for all MEME holders and store json result
-    const memeEthResult = await fetch(memeEthURL);
-    const memeEthJson = await memeEthResult.json();
+    const covalentResultEth = await covalentFetchHolders(providerEth, 1, memeAddressEth);
+    const covalentResultFantom = await covalentFetchHolders(providerAnkr, 250, memeAddressFantom);
 
     // fetch all DB Users - only users in our DB will receive points
     dbUsers = await prisma.reward.findMany({
         select: {
             address: true,
-            memeETH: true,
-            memeFTM: true,
+            meme: true,
         }
     });
 
-    memeEthHolders = new Map();
-    // iterate through result from Covalent
-    for (let i = 0; i < memeEthJson.data.items.length; i++) {
-        // get address
-        const address = memeEthJson.data.items[i].address;
-        // get balance
-        const balance = memeEthJson.data.items[i].balance;
-
-        memeEthHolders.set(address, balance);
-    }
+    ethHolders = createMemeHoldersMap(covalentResultEth);
+    fantomHolders = createMemeHoldersMap(covalentResultFantom);
 
     addresses = [];
     balances = [];
     liquidity = [];
 
     for (user of dbUsers) {
-        memeEthUpdatedBalance = memeEthHolders.has(user.address) ? memeEthHolders.get(user.address) : 0;
-        if (user.memeETH != memeEthUpdatedBalance) {
+        memeUpdatedBalance = ethHolders.has(user.address) ? ethHolders.get(user.address) : 0;
+        memeUpdatedBalance += fantomHolders.has(user.address) ? fantomHolders.get(user.address) : 0;
+        if (user.meme != memeUpdatedBalance) {
             console.log(`Updating balance - user: ${user.address}`);
             addresses.push(user.address);
-            balances.push(memeEthUpdatedBalance);
+            balances.push(memeUpdatedBalance);
             liquidity.push(0);
             await prisma.reward.update({
                 where: {
                     address: user.address
                 },
                 data: {
-                    memeETH: Number(memeEthUpdatedBalance),
+                    meme: Number(memeUpdatedBalance),
                 }
             });
         }
     }
     await rewardsContract.updateBalanceBatch(addresses, balances, liquidity);
+    console.log(`Updated balances for ${addresses.length} users`);
 }
 
 main()
@@ -84,3 +64,29 @@ main()
         console.error(error);
         process.exit(1);
     });
+
+function createMemeHoldersMap(covalentResult) {
+    holdersMap = new Map();
+    // iterate through result from Covalent
+    for (let i = 0; i < covalentResult.data.items.length; i++) {
+        // get address
+        const address = covalentResult.data.items[i].address;
+        // get balance
+        const balance = covalentResult.data.items[i].balance;
+
+        holdersMap.set(address, balance);
+    }
+    return holdersMap;
+}
+
+async function covalentFetchHolders(provider, chainId, memeAddress) {
+    const blockNumber = await provider.getBlockNumber();
+
+    console.log(`Fetching MEME holders on chainId ${chainId} block ${blockNumber}`);
+    const convalentURL = `https://api.covalenthq.com/v1/${chainId}/tokens/${memeAddress}/token_holders/?block-height=${blockNumber}&page-number=0&page-size=999999999&key=${process.env.COVALENT_KEY} -H "Accept: application/json`;
+    // query Covalent for all MEME holders and return the result
+    const result = await fetch(convalentURL);
+    const resultJson = await result.json();
+    return resultJson;
+}
+
