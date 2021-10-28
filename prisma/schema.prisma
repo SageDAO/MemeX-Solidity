@@ -18,7 +18,6 @@ model Nft {
   s3Path      String
   tags        String
   drop        Drop   @relation(fields: [dropId], references: [id])
-  users       User[] @relation("UserFavoriteNFT")
 }
 
 model Drop {
@@ -39,6 +38,7 @@ model Drop {
   metadataS3Path      String
   tags                String
   Nft                 Nft[]
+  User                User[]
 }
 
 model User {
@@ -47,7 +47,9 @@ model User {
   email         String?  @unique
   createdAt     DateTime @default(now())
   role          Role     @default(USER)
-  favorites     Nft[]    @relation("UserFavoriteNFT")
+  Drop          Drop[]
+
+  @@index([walletAddress])
 }
 
 model PrizeProof {
@@ -61,13 +63,10 @@ model PrizeProof {
 }
 
 model Reward {
-  address        String  @id @db.Char(42)
-  proof          String?
-  liquidityFTM   BigInt  @default(0)
-  memeETH        BigInt  @default(0)
-  memeFTM        BigInt  @default(0)
-  snapshotPoints BigInt  @default(0)
-  snapshotTS     Int     @default(0)
+  address      String @id @db.Char(42)
+  liquidityFTM BigInt @default(0)
+  memeETH      BigInt @default(0)
+  memeFTM      BigInt @default(0)
 }
 
 enum Role {

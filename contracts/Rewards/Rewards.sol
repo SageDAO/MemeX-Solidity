@@ -60,10 +60,10 @@ contract Rewards is Ownable {
         uint256 blockTime = block.timestamp;
         uint256 pointsToken = ((user.memeOnWallet) *
             (blockTime - user.lastSnapshotTime) *
-            rewardRateToken);
+            rewardRateToken) / 1e18;
         uint256 pointsLiquidity = ((user.liquidityOnWallet) *
             (blockTime - user.lastSnapshotTime) *
-            rewardRateLiquidity);
+            rewardRateLiquidity) / 1e18;
         return pointsToken + pointsLiquidity + user.pointsAvailableSnapshot;
     }
 

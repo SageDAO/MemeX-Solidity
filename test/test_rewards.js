@@ -3,8 +3,8 @@ const { ethers } = require("hardhat");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require('keccak256')
 
-//const rewardRateToken = 11574074074000;
-//const rewardRateLiquidity = 115740740740000;
+//const rewardRateToken = 11574074074074;
+//const rewardRateLiquidity = 115740740740740;
 
 const rewardRateToken = 1; // setting a small value to be more easily verifiable
 const rewardRateLiquidity = 2;
@@ -30,9 +30,9 @@ describe("Rewards Contract", function () {
         await expect(rewards.connect(addr2).burnUserPoints(addr1.address, 1500000000)).to.be.revertedWith("Not enough points");
     });
 
-    it("Should update balance 10 seconds after holding the meme token", async function () {
+    it("Should update balance after 10 seconds holding the meme token", async function () {
         await rewards.updateUserBalance(owner.address, 100000000, 0);
-        await waitAndMineBlock(10); // increase next block timestamp in 10 seconds
+        await waitAndMineBlock(10); // increase next block timestamp 
         expect(await rewards.pointsAvailable(owner.address)).to.equal(1000000000);
     });
 
@@ -40,8 +40,22 @@ describe("Rewards Contract", function () {
     it("Should update rewards balance after lottery burns points", async function () {
         await rewards.updateUserBalance(owner.address, 1, 0);
         await waitAndMineBlock(9); // 9 seconds after this block
-        await rewards.connect(addr2).burnUserPoints(owner.address, 10); // one extra second on this transaction
+        await rewards.connect(addr2).burnUserPoints(owner.address, 10); // one extra second on this transaction, resulting in 10 points
         expect(await rewards.pointsAvailable(owner.address)).to.equal(0);
+    });
+
+    it("Should emit event after spending points", async function () {
+        await rewards.updateUserBalance(owner.address, 1, 0);
+        await expect(rewards.connect(addr2).
+            burnUserPoints(owner.address, 1)).to.have.emit(rewards, "PointsUsed").withArgs(owner.address, 1, 0);
+    });
+
+    it("Should batch update", async function () {
+        await rewards.updateBalanceBatch([owner.address, addr1.address, addr2.address], [1, 2, 3], [0, 0, 0]);
+        await ethers.provider.send("evm_mine", []);
+        expect(await rewards.pointsAvailable(owner.address)).to.equal(1);
+        expect(await rewards.pointsAvailable(addr1.address)).to.equal(2);
+        expect(await rewards.pointsAvailable(addr2.address)).to.equal(3);
     });
 
     it("Should not call setLotteryAddress if not owner", async function () {
