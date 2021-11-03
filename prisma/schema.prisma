@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
 }
 
 datasource db {
@@ -41,17 +42,6 @@ model Drop {
   User                User[]
 }
 
-model User {
-  walletAddress String   @id @db.Char(42)
-  userName      String?
-  email         String?  @unique
-  createdAt     DateTime @default(now())
-  role          Role     @default(USER)
-  Drop          Drop[]
-
-  @@index([walletAddress])
-}
-
 model PrizeProof {
   lotteryId     Int
   winnerAddress String  @db.Char(42)
@@ -62,10 +52,62 @@ model PrizeProof {
   @@id([lotteryId, winnerAddress, prizeId])
 }
 
-model Reward {
-  address   String @id @db.Char(42)
-  liquidity BigInt @default(0)
-  meme      BigInt @default(0)
+model RewardCurrent {
+  address        String    @db.Char(42)
+  balance        BigInt    @default(0)
+  snapshotPoints BigInt    @default(0)
+  blockTimestamp Int       @default(0)
+  type           AssetType
+
+  @@id([address, type])
+}
+
+model MemeTransactions {
+  txId           String @id
+  blockNumber    Int
+  blockTimestamp Int
+  from           String @db.Char(42)
+  to             String @db.Char(42)
+  value          BigInt
+}
+
+model RewardHistory {
+  id             Int       @id @default(autoincrement())
+  address        String    @db.Char(42)
+  balance        BigInt    @default(0)
+  snapshotPoints BigInt    @default(0)
+  blockTimestamp Int       @default(0)
+  type           AssetType
+}
+
+model RewardPublished {
+  address           String @id @db.Char(42)
+  totalPointsEarned BigInt @default(0)
+  proof             String
+  merkleRoot        String
+}
+
+model RewardType {
+  type            AssetType @id
+  rewardRate      Float     @default(0)
+  lastBlockNumber BigInt    @default(0)
+}
+
+enum AssetType {
+  ETH_MEME
+  FTM_MEME
+  FTM_LIQ
+}
+
+model User {
+  walletAddress String   @id @db.Char(42)
+  userName      String?
+  email         String?  @unique
+  createdAt     DateTime @default(now())
+  role          Role     @default(USER)
+  Drop          Drop[]
+
+  @@index([walletAddress])
 }
 
 enum Role {
