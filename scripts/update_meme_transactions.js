@@ -1,39 +1,66 @@
 const fetch = require("node-fetch");
 require("dotenv").config();
-const hardhat = require("hardhat");
+//const hardhat = require("hardhat");
 
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient, AssetType } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const BLOCKCHAIN = {
-    ETHEREUM: "1",
-    FANTOM: "250"
+    ETHEREUM: {
+        chainId: "1",
+        startingBlock: 10662598,
+        assetType: AssetType.ETH_MEME,
+        memeContract: "0xd5525d397898e5502075ea5e830d8914f6f0affe",
+        transferTopic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+    },
+    FANTOM: {
+        chainId: "250",
+        startingBlock: 17080587,
+        assetType: AssetType.FTM_MEME,
+        memeContract: "0xe3d7a068a7d99ee79d9112d989c5aff4e7594a21",
+        transferTopic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+    }
 }
 
-const START_BLOCK = {
-    "1": 10662598,
-    "250": 17080587
-};
-
-const BLOCKCHAIN_MEME_CONTRACT = {
-    "1": "0xd5525d397898e5502075ea5e830d8914f6f0affe",
-    "250": "0xe3d7a068a7d99ee79d9112d989c5aff4e7594a21"
-}
-
-const TOPIC_TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-
-function NEW_USER(walletAddress) {
-    let transactions = getAllTransactionsFromAllBlockchains(walletAddress);
-    saveToDatabase(transactions);
-}
-
-async function JOB() {
+async function runJob() {
     let transactions = await getLatestTransactionsFromAllBlockchains();
-    saveToDatabase(transactions);
+    await saveToDatabase(transactions);
 }
 
-function saveToDatabase(transactions) {
-    console.log({ transactions });
+async function saveToDatabase(transactions) {
+    let numTransactions = transactions.length;
+    console.log(`saveToDatabase([${numTransactions}])`);
+    if (numTransactions == 0) {
+        return;
+    }
+    const DB_BATCH_SIZE = 50;
+    for (let i = 0; i < numTransactions; i += DB_BATCH_SIZE) {
+        let batch = transactions.slice(i, i + DB_BATCH_SIZE);
+        await prisma.memeTransactions.createMany({
+            data: batch,
+            skipDuplicates: true,
+        });
+    }
+    json = JSON.stringify(transactions);
+    console.log(json);
+}
+
+/**
+ * @param {*} _assetType 
+ * @returns max(blockNumber) for that asset, or null if none is found
+ */
+async function getLastBlockHeightInDatabase(_assetType) {
+    const aggregations = await prisma.memeTransactions.aggregate({
+        _max: {
+          blockNumber: true,
+        },
+        where: {
+            assetType: _assetType
+        }
+    });
+    let blockHeight = aggregations._max.blockNumber || 0;
+    console.log(`Last block on db for asset ${_assetType} is ${blockHeight}`);
+    return blockHeight;
 }
 
 /**
@@ -44,89 +71,74 @@ function saveToDatabase(transactions) {
  * @returns the latest block number on the blockchain
  */
 async function getLastBlockHeightInBlockchain(chainId) {
-    console.log(`getLastBlockHeightInBlockchain(${chainId})`);
-    let url = `https://api.covalenthq.com/v1/${chainId}/block_v2/latest/?key=${process.env.COVALENT_KEY}`;
+    let targetBlock = "latest";
+    let url = `https://api.covalenthq.com/v1/${chainId}/block_v2/${targetBlock}/?key=${process.env.COVALENT_KEY}`;
     let response = await fetch(url);
     let json = await response.json();
-    return await json.data.items[0].height;
-}
-
-function getLastBlockHeightInDatabase(chainId) {
-    // prisma query
-    let blockHeight = 0;
-    console.log(`Last block on db for chain ${chainId} is ${blockHeight}`);
-    return blockHeight;
-}
-
-async function getAllTransactionsFromAllBlockchains(walletAddress) {
-    return await getTransactionsFromAllBlockchains(true, walletAddress);
+    let lastBlock = await json.data.items[0].height - 10; // Do not get the top blocks, in order to prevent chain reorganization
+    console.log(`Last block on chain ${chainId} is ${lastBlock}`); 
+    return lastBlock; 
 }
 
 async function getLatestTransactionsFromAllBlockchains() {
-    return await getTransactionsFromAllBlockchains(true, null);
-}
-
-async function getTransactionsFromAllBlockchains(fromTheBeginning, walletAddress) {
-    let transactions = [];
+    let allTransactions = [];
     for (var item in BLOCKCHAIN) {
-        let chainId = BLOCKCHAIN[item];
-        let startingBlock = fromTheBeginning ? START_BLOCK[chainId] : getLastBlockHeightInDatabase(chainId);
-        let endingBlock = await getLastBlockHeightInBlockchain(chainId);
-        let chainTransactions = await getTransactionsFromBlockchain(chainId, startingBlock, endingBlock, walletAddress);
-        transactions.push(chainTransactions);
+        let blockchain = BLOCKCHAIN[item];
+        let startingBlock = (await getLastBlockHeightInDatabase(blockchain.assetType)) || blockchain.startingBlock;
+        let endingBlock = await getLastBlockHeightInBlockchain(blockchain.chainId);
+        let chainTransactions = await getTransactionsFromBlockchain(blockchain, startingBlock, endingBlock);
+        allTransactions.push(...chainTransactions);
     }
-    return transactions;
+    return allTransactions;
 }
 
 /**
  * Calls the "Get Log events by contract address" Covalent API, as defined in 
  * https://www.covalenthq.com/docs/api/#get-/v1/{chain_id}/events/address/{address}/
  * 
- * @param {*} chainId 
+ * @param {*} blockchain
  * @param {*} startingBlock 
  * @param {*} endingBlock 
- * @param {*} walletAddress 
  * @returns 
  */
-async function getTransactionsFromBlockchain(chainId, startingBlock, endingBlock, walletAddress) {
-    console.log(`getTransactionsFromBlockchain(${chainId}, ${startingBlock}, ${endingBlock}, ${walletAddress})`);
+async function getTransactionsFromBlockchain(blockchain, startingBlock, endingBlock) {
     let transactions = [];
     if (startingBlock == endingBlock) {
         return transactions;
     }
-    let contractAddress = BLOCKCHAIN_MEME_CONTRACT[chainId];
+    let chainId = blockchain.chainId;
+    let contractAddress = blockchain.memeContract;
+    let transferTopic = blockchain.transferTopic;
     const CHUNK_SIZE = 100000;
-    for (var iStart = startingBlock; iStart < endingBlock; iStart += CHUNK_SIZE) {
+    for (let iStart = startingBlock; iStart < endingBlock; iStart += CHUNK_SIZE) {
         let iEnd = iStart + CHUNK_SIZE;
         if (iEnd > endingBlock) {
             iEnd = endingBlock;
         }
         console.log(`Fetching events on chain ${chainId} contract ${contractAddress} from block ${iStart} to block ${iEnd}`);
-        let url = `https://api.covalenthq.com/v1/${chainId}/events/topics/${TOPIC_TRANSFER}/?sender-address=${contractAddress}&starting-block=${iStart}&ending-block=${iEnd}&page-number=0&page-size=999999999&key=${process.env.COVALENT_KEY}`;
+        let url = `https://api.covalenthq.com/v1/${chainId}/events/topics/${transferTopic}/?sender-address=${contractAddress}&starting-block=${iStart}&ending-block=${iEnd}&page-number=0&page-size=999999999&key=${process.env.COVALENT_KEY}`;
         let result = await fetch(url);
         let resultJson = await result.json();
-        // console.log(resultJson.data.items[0]);
-        //console.log(`${resultJson.items.length} transactions fetched`);
-        // console.log(resultJson.data.items[0].decoded.params);
         let mappedTransactions = resultJson.data.items.map(item => {
             return {
-                block_signed_at: item.block_signed_at,
-                block_height: item.block_height,
+                txId: item.tx_hash,
+                assetType: blockchain.assetType,
+                blockTimestamp: Date.parse(item.block_signed_at),
+                blockNumber: item.block_height,
                 from: item.decoded.params[0].value,
                 to: item.decoded.params[1].value,
                 value: item.decoded.params[2].value,
             };
         });
-        console.log(mappedTransactions[0]);
         transactions.push(...mappedTransactions);
-        console.log(`${transactions.length} transactions fetched`);
+        console.log(`${mappedTransactions.length} transactions in block range -- total is ${transactions.length}`);
     }
     return transactions;
 }
 
 async function main() {
-    await hardhat.run('compile');
-    await JOB();
+    //await hardhat.run('compile');
+    await runJob();
 }
 
 main()
