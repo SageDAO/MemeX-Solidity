@@ -41,8 +41,8 @@ async function saveToDatabase(transactions) {
             skipDuplicates: true,
         });
     }
-    json = JSON.stringify(transactions);
-    console.log(json);
+    //json = JSON.stringify(transactions);
+    //console.log(json);
 }
 
 /**
