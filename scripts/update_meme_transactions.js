@@ -52,7 +52,7 @@ async function saveToDatabase(transactions) {
 async function getLastBlockHeightInDatabase(_assetType) {
     const aggregations = await prisma.memeTransactions.aggregate({
         _max: {
-          blockNumber: true,
+            blockNumber: true,
         },
         where: {
             assetType: _assetType
@@ -60,7 +60,7 @@ async function getLastBlockHeightInDatabase(_assetType) {
     });
     let blockHeight = aggregations._max.blockNumber || 0;
     console.log(`Last block on db for asset ${_assetType} is ${blockHeight}`);
-    return blockHeight;
+    return blockHeight + 1;
 }
 
 /**
@@ -76,15 +76,18 @@ async function getLastBlockHeightInBlockchain(chainId) {
     let response = await fetch(url);
     let json = await response.json();
     let lastBlock = await json.data.items[0].height - 10; // Do not get the top blocks, in order to prevent chain reorganization
-    console.log(`Last block on chain ${chainId} is ${lastBlock}`); 
-    return lastBlock; 
+    console.log(`Last block on chain ${chainId} is ${lastBlock}`);
+    return lastBlock;
 }
 
 async function getLatestTransactionsFromAllBlockchains() {
     let allTransactions = [];
     for (var item in BLOCKCHAIN) {
         let blockchain = BLOCKCHAIN[item];
-        let startingBlock = (await getLastBlockHeightInDatabase(blockchain.assetType)) || blockchain.startingBlock;
+        let startingBlock = await getLastBlockHeightInDatabase(blockchain.assetType);
+        if (startingBlock < blockchain.startingBlock) {
+            startingBlock = blockchain.startingBlock;
+        }
         let endingBlock = await getLastBlockHeightInBlockchain(blockchain.chainId);
         let chainTransactions = await getTransactionsFromBlockchain(blockchain, startingBlock, endingBlock);
         allTransactions.push(...chainTransactions);
@@ -111,7 +114,7 @@ async function getTransactionsFromBlockchain(blockchain, startingBlock, endingBl
     let transferTopic = blockchain.transferTopic;
     const CHUNK_SIZE = 100000;
     for (let iStart = startingBlock; iStart < endingBlock; iStart += CHUNK_SIZE) {
-        let iEnd = iStart + CHUNK_SIZE;
+        let iEnd = iStart + CHUNK_SIZE - 1;
         if (iEnd > endingBlock) {
             iEnd = endingBlock;
         }
@@ -121,17 +124,21 @@ async function getTransactionsFromBlockchain(blockchain, startingBlock, endingBl
         let resultJson = await result.json();
         let mappedTransactions = resultJson.data.items.map(item => {
             return {
-                txId: item.tx_hash,
+                txHash: item.tx_hash,
                 assetType: blockchain.assetType,
-                blockTimestamp: Date.parse(item.block_signed_at),
+                blockTimestamp: Date.parse(item.block_signed_at) / 1000, // Converting to unix timestamp
                 blockNumber: item.block_height,
                 from: item.decoded.params[0].value,
                 to: item.decoded.params[1].value,
-                value: item.decoded.params[2].value,
+                value: Number(item.decoded.params[2].value),
             };
         });
-        transactions.push(...mappedTransactions);
-        console.log(`${mappedTransactions.length} transactions in block range -- total is ${transactions.length}`);
+        // store the transactions in the database
+        let dbResult = await prisma.memeTransactions.createMany({
+            data: mappedTransactions,
+        });
+        // transactions.push(...mappedTransactions);
+        console.log(`${mappedTransactions.length} transactions in block range`);
     }
     return transactions;
 }

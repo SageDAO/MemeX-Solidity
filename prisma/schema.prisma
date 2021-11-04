@@ -63,13 +63,14 @@ model RewardCurrent {
 }
 
 model MemeTransactions {
-  txId           String    @id
   blockNumber    Int
   blockTimestamp Int
   from           String    @db.Char(42)
   to             String    @db.Char(42)
   value          BigInt
   assetType      AssetType
+  id             Int       @id @default(autoincrement())
+  txHash         String    @db.Char(66)
 
   @@index([from, to])
 }
@@ -87,7 +88,6 @@ model RewardPublished {
   address           String @id @db.Char(42)
   totalPointsEarned BigInt @default(0)
   proof             String
-  merkleRoot        String
 }
 
 model RewardType {
@@ -102,6 +102,7 @@ model User {
   email         String?  @unique
   createdAt     DateTime @default(now())
   role          Role     @default(USER)
+  bio           String?  @db.VarChar(200)
   Drop          Drop[]
 
   @@index([walletAddress])
