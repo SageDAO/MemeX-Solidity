@@ -8,8 +8,8 @@ import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 
-contract Lottery is Ownable {
-    uint8 public maxEntries;
+contract Lottery is Ownable {  // spider-g: , ILottery
+    uint8 public maxEntries; // spider-g: rename to something like maxTicketsPerParticipantPerLottery
 
     bytes32 internal requestId_;
 
@@ -21,7 +21,9 @@ contract Lottery is Ownable {
 
     uint256[] internal lotteries;
 
-    mapping(uint256 => bytes32) internal merkleRoots;
+    // spider-g: why not store this in LotteryInfo? 
+    // spider-g: also, maybe rename it to prizesMerkleRoots (initially I thought this was used for the points merkle tree)
+    mapping(uint256 => bytes32) internal merkleRoots; 
 
     // participant address => lottery ids he entered
     mapping(address => uint256[]) public participantHistory;
@@ -35,9 +37,10 @@ contract Lottery is Ownable {
     }
 
     // prizeId => number of times the prize can be claimed
-    mapping(uint256 => uint32) public prizeMaxSupply;
+    mapping(uint256 => uint32) public prizeMaxSupply; // spider-g: isn't this information already in PrizeInfo?
 
     //lotteryid => address => participantInfo
+    // spider-g: if a user enters a lottery 10 times, only one entry is allowed here; but some entries might be boosted while others won't be
     mapping(uint256 => mapping(address => ParticipantInfo))
         internal participants;
 
@@ -48,12 +51,14 @@ contract Lottery is Ownable {
     }
 
     //loteryId => randomNumber received from RNG
-    mapping(uint256 => uint256) public randomSeeds;
+    mapping(uint256 => uint256) public randomSeeds; // spider-g: why not store this in LotteryInfo?
 
     // if a user buys 10 tickets his address will occupy 10 positions in this array
     //lotteryId => address array
     mapping(uint256 => address[]) participantEntries;
 
+    // spider-g: I don't feel like the "planned" status is necessary - it's either open, but hasn't started yet, or the other closed statuses
+    // spider-g: Even if it's still "planned", the user can buyTicket() and the status changes to "Open", so "Planned" isn't really blocking anything
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
         Canceled, // A lottery that got canceled
@@ -68,12 +73,12 @@ contract Lottery is Ownable {
         Status status; // Status for lotto
         uint256 ticketCostPinas; // Cost per ticket in points/tokens
         uint256 ticketCostCoins; // Cost per ticket in FTM
-        uint256 boostCost; // cost to boost the odds
-        uint256 startTime; // Timestamp where users can start buying tickets
-        uint256 closingTime; // Timestamp where ticket sales end
+        uint256 boostCost; // cost to boost the odds // spider-g: is this in pinas? ftm? memes? or eth?
+        uint256 startTime; // Timestamp where users can start buying tickets // spider-g: timestamps can be stored in uint32
+        uint256 closingTime; // Timestamp where ticket sales end // spider-g: timestamps can be stored in uint32
         IMemeXNFT nftContract; // reference to the NFT Contract
         uint32 participantsCount; // number of participants
-        uint32 maxParticipants; // max number of participants
+        uint32 maxParticipants; // max number of participants // spider-g: might need to reorder and re-type the properties for better on-chain storage https://medium.com/@novablitz/storing-structs-is-costing-you-gas-774da988895e
     }
 
     event ResponseReceived(bytes32 _requestId);
@@ -110,11 +115,13 @@ contract Lottery is Ownable {
         public
         onlyOwner
     {
+        // spider-g: should require lottery status = planned
         lotteryHistory[_lotteryId].ticketCostPinas = _price;
         emit TicketCostChanged(msg.sender, _lotteryId, _price);
     }
 
     function setMerkleRoot(uint256 _lotteryId, bytes32 _root) public onlyOwner {
+        // spider-g: should required lottery status = closed
         merkleRoots[_lotteryId] = _root;
     }
 
@@ -143,6 +150,7 @@ contract Lottery is Ownable {
             _time > lottery.startTime,
             "Close time must be after start time"
         );
+        // spider-g: should require status = planned or open
         lotteryHistory[_lotteryId].closingTime = _time;
     }
 
@@ -317,6 +325,7 @@ contract Lottery is Ownable {
         // DISABLED FOR TESTS require(lottery.closingTime < block.timestamp);
         if (lottery.status == Status.Open) {
             lottery.status = Status.Closed;
+            // spider-g: emit LotteryStatusChanged(_lotteryId, lottery.status);
         }
         // should fail if the lottery is completed (already called drawWinningNumbers and received a response)
         require(lottery.status == Status.Closed, "Lottery must be closed!");
@@ -340,8 +349,8 @@ contract Lottery is Ownable {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(lottery.status == Status.Closed, "Lottery must be closed");
         emit ResponseReceived(_requestId);
-        randomSeeds[_lotteryId] = _randomNumber;
         lottery.status = Status.Completed;
+        randomSeeds[_lotteryId] = _randomNumber;
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
@@ -365,7 +374,7 @@ contract Lottery is Ownable {
      * @notice Change the lottery state to canceled.
      * @param _lotteryId ID of the lottery to canccel
      */
-    function cancelLottery(uint256 _lotteryId) public onlyOwner {
+    function cancelLottery(uint256 _lotteryId) public onlyOwner { // spider-g: if there are participants, should we refund their points?
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(
             lottery.status != Status.Completed,
@@ -382,14 +391,14 @@ contract Lottery is Ownable {
      * @param _points Total user claimable points
      * @param _proof Proof of the user's claimable points
      */
-    function claimRewardAndBuyTickets(
+    function claimRewardAndBuyTickets( // spider-g: I think this name is a little confusing. Maybe claimPointsAndBuyTickets() ?
         uint256 _lotteryId,
         uint8 numberOfTickets,
         uint256 _points,
         bytes32[] calldata _proof
     ) public payable returns (uint256) {
         if (rewardsContract.totalPointsClaimed(msg.sender) < _points) {
-            rewardsContract.claimRewardWithProof(msg.sender, _points, _proof);
+            rewardsContract.claimRewardWithProof(msg.sender, _points, _proof); // spider-g: claimPointsWithProof() ?
         }
         return buyTickets(_lotteryId, numberOfTickets);
     }
@@ -432,6 +441,7 @@ contract Lottery is Ownable {
             lottery.closingTime < block.timestamp
         ) {
             lottery.status = Status.Closed;
+            // spider-g: maybe you could call requestRandomNumber at this point?
             emit LotteryStatusChanged(_lotteryId, lottery.status);
         }
         require(lottery.status == Status.Open, "Lottery is not open");
@@ -452,6 +462,8 @@ contract Lottery is Ownable {
                 "Didn't transfer enough funds to buy tickets"
             );
         }
+        // spider-g: I find the name "entry" a little misleading - at first, I thought 1 purchase with N tickets would mean 1 entry. 
+        // spider-g: Maybe rename it to "numTicketsBought" or something like that
         uint256 userEntries = participants[_lotteryId][msg.sender].entries;
         if (userEntries == 0) {
             participantHistory[msg.sender].push(_lotteryId);
@@ -480,7 +492,7 @@ contract Lottery is Ownable {
         uint256 _lotteryId,
         address _participantAddress
     ) private {
-        participantEntries[_lotteryId].push(_participantAddress);
+        participantEntries[_lotteryId].push(_participantAddress); // spider-g: Maybe name it "participantTickets[]"?
         emit NewEntry(
             _lotteryId,
             participantEntries[_lotteryId].length,
@@ -523,6 +535,7 @@ contract Lottery is Ownable {
             "Participant already a booster"
         );
         // check if the transaction contains the boost cost
+        // spider-g: what if the boost costs 2 and the users sends 5.000? shouldn't we require msg.value == boostCost?
         require(
             msg.value >= lotteryHistory[_lotteryId].boostCost,
             "Didn't send enough to boost"
@@ -532,7 +545,7 @@ contract Lottery is Ownable {
         assignNewEntryToParticipant(_lotteryId, _participantAddress);
     }
 
-    function claimWithProof(
+    function claimWithProof( // spider-g: Rename it to claimPrize()
         uint256 _lotteryId,
         address _winner,
         uint256 _prizeId,
@@ -553,7 +566,7 @@ contract Lottery is Ownable {
             participant.prizeClaimed == false,
             "Participant already claimed prize"
         );
-        require(msg.sender == _winner, "Sender is not the winner address");
+        require(msg.sender == _winner, "Sender is not the winner address"); // spider-g: move to function top
 
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
