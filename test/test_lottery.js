@@ -43,7 +43,7 @@ describe("Lottery Contract", function () {
         tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
         // get the merkle root and store in the contract 
         root = tree.getHexRoot().toString('hex');
-        await rewards.setMerkleRoot(root);
+        await rewards.setPointsMerkleRoot(root);
         hexproof = tree.getProof(keccak256(leafA)).map(x => buf2hex(x.data))
         hexproofB = tree.getProof(keccak256(leafB)).map(x => buf2hex(x.data))
     });
@@ -53,13 +53,13 @@ describe("Lottery Contract", function () {
     });
 
     it("Should allow user to buy 1 lottery ticket", async function () {
-        await lottery.connect(addr1).claimRewardAndBuyTickets(1, 1, 1500000000, hexproof);
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 1500000000, hexproof);
         expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
         expect(await lottery.getTotalEntries(1)).to.equal(1);
     });
 
     it("Should allow to claim more points if new rewards are published", async function () {
-        await lottery.connect(addr1).claimRewardAndBuyTickets(1, 1, 1500000000, hexproof);
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 1500000000, hexproof);
         abiCoder = ethers.utils.defaultAbiCoder;
         leafA = abiCoder.encode(["address", "uint256"], [addr1.address, 3000000000]);
         leafB = abiCoder.encode(["address", "uint256"], [addr2.address, 15000000000]);
@@ -68,35 +68,35 @@ describe("Lottery Contract", function () {
         tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
         // get the merkle root and store in the contract 
         root = tree.getHexRoot().toString('hex');
-        await rewards.setMerkleRoot(root);
+        await rewards.setPointsMerkleRoot(root);
         hexproof = tree.getProof(keccak256(leafA)).map(x => buf2hex(x.data));
         hexproofB = tree.getProof(keccak256(leafB)).map(x => buf2hex(x.data));
-        await lottery.connect(addr1).claimRewardAndBuyTickets(1, 1, 3000000000, hexproof);
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 3000000000, hexproof);
     });
 
     it("Should throw if user doesn't have enough points", async function () {
-        await lottery.connect(addr1).claimRewardAndBuyTickets(1, 1, 1500000000, hexproof);
-        await expect(lottery.connect(addr1).claimRewardAndBuyTickets(1, 1, 1500000000, hexproof)).to.be.revertedWith("Not enough points to buy tickets");
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 1500000000, hexproof);
+        await expect(lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 1500000000, hexproof)).to.be.revertedWith("Not enough points to buy tickets");
         await expect(lottery.connect(addr1).buyTickets(1, 1)).to.be.revertedWith("Not enough points to buy tickets");
     });
 
     it("Should throw if buyting more tickets than maxEntries", async function () {
-        await lottery.connect(addr2).claimRewardAndBuyTickets(1, 1, 15000000000, hexproofB);
-        await lottery.setMaxEntries(1);
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await lottery.setMaxTicketsPerParticipant(1);
         await expect(lottery.connect(addr2).buyTickets(1, 2)).to.be.revertedWith("Can't buy this amount of tickets");
     });
 
     it("Should allow user to buy more tickets on a separate transaction", async function () {
-        await lottery.connect(addr2).claimRewardAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
         // await lottery.connect(addr2).buyTickets(1, 1);
-        await lottery.connect(addr2).claimRewardAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
         expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
         expect(await lottery.getTotalEntries(1)).to.equal(2);
     });
 
 
     it("Should let user buy 10 lottery tickets", async function () {
-        await lottery.connect(addr2).claimRewardAndBuyTickets(1, 10, 15000000000, hexproofB);
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 10, 15000000000, hexproofB);
         expect(await lottery.getNumberOfParticipants(1)).to.equal(1);
         expect(await lottery.getTotalEntries(1)).to.equal(10);
     });
@@ -110,17 +110,18 @@ describe("Lottery Contract", function () {
             1, // just one participant allowed
             artist.address, "ipfs://path/"
         );
-        await lottery.connect(addr2).claimRewardAndBuyTickets(2, 1, 15000000000, hexproofB);
+        await lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 15000000000, hexproofB);
         // should fail on the second entry
-        await expect(lottery.connect(addr2).claimRewardAndBuyTickets(2, 1, 15000000000, hexproofB)).to.be.revertedWith("Lottery is full");
+        await expect(lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 15000000000, hexproofB)).to.be.revertedWith("Lottery is full");
     });
 
     it("Should allow user to boost", async function () {
-        await lottery.connect(addr2).claimRewardAndBuyTickets(1, 1, 15000000000, hexproofB);
-        await lottery.boostParticipant(1, addr2.address,
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await lottery.setMaxBoostsPerLottery(1, 1);
+        await lottery.boostParticipant(1, addr2.address, 1,
             { value: ethers.utils.parseEther("1") });
         expect(await lottery.getTotalEntries(1)).to.equal(2);
-        expect(await lottery.isBooster(1, addr2.address)).to.equal(true);
+        expect(await lottery.numBoosts(1, addr2.address)).to.equal(1);
     });
 
     it("Should not allow user to buy ticket when lottery is not open", async function () {
@@ -130,13 +131,15 @@ describe("Lottery Contract", function () {
     });
 
     it("Should not allow to boost without sending funds", async function () {
-        await lottery.connect(addr2).claimRewardAndBuyTickets(1, 1, 15000000000, hexproofB);
-        await expect(lottery.connect(addr2).boostParticipant(1, addr2.address,
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await lottery.setMaxBoostsPerLottery(1, 1);
+        await expect(lottery.connect(addr2).boostParticipant(1, addr2.address, 1,
             { value: ethers.utils.parseEther("0") })).to.be.reverted;
     });
 
     it("Should not allow to boost without buying ticket", async function () {
-        await expect(lottery.boostParticipant(1, owner.address,
+        await lottery.setMaxBoostsPerLottery(1, 1);
+        await expect(lottery.boostParticipant(1, owner.address, 1,
             { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Participant not found");
     });
 
@@ -145,13 +148,15 @@ describe("Lottery Contract", function () {
     });
 
     it("Should not allow to boost using wrong lottery id", async function () {
-        await lottery.connect(addr2).claimRewardAndBuyTickets(1, 1, 15000000000, hexproofB);
-        await expect(lottery.boostParticipant(2, addr2.address,
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await expect(lottery.boostParticipant(2, addr2.address, 1,
             { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
     });
 
     it("Should run more than one lottery", async function () {
-        await lottery.connect(addr2).claimRewardAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
+        await ethers.provider.send("evm_mine", []);
         await lottery.requestRandomNumber(1);
         expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
         const blockNum = await ethers.provider.getBlockNumber();
@@ -161,21 +166,27 @@ describe("Lottery Contract", function () {
             nft.address,
             ethers.utils.parseEther("1"), 0, artist.address, "ipfs://path/");
         lottery.addPrizes(2, [3, 4], [1, 1]);
-        await lottery.connect(addr2).claimRewardAndBuyTickets(2, 1, 15000000000, hexproofB);
+        await lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 15000000000, hexproofB);
+        await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
+        await ethers.provider.send("evm_mine", []);
         await lottery.requestRandomNumber(2);
         expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(lottery, "ResponseReceived");
         expect(await rewards.availablePoints(addr2.address)).to.equal(12000000000);
     });
 
     it("Should not allow a second RNG request after response received", async function () {
-        await lottery.connect(addr2).claimRewardAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
+        await ethers.provider.send("evm_mine", []);
         await lottery.requestRandomNumber(1);
         await mockRng.fulfillRequest(1, 1);
         await expect(lottery.requestRandomNumber(1)).to.be.revertedWith("Lottery must be closed");
     });
 
     it("Should allow a second RNG request if no response was received", async function () {
-        await lottery.connect(addr2).claimRewardAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
+        await ethers.provider.send("evm_mine", []);
         await lottery.requestRandomNumber(1);
         await ethers.provider.send("evm_mine", []);
         await lottery.requestRandomNumber(1);
@@ -207,7 +218,7 @@ describe("Lottery Contract", function () {
     });
 
     it("Should not call setMerkleRoot if not owner", async function () {
-        await expect(lottery.connect(addr1).setMerkleRoot(1, keccak256('some text'))).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(lottery.connect(addr1).setPrizeMerkleRoot(1, keccak256('some text'))).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("Should not call addPrizes if not owner", async function () {
@@ -225,8 +236,8 @@ describe("Lottery Contract", function () {
             nft.address,
             0, // boostCost
             0, artist.address, "ipfs://path/");
-        await lottery.connect(addr2).claimRewardAndBuyTickets(1, 1, 15000000000, hexproofB);
-        await expect(lottery.boostParticipant(2, addr2.address,
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
+        await expect(lottery.boostParticipant(2, addr2.address, 1,
             { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
 
     });
@@ -243,22 +254,18 @@ describe("Lottery Contract", function () {
             tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
             // get the merkle root and store in the contract 
             root = tree.getHexRoot().toString('hex');
-            await lottery.setMerkleRoot(1, root);
+            await lottery.setPrizeMerkleRoot(1, root);
             hexproof = tree.getProof(keccak256(leafA)).map(x => buf2hex(x.data))
         });
 
         it("Should claim with merkle proof", async function () {
-            await lottery.connect(addr1).claimWithProof(1, addr1.address, 1, hexproof);
+            await lottery.connect(addr1).claimPrize(1, addr1.address, 1, hexproof);
             expect(await nft.balanceOf(addr1.address, 1)).to.equal(1);
         });
 
-        it("Should throw using third person proof", async function () {
-            await expect(lottery.connect(addr2).claimWithProof(1, addr1.address, 1, hexproof)).to.be.revertedWith("Sender is not the winner address");
-        });
-
         it("Should throw trying to claim twice", async function () {
-            await lottery.connect(addr1).claimWithProof(1, addr1.address, 1, hexproof);
-            await expect(lottery.connect(addr1).claimWithProof(1, addr1.address, 1, hexproof)).to.be.revertedWith("Participant already claimed prize");
+            await lottery.connect(addr1).claimPrize(1, addr1.address, 1, hexproof);
+            await expect(lottery.connect(addr1).claimPrize(1, addr1.address, 1, hexproof)).to.be.revertedWith("Participant already claimed prize");
         });
     });
 });

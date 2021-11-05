@@ -17,12 +17,12 @@ interface ILottery {
     function createNewLottery(
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
-        uint256 _startingTime,
-        uint256 _closingTime,
+        uint32 _startTime,
+        uint32 _closeTime,
         IMemeXNFT _nftContract,
-        uint256 _prizes,
         uint256 _boostCost,
-        uint32 _maxParticipants,
-        bool _hasDefaultPrize
+        uint16 _maxParticipants,
+        address _artistAddress,
+        string calldata _dropMetadataURI
     ) external returns (uint256 lotteryId);
 }

@@ -9,7 +9,7 @@ interface IRewards {
         external
         returns (uint256);
 
-    function claimRewardWithProof(
+    function claimPointsWithProof(
         address _address,
         uint256 _points,
         bytes32[] calldata _proof

@@ -2,11 +2,12 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "../../interfaces/IRewards.sol";
 
-contract Rewards is Ownable {
+contract Rewards is Ownable, IRewards {
     address public lotteryAddr;
 
-    bytes32 public merkleRoot;
+    bytes32 public pointsMerkleRoot;
 
     mapping(address => uint256) public availablePoints;
 
@@ -40,17 +41,17 @@ contract Rewards is Ownable {
         return startPoints - _amount;
     }
 
-    function setMerkleRoot(bytes32 _root) public onlyOwner {
-        merkleRoot = _root;
+    function setPointsMerkleRoot(bytes32 _root) public onlyOwner {
+        pointsMerkleRoot = _root;
     }
 
-    function claimRewardWithProof(
+    function claimPointsWithProof(
         address _address,
         uint256 _points,
         bytes32[] calldata _proof
     ) public returns (uint256) {
         require(
-            _verify(_leaf(_address, _points), merkleRoot, _proof),
+            _verify(_leaf(_address, _points), pointsMerkleRoot, _proof),
             "Invalid proof"
         );
         require(

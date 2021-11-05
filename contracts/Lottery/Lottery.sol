@@ -7,9 +7,10 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
+import "../../interfaces/ILottery.sol";
 
-contract Lottery is Ownable {  // spider-g: , ILottery
-    uint8 public maxEntries; // spider-g: rename to something like maxTicketsPerParticipantPerLottery
+contract Lottery is Ownable, ILottery {
+    uint8 public maxTicketsPerParticipant;
 
     bytes32 internal requestId_;
 
@@ -21,9 +22,7 @@ contract Lottery is Ownable {  // spider-g: , ILottery
 
     uint256[] internal lotteries;
 
-    // spider-g: why not store this in LotteryInfo? 
-    // spider-g: also, maybe rename it to prizesMerkleRoots (initially I thought this was used for the points merkle tree)
-    mapping(uint256 => bytes32) internal merkleRoots; 
+    mapping(uint256 => bytes32) internal prizeMerkleRoots;
 
     // participant address => lottery ids he entered
     mapping(address => uint256[]) public participantHistory;
@@ -36,29 +35,24 @@ contract Lottery is Ownable {  // spider-g: , ILottery
         uint16 maxSupply;
     }
 
-    // prizeId => number of times the prize can be claimed
-    mapping(uint256 => uint32) public prizeMaxSupply; // spider-g: isn't this information already in PrizeInfo?
-
     //lotteryid => address => participantInfo
-    // spider-g: if a user enters a lottery 10 times, only one entry is allowed here; but some entries might be boosted while others won't be
     mapping(uint256 => mapping(address => ParticipantInfo))
         internal participants;
 
     struct ParticipantInfo {
-        bool isBooster;
+        uint8 boosts;
         bool prizeClaimed;
         uint8 entries;
     }
 
     //loteryId => randomNumber received from RNG
-    mapping(uint256 => uint256) public randomSeeds; // spider-g: why not store this in LotteryInfo?
+    mapping(uint256 => uint256) public randomSeeds;
 
-    // if a user buys 10 tickets his address will occupy 10 positions in this array
+    mapping(uint256 => uint8) public maxBoostsPerLottery;
+
     //lotteryId => address array
-    mapping(uint256 => address[]) participantEntries;
+    mapping(uint256 => address[]) participantTickets;
 
-    // spider-g: I don't feel like the "planned" status is necessary - it's either open, but hasn't started yet, or the other closed statuses
-    // spider-g: Even if it's still "planned", the user can buyTicket() and the status changes to "Open", so "Planned" isn't really blocking anything
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
         Canceled, // A lottery that got canceled
@@ -69,16 +63,16 @@ contract Lottery is Ownable {  // spider-g: , ILottery
 
     // Information about lotteries
     struct LotteryInfo {
+        uint32 startTime; // Timestamp where users can start buying tickets
+        uint32 closingTime; // Timestamp where ticket sales end
+        uint32 participantsCount; // number of participants
+        uint32 maxParticipants; // max number of participants
         uint256 lotteryID; // ID for lotto
         Status status; // Status for lotto
         uint256 ticketCostPinas; // Cost per ticket in points/tokens
         uint256 ticketCostCoins; // Cost per ticket in FTM
-        uint256 boostCost; // cost to boost the odds // spider-g: is this in pinas? ftm? memes? or eth?
-        uint256 startTime; // Timestamp where users can start buying tickets // spider-g: timestamps can be stored in uint32
-        uint256 closingTime; // Timestamp where ticket sales end // spider-g: timestamps can be stored in uint32
+        uint256 boostCost; // cost to boost the odds
         IMemeXNFT nftContract; // reference to the NFT Contract
-        uint32 participantsCount; // number of participants
-        uint32 maxParticipants; // max number of participants // spider-g: might need to reorder and re-type the properties for better on-chain storage https://medium.com/@novablitz/storing-structs-is-costing-you-gas-774da988895e
     }
 
     event ResponseReceived(bytes32 _requestId);
@@ -111,22 +105,39 @@ contract Lottery is Ownable {  // spider-g: , ILottery
         rewardsContract = IRewards(_rewardsContract);
     }
 
+    function setMaxBoostsPerLottery(uint256 _lotteryId, uint8 _maxBoosts)
+        public
+        onlyOwner
+    {
+        require(_maxBoosts > 0);
+        maxBoostsPerLottery[_lotteryId] = _maxBoosts;
+    }
+
     function setTicketCostPinas(uint256 _price, uint256 _lotteryId)
         public
         onlyOwner
     {
-        // spider-g: should require lottery status = planned
+        require(
+            lotteryHistory[_lotteryId].status == Status.Planned,
+            "Lottery must be planned to change ticket cost"
+        );
         lotteryHistory[_lotteryId].ticketCostPinas = _price;
+
         emit TicketCostChanged(msg.sender, _lotteryId, _price);
     }
 
-    function setMerkleRoot(uint256 _lotteryId, bytes32 _root) public onlyOwner {
-        // spider-g: should required lottery status = closed
-        merkleRoots[_lotteryId] = _root;
+    function setPrizeMerkleRoot(uint256 _lotteryId, bytes32 _root)
+        public
+        onlyOwner
+    {
+        prizeMerkleRoots[_lotteryId] = _root;
     }
 
-    function setMaxEntries(uint8 _maxEntries) public onlyOwner {
-        maxEntries = _maxEntries;
+    function setMaxTicketsPerParticipant(uint8 _maxTicketsPerParticipant)
+        public
+        onlyOwner
+    {
+        maxTicketsPerParticipant = _maxTicketsPerParticipant;
     }
 
     function _burnUserPoints(address _user, uint256 _amount)
@@ -140,7 +151,7 @@ contract Lottery is Ownable {  // spider-g: , ILottery
         rewardsContract = IRewards(_rewardsContract);
     }
 
-    function changeCloseTime(uint256 _lotteryId, uint256 _time)
+    function changeCloseTime(uint256 _lotteryId, uint32 _time)
         public
         onlyOwner
     {
@@ -150,7 +161,6 @@ contract Lottery is Ownable {  // spider-g: , ILottery
             _time > lottery.startTime,
             "Close time must be after start time"
         );
-        // spider-g: should require status = planned or open
         lotteryHistory[_lotteryId].closingTime = _time;
     }
 
@@ -195,7 +205,7 @@ contract Lottery is Ownable {  // spider-g: , ILottery
      * @return Amount entries for a lottery (number of tickets and boosts bought)
      */
     function getTotalEntries(uint256 _lotteryId) public view returns (uint256) {
-        return participantEntries[_lotteryId].length;
+        return participantTickets[_lotteryId].length;
     }
 
     function getLotteryCount() public view returns (uint256) {
@@ -280,8 +290,8 @@ contract Lottery is Ownable {  // spider-g: , ILottery
     function createNewLottery(
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
-        uint256 _startTime,
-        uint256 _closeTime,
+        uint32 _startTime,
+        uint32 _closeTime,
         IMemeXNFT _nftContract,
         uint256 _boostCost,
         uint16 _maxParticipants,
@@ -299,16 +309,16 @@ contract Lottery is Ownable {  // spider-g: , ILottery
             _dropMetadataURI
         );
         LotteryInfo memory newLottery = LotteryInfo(
+            _startTime,
+            _closeTime,
+            0,
+            _maxParticipants,
             lotteryId,
             lotteryStatus,
             _costPerTicketPinas,
             _costPerTicketCoins,
             _boostCost,
-            _startTime,
-            _closeTime,
-            _nftContract,
-            0,
-            _maxParticipants
+            _nftContract
         );
         lotteryHistory[lotteryId] = newLottery;
         lotteries.push(lotteryId);
@@ -322,10 +332,10 @@ contract Lottery is Ownable {  // spider-g: , ILottery
     function requestRandomNumber(uint256 _lotteryId) external onlyOwner {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(prizes[_lotteryId].length != 0, "No prizes for this lottery");
-        // DISABLED FOR TESTS require(lottery.closingTime < block.timestamp);
+        require(lottery.closingTime < block.timestamp, "Lottery is not closed");
         if (lottery.status == Status.Open) {
             lottery.status = Status.Closed;
-            // spider-g: emit LotteryStatusChanged(_lotteryId, lottery.status);
+            emit LotteryStatusChanged(_lotteryId, lottery.status);
         }
         // should fail if the lottery is completed (already called drawWinningNumbers and received a response)
         require(lottery.status == Status.Closed, "Lottery must be closed!");
@@ -354,12 +364,12 @@ contract Lottery is Ownable {  // spider-g: , ILottery
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
-    function getParticipantEntries(uint256 _lotteryId)
+    function getParticipantTickets(uint256 _lotteryId)
         public
         view
         returns (address[] memory)
     {
-        return participantEntries[_lotteryId];
+        return participantTickets[_lotteryId];
     }
 
     function getParticipantsCount(uint256 _lotteryId)
@@ -374,7 +384,8 @@ contract Lottery is Ownable {  // spider-g: , ILottery
      * @notice Change the lottery state to canceled.
      * @param _lotteryId ID of the lottery to canccel
      */
-    function cancelLottery(uint256 _lotteryId) public onlyOwner { // spider-g: if there are participants, should we refund their points?
+    function cancelLottery(uint256 _lotteryId) public onlyOwner {
+        // TODO: if there are participants, should we refund their points?
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(
             lottery.status != Status.Completed,
@@ -385,20 +396,20 @@ contract Lottery is Ownable {  // spider-g: , ILottery
     }
 
     /**
-     * @notice Function called by users to claim rewards and buy lottery tickets on same tx
+     * @notice Function called by users to claim points and buy lottery tickets on same tx
      * @param _lotteryId ID of the lottery to buy tickets for
      * @param numberOfTickets Number of tickets to buy
      * @param _points Total user claimable points
      * @param _proof Proof of the user's claimable points
      */
-    function claimRewardAndBuyTickets( // spider-g: I think this name is a little confusing. Maybe claimPointsAndBuyTickets() ?
+    function claimPointsAndBuyTickets(
         uint256 _lotteryId,
         uint8 numberOfTickets,
         uint256 _points,
         bytes32[] calldata _proof
     ) public payable returns (uint256) {
         if (rewardsContract.totalPointsClaimed(msg.sender) < _points) {
-            rewardsContract.claimRewardWithProof(msg.sender, _points, _proof); // spider-g: claimPointsWithProof() ?
+            rewardsContract.claimPointsWithProof(msg.sender, _points, _proof);
         }
         return buyTickets(_lotteryId, numberOfTickets);
     }
@@ -421,11 +432,11 @@ contract Lottery is Ownable {  // spider-g: , ILottery
                 "Lottery is full"
             );
         }
-        if (maxEntries > 0) {
+        if (maxTicketsPerParticipant > 0) {
             require(
                 participants[_lotteryId][msg.sender].entries +
                     numberOfTickets <=
-                    maxEntries,
+                    maxTicketsPerParticipant,
                 "Can't buy this amount of tickets"
             );
         }
@@ -441,7 +452,6 @@ contract Lottery is Ownable {  // spider-g: , ILottery
             lottery.closingTime < block.timestamp
         ) {
             lottery.status = Status.Closed;
-            // spider-g: maybe you could call requestRandomNumber at this point?
             emit LotteryStatusChanged(_lotteryId, lottery.status);
         }
         require(lottery.status == Status.Open, "Lottery is not open");
@@ -462,14 +472,12 @@ contract Lottery is Ownable {  // spider-g: , ILottery
                 "Didn't transfer enough funds to buy tickets"
             );
         }
-        // spider-g: I find the name "entry" a little misleading - at first, I thought 1 purchase with N tickets would mean 1 entry. 
-        // spider-g: Maybe rename it to "numTicketsBought" or something like that
-        uint256 userEntries = participants[_lotteryId][msg.sender].entries;
-        if (userEntries == 0) {
+        uint256 numTicketsBought = participants[_lotteryId][msg.sender].entries;
+        if (numTicketsBought == 0) {
             participantHistory[msg.sender].push(_lotteryId);
             lottery.participantsCount++;
             ParticipantInfo memory participant = ParticipantInfo(
-                false,
+                0,
                 false,
                 numberOfTickets
             );
@@ -478,7 +486,7 @@ contract Lottery is Ownable {  // spider-g: , ILottery
             participants[_lotteryId][msg.sender].entries += numberOfTickets;
         }
         for (uint8 i = 0; i < numberOfTickets; i++) {
-            assignNewEntryToParticipant(_lotteryId, msg.sender);
+            assignNewTicketToParticipant(_lotteryId, msg.sender);
         }
         return remainingPoints;
     }
@@ -488,29 +496,29 @@ contract Lottery is Ownable {  // spider-g: , ILottery
      * @param _lotteryId ID of the lottery to buy tickets for
      * @param _participantAddress Address of the participant that will receive the new entry
      */
-    function assignNewEntryToParticipant(
+    function assignNewTicketToParticipant(
         uint256 _lotteryId,
         address _participantAddress
     ) private {
-        participantEntries[_lotteryId].push(_participantAddress); // spider-g: Maybe name it "participantTickets[]"?
+        participantTickets[_lotteryId].push(_participantAddress);
         emit NewEntry(
             _lotteryId,
-            participantEntries[_lotteryId].length,
+            participantTickets[_lotteryId].length,
             _participantAddress
         );
     }
 
     /**
-     * @notice Function called to check if a user boosted on a particular lottery.
+     * @notice Function called to check the amount of times a user boosted on a particular lottery.
      * @param _lotteryId ID of the lottery to check if user boosted
      * @param _participantAddress Address of the participant to check
      */
-    function isBooster(uint256 _lotteryId, address _participantAddress)
+    function numBoosts(uint256 _lotteryId, address _participantAddress)
         public
         view
-        returns (bool)
+        returns (uint8)
     {
-        return participants[_lotteryId][_participantAddress].isBooster;
+        return participants[_lotteryId][_participantAddress].boosts;
     }
 
     /**
@@ -518,34 +526,38 @@ contract Lottery is Ownable {  // spider-g: , ILottery
      * @param _lotteryId ID of the lottery to boost
      * @param _participantAddress Address of the participant that will receive the boost
      */
-    function boostParticipant(uint256 _lotteryId, address _participantAddress)
-        public
-        payable
-    {
+    function boostParticipant(
+        uint256 _lotteryId,
+        address _participantAddress,
+        uint8 _boostAmount
+    ) public payable {
         ParticipantInfo storage participant = participants[_lotteryId][
             _participantAddress
         ];
         require(
-            lotteryHistory[_lotteryId].boostCost != 0,
+            lotteryHistory[_lotteryId].boostCost != 0 &&
+                maxBoostsPerLottery[_lotteryId] != 0,
             "Can't boost on this lottery"
         );
         require(participant.entries > 0, "Participant not found");
         require(
-            participant.isBooster == false,
-            "Participant already a booster"
+            participant.boosts + _boostAmount <=
+                maxBoostsPerLottery[_lotteryId],
+            "Max boosts limit"
         );
         // check if the transaction contains the boost cost
-        // spider-g: what if the boost costs 2 and the users sends 5.000? shouldn't we require msg.value == boostCost?
         require(
-            msg.value >= lotteryHistory[_lotteryId].boostCost,
+            msg.value == lotteryHistory[_lotteryId].boostCost * _boostAmount,
             "Didn't send enough to boost"
         );
 
-        participant.isBooster = true;
-        assignNewEntryToParticipant(_lotteryId, _participantAddress);
+        participant.boosts += _boostAmount;
+        for (uint8 i = 0; i < _boostAmount; i++) {
+            assignNewTicketToParticipant(_lotteryId, _participantAddress);
+        }
     }
 
-    function claimWithProof( // spider-g: Rename it to claimPrize()
+    function claimPrize(
         uint256 _lotteryId,
         address _winner,
         uint256 _prizeId,
@@ -554,25 +566,22 @@ contract Lottery is Ownable {  // spider-g: , ILottery
         require(
             _verify(
                 _leaf(_lotteryId, _winner, _prizeId),
-                merkleRoots[_lotteryId],
+                prizeMerkleRoots[_lotteryId],
                 _proof
             ),
             "Invalid merkle proof"
         );
-        ParticipantInfo storage participant = participants[_lotteryId][
-            msg.sender
-        ];
+        ParticipantInfo storage participant = participants[_lotteryId][_winner];
         require(
             participant.prizeClaimed == false,
             "Participant already claimed prize"
         );
-        require(msg.sender == _winner, "Sender is not the winner address"); // spider-g: move to function top
 
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
         participant.prizeClaimed = true;
-        nftContract.mint(msg.sender, _prizeId, 1, "");
-        emit PrizeClaimed(_lotteryId, msg.sender, _prizeId);
+        nftContract.mint(_winner, _prizeId, 1, "");
+        emit PrizeClaimed(_lotteryId, _winner, _prizeId);
     }
 
     function _leaf(

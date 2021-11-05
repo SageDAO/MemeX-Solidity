@@ -92,6 +92,10 @@ const buf2hex = x => '0x' + x.toString('hex');
 
 async function main() {
     await hre.run('compile');
+    const Rewards = await ethers.getContractFactory("Rewards");
+    rewardsAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
+    rewardsContract = await Rewards.attach(rewardsAddress);
+
     let leaves = new Array();
 
     dbUsers = await prisma.user.findMany({
@@ -139,73 +143,6 @@ async function main() {
                 address: leaf.address,
             }
         });
-    }
-
-    // const covalentResultEth = await covalentFetchHolders(providerEth, 1, memeAddressEth);
-    // ethHolders = createMemeHoldersMap(covalentResultEth);
-    // const blockNumber = await providerEth.getBlockNumber();
-    // // get block timestamp
-    // const block = await providerEth.getBlock(blockNumber);
-    // const blockTimestamp = block.timestamp;
-    console.log(await getUserTransactions("0x3e099af007cab8233d44782d8e6fe80fecdc321e", ASSETS[2], 1633132473, 1633132473 + 86400));
-    console.log(await getUserBalanceAtTimestamp("0x3e099af007cab8233d44782d8e6fe80fecdc321e", ASSETS[2], 1633132473));
-    console.log(await getUserPointsAtTimestamp("0x3e099af007cab8233d44782d8e6fe80fecdc321e", ASSETS[2], 1633132473, 1633132473 + 86400))
-    // for (holder of ethHolders) {
-    //     let balance = await userBalanceAtTimestamp(holder[0], ASSETS[1], blockTimestamp);
-    //     if (holder[1] != balance) {
-    //         console.log(`ERROR!!! ${holder[0]}: FROM DB: ${balance} FROM COVALENT: ${holder[1]}`);
-    //     }
-    //     console.log(`${holder[0]}: FROM DB: ${balance} FROM COVALENT: ${holder[1]}`);
-    // }
-    process.exit(0);
-
-    const Rewards = await ethers.getContractFactory("Rewards");
-    rewardsAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
-    rewardsContract = await Rewards.attach(rewardsAddress);
-
-    for (var asset in ASSETS) {
-        let assetName = ASSETS[asset];
-
-        // fetch all rewards for the current asset
-        let userRewards = await fetchRewards(assetName);
-
-        for (user of userRewards) {
-            let userTransactions = await fetchUserTransactions(user.address, assetName);
-            for (transaction of userTransactions) {
-                if (transaction.from == user.address) {
-                    let updatedBalance = await userBalanceAtTimestamp(user.address, assetName, transaction.blockTimestamp);
-                    await prisma.rewardCurrent.update({
-                        where: {
-                            address: user.address,
-                            asset: assetName
-                        },
-                        data: {
-                            balance: updatedBalance
-                        }
-                    });
-                }
-
-
-                memeUpdatedBalance = ethHolders.has(user.address) ? ethHolders.get(user.address) : 0;
-                memeUpdatedBalance += fantomHolders.has(user.address) ? fantomHolders.get(user.address) : 0;
-                if (user.meme != memeUpdatedBalance) {
-                    console.log(`Updating balance - user: ${user.address}`);
-                    addresses.push(user.address);
-                    balances.push(memeUpdatedBalance);
-                    liquidity.push(0);
-                    await prisma.reward.update({
-                        where: {
-                            address: user.address
-                        },
-                        data: {
-                            meme: Number(memeUpdatedBalance),
-                        }
-                    });
-                }
-            }
-            await rewardsContract.updateBalanceBatch(addresses, balances, liquidity);
-            console.log(`Updated balances for ${addresses.length} users`);
-        }
     }
 }
 
