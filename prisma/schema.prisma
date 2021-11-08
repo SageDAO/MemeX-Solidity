@@ -52,16 +52,6 @@ model PrizeProof {
   @@id([lotteryId, winnerAddress, prizeId])
 }
 
-model RewardCurrent {
-  address        String    @db.Char(42)
-  balance        BigInt    @default(0)
-  snapshotPoints BigInt    @default(0)
-  blockTimestamp Int       @default(0)
-  type           AssetType
-
-  @@id([address, type])
-}
-
 model MemeTransactions {
   blockNumber    Int
   blockTimestamp Int
