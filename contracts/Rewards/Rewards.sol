@@ -1,47 +1,48 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/access/Ownable.sol";
+
+import "../Access/MemeXAccessControls.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../../interfaces/IRewards.sol";
 
-contract Rewards is Ownable, IRewards {
-    address public lotteryAddr;
-
+contract Rewards is MemeXAccessControls, IRewards {
     bytes32 public pointsMerkleRoot;
 
-    mapping(address => uint256) public availablePoints;
+    mapping(address => uint256) public totalPointsUsed;
 
-    mapping(address => uint256) public totalPointsClaimed;
+    mapping(address => uint256) public totalPointsEarned;
 
     event PointsUsed(address indexed user, uint256 amount, uint256 remaining);
-    event ClaimedReward(address indexed user, uint256 amount);
+    event PointsEarned(address indexed user, uint256 amount);
 
-    modifier onlyLottery() {
-        require(msg.sender == lotteryAddr, "Lottery calls only");
-        _;
+    constructor(address _admin) {
+        initAccessControls(_admin);
     }
 
-    constructor() {}
-
-    function setLotteryAddress(address _lotteryAddr) public onlyOwner {
-        lotteryAddr = _lotteryAddr;
+    function availablePoints(address user) public view returns (uint256) {
+        return totalPointsEarned[user] - totalPointsUsed[user];
     }
 
     function burnUserPoints(address _account, uint256 _amount)
         public
-        onlyLottery
         returns (uint256)
     {
-        uint256 startPoints = availablePoints[_account];
+        require(
+            hasSmartContractRole(msg.sender),
+            "Smart contract role required"
+        );
+        uint256 available = totalPointsEarned[_account] -
+            totalPointsUsed[_account];
         require(_amount > 0, "Can't use 0 points");
-        require(_amount <= startPoints, "Not enough points");
-        availablePoints[_account] = startPoints - _amount;
+        require(_amount <= available, "Not enough points");
+        totalPointsUsed[_account] += _amount;
 
-        emit PointsUsed(_account, _amount, startPoints - _amount);
-        return startPoints - _amount;
+        emit PointsUsed(_account, _amount, available - _amount);
+        return available - _amount;
     }
 
-    function setPointsMerkleRoot(bytes32 _root) public onlyOwner {
+    function setPointsMerkleRoot(bytes32 _root) public {
+        require(hasAdminRole(msg.sender), "Only Admin can set the merkle root");
         pointsMerkleRoot = _root;
     }
 
@@ -54,15 +55,12 @@ contract Rewards is Ownable, IRewards {
             _verify(_leaf(_address, _points), pointsMerkleRoot, _proof),
             "Invalid proof"
         );
-        require(
-            totalPointsClaimed[_address] < _points,
-            "Participant already claimed all points"
-        );
-        uint256 claimPoints = _points - totalPointsClaimed[_address];
-        totalPointsClaimed[_address] = _points;
-        availablePoints[_address] += claimPoints;
-        emit ClaimedReward(_address, claimPoints);
-        return availablePoints[_address];
+        uint256 newPoints = _points - totalPointsEarned[_address];
+        require(newPoints > 0, "Participant already claimed all points");
+
+        totalPointsEarned[_address] = _points;
+        emit PointsEarned(_address, newPoints);
+        return newPoints;
     }
 
     function _leaf(address _address, uint256 _points)

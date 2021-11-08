@@ -75,15 +75,6 @@ model MemeTransactions {
   @@index([from, to])
 }
 
-model RewardHistory {
-  id             Int       @id @default(autoincrement())
-  address        String    @db.Char(42)
-  balance        BigInt    @default(0)
-  blockTimestamp Int       @default(0)
-  type           AssetType
-  snapshotPoints BigInt    @default(0)
-}
-
 model RewardPublished {
   address           String @id @db.Char(42)
   totalPointsEarned BigInt @default(0)

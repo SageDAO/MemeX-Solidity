@@ -17,5 +17,7 @@ interface IRewards {
 
     function availablePoints(address _user) external view returns (uint256);
 
-    function totalPointsClaimed(address _user) external view returns (uint256);
+    function totalPointsUsed(address _user) external view returns (uint256);
+
+    function totalPointsEarned(address _user) external view returns (uint256);
 }

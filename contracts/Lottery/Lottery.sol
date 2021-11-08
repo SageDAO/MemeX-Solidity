@@ -408,7 +408,7 @@ contract Lottery is Ownable, ILottery {
         uint256 _points,
         bytes32[] calldata _proof
     ) public payable returns (uint256) {
-        if (rewardsContract.totalPointsClaimed(msg.sender) < _points) {
+        if (rewardsContract.totalPointsEarned(msg.sender) < _points) {
             rewardsContract.claimPointsWithProof(msg.sender, _points, _proof);
         }
         return buyTickets(_lotteryId, numberOfTickets);

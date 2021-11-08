@@ -7,9 +7,9 @@ describe("Rewards Contract", function () {
     beforeEach(async () => {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
         Rewards = await ethers.getContractFactory('Rewards');
-        rewards = await Rewards.deploy();
+        rewards = await Rewards.deploy(owner.address);
         // addr2 will simulate the lottery contract
-        await rewards.setLotteryAddress(addr2.address);
+        await rewards.addSmartContractRole(addr2.address);
     });
 
     it("Users start with 0 rewards", async function () {
@@ -17,7 +17,7 @@ describe("Rewards Contract", function () {
     });
 
     it("Should throw if burn points called not by lottery contract", async function () {
-        await expect(rewards.connect(addr1).burnUserPoints(addr1.address, 1500000000)).to.be.revertedWith("Lottery calls only");
+        await expect(rewards.connect(addr1).burnUserPoints(addr1.address, 1500000000)).to.be.revertedWith("Smart contract role required");
     });
 
     describe("Merkle tree", () => {
@@ -37,7 +37,7 @@ describe("Rewards Contract", function () {
         it("Should claim reward with merkle proof", async function () {
             await rewards.connect(addr1).claimPointsWithProof(addr1.address, 1500000000, hexproof);
             expect(await rewards.availablePoints(addr1.address)).to.equal(1500000000);
-            expect(await rewards.totalPointsClaimed(addr1.address)).to.equal(1500000000);
+            expect(await rewards.totalPointsEarned(addr1.address)).to.equal(1500000000);
         });
 
 
@@ -62,7 +62,7 @@ describe("Rewards Contract", function () {
         });
     });
     it("Should not call setLotteryAddress if not owner", async function () {
-        await expect(rewards.connect(addr1).setLotteryAddress(owner.address)).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(rewards.connect(addr1).addSmartContractRole(owner.address)).to.be.revertedWith("");
     });
 });
 
