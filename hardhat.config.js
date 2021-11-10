@@ -3,6 +3,7 @@ require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-truffle4");
 require("hardhat-gas-reporter");
 require("@nomiclabs/hardhat-solhint");
+require("hardhat-typechain");
 require("dotenv").config();
 
 task("accounts", "Prints the list of accounts", async (args, hre) => {
