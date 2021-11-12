@@ -69,13 +69,13 @@ async function getLastBlockHeightInBlockchain(chainId) {
 async function getLastBlockInspected(assetType) {
     let result = await prisma.rewardType.findUnique({
         select: {
-            lastBlockNumber: true,
+            lastBlockInspected: true,
         },
         where: {
             type: assetType
         }
     });
-    return result == null ? 0 : Number(result.lastBlockNumber);
+    return result == null ? 0 : Number(result.lastBlockInspected);
 }
 
 async function getLatestTransactionsFromAllBlockchains() {
@@ -144,11 +144,11 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
                 type: asset.assetType
             },
             update: {
-                lastBlockNumber: iEnd,
+                lastBlockInspected: iEnd,
             },
             create: {
                 type: asset.assetType,
-                lastBlockNumber: iEnd,
+                lastBlockInspected: iEnd,
                 rewardRate: asset.rewardRate,
             },
         });
@@ -277,7 +277,7 @@ async function main() {
                     points: earnedPoints,
                 });
             } else if (hre.network.name == "rinkeby") {
-                console.log(`This is rinkeby and ${user.walletAddress} has 0 points. Will add some test points`);
+                console.log(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
                 leaves.push({
                     address: user.walletAddress,
                     points: 1500000000,
