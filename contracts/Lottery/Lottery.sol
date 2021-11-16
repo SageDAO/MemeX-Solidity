@@ -15,7 +15,7 @@ contract Lottery is Ownable, ILottery {
     bytes32 internal requestId_;
 
     // Address of the randomness generator
-    IRandomNumberGenerator internal randomGenerator;
+    IRandomNumberGenerator public randomGenerator;
     IRewards public rewardsContract;
 
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
@@ -229,19 +229,6 @@ contract Lottery is Ownable, ILottery {
         return (lotteryHistory[_lotteryId]);
     }
 
-    /**
-     * @notice Get the number of participants in a lottery.
-     * @param _lotteryId The lottery ID
-     * @return Amount of different addresses that have entered the lottery
-     */
-    function getNumberOfParticipants(uint256 _lotteryId)
-        public
-        view
-        returns (uint256)
-    {
-        return lotteryHistory[_lotteryId].participantsCount;
-    }
-
     modifier onlyRandomGenerator() {
         require(msg.sender == address(randomGenerator), "Only RNG address");
         _;
@@ -372,6 +359,11 @@ contract Lottery is Ownable, ILottery {
         return participantTickets[_lotteryId];
     }
 
+    /**
+     * @notice Get the number of participants in a lottery.
+     * @param _lotteryId The lottery ID
+     * @return Amount of different addresses that have entered the lottery
+     */
     function getParticipantsCount(uint256 _lotteryId)
         public
         view

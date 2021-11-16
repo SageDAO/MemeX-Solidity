@@ -31,9 +31,9 @@ async function main() {
         Token = await ethers.getContractFactory("MemeXToken");
         token = await Token.deploy("MEMEX", "MemeX", 1, owner.address);
 
-        rewards = await Rewards.deploy();
+        rewards = await Rewards.deploy(owner.address);
         lottery = await Lottery.deploy(rewards.address);
-        await rewards.setLotteryAddress(lottery.address);
+        await rewards.addSmartContractRole(lottery.address);
 
         nft = await Nft.deploy("Memex", "MEMEX", owner.address);
         nft.addMinterRole(owner.address);
@@ -41,16 +41,17 @@ async function main() {
         MockRNG = await ethers.getContractFactory("MockRNG");
         mockRng = await MockRNG.deploy(lottery.address);
         await lottery.setRandomGenerator(mockRng.address);
-        await lottery.createNewLottery(0, 0, block.timestamp,
+        await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 1100,
             nft.address,
-            0, 0, 3, artist.address, "ipfs://path/");
+            0, 0, artist.address, "ipfs://path/");
         await lottery.addPrizes(1, [1, 2], [1, 1000]);
 
-        for (i = 0; i < 1000; i++) {
+        for (i = 0; i < 100; i++) {
             console.log(`Buying ticket with account ${i}`);
             await lottery.connect(accounts[i]).buyTickets(1, 1);
         }
-
+        await ethers.provider.send("evm_increaseTime", [1500]); // long wait, enough to be after the end of the lottery
+        await ethers.provider.send("evm_mine", []);
         await lottery.requestRandomNumber(1);
         await mockRng.fulfillRequest(1, 1);
 
@@ -59,14 +60,14 @@ async function main() {
         lottery = await Lottery.attach(lotteryAddress);
         // nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
         // nft = await Nft.attach(nftAddress);
-        // await lottery.createNewLottery(100000000, 0, block.timestamp, block.timestamp + 86400 * 10,
+        // await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 86400 * 10,
         //     nft.address,
-        //     0, 0, artist.address, "ipfs://path/");
+        //     0, 0, owner.address, "ipfs://path/");
         // process.exit(0);
     }
 
     console.log("Getting lottery entries...");
-    entries = await lottery.getParticipantEntries(lotteryId, { gasLimit: 500000000 });
+    entries = await lottery.getParticipantTickets(lotteryId, { gasLimit: 500000000 });
     totalEntries = entries.length;
     console.log(entries);
     console.log(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
@@ -118,7 +119,7 @@ async function main() {
             console.log(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${entries[randomPosition]}`);
 
             var leaf = {
-                lotteryId: Number(lotteryId), winnerAddress: entries[randomPosition], prizeId: prizes[prizeIndex].prizeId.toNumber(), proof: ""
+                lotteryId: Number(lotteryId), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), proof: "", createdAt: new Date()
             };
             leaves.push(leaf);
         }
@@ -128,7 +129,7 @@ async function main() {
         for (i = 0; i < entries.length; i++) {
             if (!winners.has(entries[i])) {
                 var leaf = {
-                    lotteryId: Number(lotteryId), winnerAddress: entries[i], prizeId: defaultPrizeId.toNumber(), proof: ""
+                    lotteryId: Number(lotteryId), winnerAddress: entries[i], nftId: defaultPrizeId.toNumber(), proof: "", createdAt: new Date()
                 };
                 winners.add(entries[i]);
                 leaves.push(leaf);
@@ -141,10 +142,10 @@ async function main() {
 
     const root = tree.getHexRoot().toString('hex');
     console.log(`Storing Merkle tree root in the contract: ${root}`);
-    await lottery.setMerkleRoot(lotteryId, root);
+    await lottery.setPrizeMerkleRoot(lotteryId, root);
 
     // clean any previous results stored for this lottery
-    await prisma.proof.deleteMany({
+    await prisma.prizeProof.deleteMany({
         where: {
             lotteryId: Number(lotteryId)
         }
@@ -153,10 +154,10 @@ async function main() {
     for (index in leaves) {
         leaf = leaves[index];
         leaf.proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
-        console.log(`Prize id: ${leaf.prizeId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`)
+        console.log(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`)
     }
     // store proofs on the DB so it can be easily queried
-    created = await prisma.proof.createMany({ data: leaves });
+    created = await prisma.prizeProof.createMany({ data: leaves });
     console.log(`${created} proofs created in the DB`);
 }
 
@@ -168,7 +169,8 @@ main()
     });
 
 function getEncodedLeaf(leaf) {
+    console.log(`Encoding leaf: ${leaf.winnerAddress} ${leaf.nftId}`);
     return keccak256(abiCoder.encode(["uint256", "address", "uint256"],
-        [lotteryId, leaf.winnerAddress, leaf.prizeId]));
+        [lotteryId, leaf.winnerAddress, leaf.nftId]));
 }
 

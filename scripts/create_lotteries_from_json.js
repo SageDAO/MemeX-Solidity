@@ -24,7 +24,7 @@ async function main() {
     // iterate over json content
     for (const drop of json_content) {
         if (drop.metadata.lotteryId == null) {
-            const NFT = await hre.ethers.getContractFactory("MemeXNFTBasic");
+            const NFT = await hre.ethers.getContractFactory("MemeXNFT");
             const nftContract = await NFT.attach(nftAddress);
 
             // create new lottery and update metadata with lotteryId
@@ -38,10 +38,10 @@ async function main() {
                     drop.metadata.startTime,
                     drop.metadata.endTime,
                     nftContract.address,
-                    drop.prizes, // amount of prizes
-                    drop.metadata.boostCost * ethers.BigNumber.from(10 ** 18), // boost cost in ETH
+                    drop.metadata.boostCost, // boost cost in FTM
                     drop.maxParticipants,
-                    drop.hasDefaultPrize,
+                    drop.artistAddress,
+                    drop.metadat.metadataBasePath,
                     {
                         gasLimit: 4000000,
                     });
@@ -49,12 +49,6 @@ async function main() {
                 console.log(err);
                 return;
             }
-            // wait 30 seconds so the etherscan index can be updated, then verify the contract code
-            await timer(30000);
-            await hre.run("verify:verify", {
-                address: nftContract.address,
-                constructorArguments: [drop.metadata.dropName, "MMXNFT", lotteryAddress],
-            });
         }
     }
     // generate the output file with updated json content
