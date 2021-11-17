@@ -267,83 +267,91 @@ async function main() {
             new (winston.transports.Console)({
                 timestamp: true,
                 colorize: true,
-            })
+            }),
+            new WinstonCloudWatch({
+                logGroupName: 'update_balance_job',
+                logStreamName: NODE_ENV,
+                awsRegion: 'us-east1',
+                awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            }),
         ]
     });
-    if (NODE_ENV != "development") {
-        winston.add(new WinstonCloudWatch({
-            logGroupName: 'update_balance_job',
-            logStreamName: NODE_ENV,
-            awsRegion: 'us-east1'
-        }));
-    }
-    logger.log('error', 'testing');
-    let transactions = await getLatestTransactionsFromAllBlockchains();
+    // if (NODE_ENV != "development") {
+    //     console.log('Running inside aws');
+    //     logger.add(new WinstonCloudWatch({
+    //         logGroupName: 'update_balance_job',
+    //         logStreamName: NODE_ENV,
+    //         awsRegion: 'us-east1',
+    //         awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    //     }));
+}
+logger.log('error', 'testing');
+let transactions = await getLatestTransactionsFromAllBlockchains();
 
-    if (publishResults) {
-        const Rewards = await ethers.getContractFactory("Rewards");
-        rewardsAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
-        rewardsContract = await Rewards.attach(rewardsAddress);
+if (publishResults) {
+    const Rewards = await ethers.getContractFactory("Rewards");
+    rewardsAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
+    rewardsContract = await Rewards.attach(rewardsAddress);
 
-        let leaves = new Array();
+    let leaves = new Array();
 
-        dbUsers = await prisma.user.findMany({
-            select: {
-                walletAddress: true,
-                createdAt: true,
-            }
-        });
-
-        for (user of dbUsers) {
-            let earnedPoints = 0;
-            for (assetType in ASSETS) {
-                earnedPoints += await getUserPointsAtTimestamp(user.walletAddress, assetType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000));
-            }
-            if (earnedPoints > 0) {
-                leaves.push({
-                    address: user.walletAddress,
-                    points: earnedPoints,
-                });
-            } else if (hre.network.name == "rinkeby") {
-                console.log(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
-                leaves.push({
-                    address: user.walletAddress,
-                    points: 1500000000,
-                });
-            }
+    dbUsers = await prisma.user.findMany({
+        select: {
+            walletAddress: true,
+            createdAt: true,
         }
+    });
 
-        console.log(`Publishing rewards`);
-        let hashedLeaves = leaves.map(leaf => getEncodedLeaf(leaf));
-        const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
-
-        const root = tree.getHexRoot().toString('hex');
-        console.log(`Storing Merkle tree root in the contract: ${root}`);
-        await rewardsContract.setPointsMerkleRoot(root);
-
-        // generate proofs for each reward
-        for (index in leaves) {
-            leaf = leaves[index];
-            proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
-            console.log(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
-
-            // store proof in the DB so it can be easily queried
-            await prisma.rewardPublished.upsert({
-                where: {
-                    address: leaf.address
-                },
-                update: {
-                    proof: proof,
-                    totalPointsEarned: leaf.points,
-                },
-                create: {
-                    proof: proof,
-                    totalPointsEarned: leaf.points,
-                    address: leaf.address,
-                },
+    for (user of dbUsers) {
+        let earnedPoints = 0;
+        for (assetType in ASSETS) {
+            earnedPoints += await getUserPointsAtTimestamp(user.walletAddress, assetType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000));
+        }
+        if (earnedPoints > 0) {
+            leaves.push({
+                address: user.walletAddress,
+                points: earnedPoints,
+            });
+        } else if (hre.network.name == "rinkeby") {
+            console.log(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
+            leaves.push({
+                address: user.walletAddress,
+                points: 1500000000,
             });
         }
     }
+
+    console.log(`Publishing rewards`);
+    let hashedLeaves = leaves.map(leaf => getEncodedLeaf(leaf));
+    const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
+
+    const root = tree.getHexRoot().toString('hex');
+    console.log(`Storing Merkle tree root in the contract: ${root}`);
+    await rewardsContract.setPointsMerkleRoot(root);
+
+    // generate proofs for each reward
+    for (index in leaves) {
+        leaf = leaves[index];
+        proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
+        console.log(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
+
+        // store proof in the DB so it can be easily queried
+        await prisma.rewardPublished.upsert({
+            where: {
+                address: leaf.address
+            },
+            update: {
+                proof: proof,
+                totalPointsEarned: leaf.points,
+            },
+            create: {
+                proof: proof,
+                totalPointsEarned: leaf.points,
+                address: leaf.address,
+            },
+        });
+    }
+}
 }
 
 function getEncodedLeaf(leaf) {
