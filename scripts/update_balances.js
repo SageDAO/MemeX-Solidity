@@ -264,10 +264,10 @@ async function main() {
                 winston.format.json(),
             ),
         transports: [
-            new (winston.transports.Console)({
-                timestamp: true,
-                colorize: true,
-            }),
+            // new (winston.transports.Console)({
+            //     timestamp: true,
+            //     colorize: true,
+            // }),
             new WinstonCloudWatch({
                 logGroupName: 'update_balance_job',
                 logStreamName: NODE_ENV,
