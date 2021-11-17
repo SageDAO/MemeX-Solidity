@@ -15,14 +15,18 @@
     "hardhat": "^2.6.1",
     "hardhat-gas-reporter": "^1.0.4",
     "ts-node": "^10.2.1",
+    "typechain": "^6.0.2",
     "web3": "^0.20.0"
   },
   "dependencies": {
     "@chainlink/contracts": "^0.2.1",
     "@openzeppelin/contracts": "^4.3.1",
     "@prisma/client": "^3.0.2",
+    "aws-sdk": "^2.1030.0",
     "dotenv": "^10.0.0",
     "keccak256": "^1.0.3",
-    "merkletreejs": "^0.2.24"
+    "merkletreejs": "^0.2.24",
+    "winston": "^3.3.3",
+    "winston-cloudwatch": "^3.1.1"
   }
 }

@@ -1,6 +1,12 @@
 const fetch = require('node-fetch');
 require("dotenv").config();
 const hre = require("hardhat");
+
+var winston = require('winston'),
+    WinstonCloudWatch = require('winston-cloudwatch');
+
+var NODE_ENV = process.env.NODE_ENV || 'development';
+
 const ethers = hre.ethers;
 var abiCoder = ethers.utils.defaultAbiCoder;
 
@@ -249,7 +255,29 @@ const buf2hex = x => '0x' + x.toString('hex');
 async function main() {
     const publishResults = process.argv.slice(2)[0];
     await hre.run('compile');
-
+    const logger = new winston.createLogger({
+        format:
+            winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss'
+                }),
+                winston.format.json(),
+            ),
+        transports: [
+            new (winston.transports.Console)({
+                timestamp: true,
+                colorize: true,
+            })
+        ]
+    });
+    if (NODE_ENV != "development") {
+        winston.add(new WinstonCloudWatch({
+            logGroupName: 'update_balance_job',
+            logStreamName: NODE_ENV,
+            awsRegion: 'us-east1'
+        }));
+    }
+    logger.log('error', 'testing');
     let transactions = await getLatestTransactionsFromAllBlockchains();
 
     if (publishResults) {
