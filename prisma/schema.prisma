@@ -10,7 +10,7 @@ datasource db {
 }
 
 model Nft {
-  id            Int    @id @default(autoincrement())
+  id            Int          @id @default(autoincrement())
   dropId        Int
   name          String
   description   String
@@ -18,8 +18,9 @@ model Nft {
   ipfsPath      String
   s3Path        String
   tags          String
-  numberOfMints Int    @default(0)
-  drop          Drop   @relation(fields: [dropId], references: [id])
+  numberOfMints Int          @default(0)
+  drop          Drop         @relation(fields: [dropId], references: [id])
+  prizeProof    PrizeProof[]
 }
 
 model Drop {
@@ -46,13 +47,13 @@ model Drop {
 model PrizeProof {
   lotteryId     Int
   winnerAddress String    @db.Char(42)
-  // TODO: relationship with NFT table
+  nft           Nft       @relation(fields: [nftId], references: [id])
   nftId         Int
   proof         String
   claimedAt     DateTime?
   createdAt     DateTime
 
-  @@id([lotteryId, winnerAddress, nftId])
+  @@id([lotteryId, winnerAddress])
 }
 
 model MemeTransactions {
