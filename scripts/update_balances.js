@@ -1,3 +1,9 @@
+const AWS = require('aws-sdk');
+
+AWS.config.update({
+    region: 'us-east-2',
+});
+
 const fetch = require('node-fetch');
 require("dotenv").config();
 const hre = require("hardhat");
@@ -264,27 +270,17 @@ async function main() {
                 winston.format.json(),
             ),
         transports: [
-            // new (winston.transports.Console)({
-            //     timestamp: true,
-            //     colorize: true,
-            // }),
+            new (winston.transports.Console)({
+                timestamp: true,
+                colorize: true,
+            }),
             new WinstonCloudWatch({
-                logGroupName: 'update_balance_job',
-                logStreamName: NODE_ENV,
-                awsRegion: 'us-east1',
-                awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                logGroupName: 'memex_scripts',
+                logStreamName: 'update_balances',
+                awsRegion: 'us-east-2',
             }),
         ]
     });
-    // if (NODE_ENV != "development") {
-    //     console.log('Running inside aws');
-    //     logger.add(new WinstonCloudWatch({
-    //         logGroupName: 'update_balance_job',
-    //         logStreamName: NODE_ENV,
-    //         awsRegion: 'us-east1',
-    //         awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    //     }));
-    // }
     logger.log('error', 'testing');
     let transactions = await getLatestTransactionsFromAllBlockchains();
 
