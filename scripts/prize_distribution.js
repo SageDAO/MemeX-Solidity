@@ -3,6 +3,7 @@ const { assert } = require("chai");
 const hre = require("hardhat");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require('keccak256');
+const createLogger = require("./logs.js");
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
@@ -13,9 +14,12 @@ const CONTRACTS = require('../contracts.js');
 
 var abiCoder = ethers.utils.defaultAbiCoder;
 const buf2hex = x => '0x' + x.toString('hex');
+const logger = createLogger('memex_scripts', 'prize_distribution');
 
 async function main() {
     await hre.run('compile');
+    logger.info(`Starting prize distribution script ${hre.network.name}`);
+
     const Lottery = await ethers.getContractFactory("Lottery");
     const blockNum = await ethers.provider.getBlockNumber();
     const block = await ethers.provider.getBlock(blockNum);
@@ -44,7 +48,7 @@ async function main() {
         await lottery.addPrizes(1, [1, 2], [1, 1000]);
         accounts = await ethers.getSigners();
         for (i = 0; i < 100; i++) {
-            console.log(`Buying ticket with account ${i}`);
+            logger.info(`Buying ticket with account ${i}`);
             await lottery.connect(accounts[i]).buyTickets(1, 1);
         }
         await ethers.provider.send("evm_increaseTime", [1500]); // long wait, enough to be after the end of the lottery
@@ -62,12 +66,12 @@ async function main() {
         //     0, 0, owner.address, "ipfs://path/");
         // process.exit(0);
     }
-    console.log('Searching for lotteries that require action');
+    logger.info('Searching for lotteries that require action');
     lotteries = await lottery.getLotteryIds();
     for (lotteryId of lotteries) {
         lotteryInfo = await lottery.getLotteryInfo(lotteryId);
         if (lotteryInfo.status == 2 && lotteryInfo.closingTime < block.timestamp) {
-            console.log(`Lottery ${lotteryId} is closed, requesting random number`);
+            logger.info(`Lottery ${lotteryId} is closed, requesting random number`);
             await lottery.requestRandomNumber(lotteryId);
             continue;
         }
@@ -81,11 +85,11 @@ async function main() {
 
             // if there aren't any, create the proofs
             if (!hasProof) {
-                console.log(`Lottery ${lotteryId} is closed but has no PrizeProof`);
+                logger.info(`Lottery ${lotteryId} is closed but has no PrizeProof`);
                 entries = await lottery.getParticipantTickets(lotteryId, { gasLimit: 500000000 });
                 totalEntries = entries.length;
-                console.log(entries);
-                console.log(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
+                logger.info(entries);
+                logger.info(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
 
                 lotteryInfo = await lottery.getLotteryInfo(lotteryId);
                 assert(lotteryInfo.status == 4, "Lottery must be closed to distribute prizes");
@@ -93,12 +97,12 @@ async function main() {
                 defaultPrizeId = lotteryInfo.defaultPrizeId;
 
                 randomSeed = await lottery.randomSeeds(lotteryId);
-                console.log(`Random seed stored for this lottery: ${randomSeed}`);
+                logger.info(`Random seed stored for this lottery: ${randomSeed}`);
 
                 totalParticipants = await lottery.getParticipantsCount(lotteryId);
-                console.log(`Total participants: ${totalParticipants}`);
+                logger.info(`Total participants: ${totalParticipants}`);
 
-                console.log(`Getting prize info`);
+                logger.info(`Getting prize info`);
                 prizes = await lottery.getPrizes(lotteryId);
                 var totalPrizes = 0;
                 // iterate the prize array getting the number of prizes for each entry
@@ -109,9 +113,9 @@ async function main() {
                     totalPrizes = totalParticipants;
                 }
 
-                console.log(`Total prizes: ${totalPrizes}`);
+                logger.info(`Total prizes: ${totalPrizes}`);
                 var prizesAwarded = 0;
-                console.log(`Starting prize distribution`);
+                logger.info(`Starting prize distribution`);
                 const winners = new Set();
                 var leaves = new Array();
                 for (prizeIndex in prizes) {
@@ -123,15 +127,15 @@ async function main() {
 
                         // convert hash into a number
                         randomPosition = ethers.BigNumber.from(hashOfSeed).mod(totalEntries);
-                        console.log(`Generated random position ${randomPosition}`);
+                        logger.info(`Generated random position ${randomPosition}`);
                         while (winners.has(entries[randomPosition])) {
-                            console.log(`${entries[randomPosition]} already won a prize, checking next position in array`);
+                            logger.info(`${entries[randomPosition]} already won a prize, checking next position in array`);
                             randomPosition++;
                             randomPosition = randomPosition % totalEntries;
                         }
                         winners.add(entries[randomPosition]);
                         prizesAwarded++;
-                        console.log(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${entries[randomPosition]}`);
+                        logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${entries[randomPosition]}`);
 
                         var leaf = {
                             lotteryId: Number(lotteryId), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), proof: "", createdAt: new Date()
@@ -151,38 +155,42 @@ async function main() {
                         }
                     }
                 }
-                console.log(`All prizes awarded. Building the merkle tree`);
+                logger.info(`All prizes awarded. Building the merkle tree`);
                 hashedLeaves = leaves.map(leaf => getEncodedLeaf(leaf));
                 const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
 
                 const root = tree.getHexRoot().toString('hex');
-                console.log(`Storing Merkle tree root in the contract: ${root}`);
+                logger.info(`Storing Merkle tree root in the contract: ${root}`);
                 await lottery.setPrizeMerkleRoot(lotteryId, root);
 
                 // generate proofs for each winner
                 for (index in leaves) {
                     leaf = leaves[index];
                     leaf.proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
-                    console.log(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`)
+                    logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`)
                 }
                 // store proofs on the DB so it can be easily queried
                 created = await prisma.prizeProof.createMany({ data: leaves });
-                console.log(`${created.count} Proofs created in the DB.`);
+                logger.info(`${created.count} Proofs created in the DB.`);
             }
         }
     }
-    console.log('Finished successfully');
+    logger.info('Finished successfully');
+}
+
+function exit(code) {
+    process.exit(code);
 }
 
 main()
-    .then(() => process.exit(0))
+    .then(() => setTimeout(exit, 2000, 0))
     .catch((error) => {
-        console.error(error);
-        process.exit(1);
+        logger.error(error);
+        setTimeout(exit, 2000, 1);
     });
 
 function getEncodedLeaf(leaf) {
-    console.log(`Encoding leaf: ${leaf.winnerAddress} ${leaf.nftId}`);
+    logger.info(`Encoding leaf: ${leaf.winnerAddress} ${leaf.nftId}`);
     return keccak256(abiCoder.encode(["uint256", "address", "uint256"],
         [lotteryId, leaf.winnerAddress, leaf.nftId]));
 }
