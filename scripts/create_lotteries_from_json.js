@@ -9,8 +9,6 @@ const nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
 
 const file_name = process.argv.slice(2)[0];
 
-const timer = ms => new Promise(res => setTimeout(res, ms));
-
 async function main() {
     await hre.run('compile');
 
