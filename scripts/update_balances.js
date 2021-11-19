@@ -1,6 +1,10 @@
 const fetch = require('node-fetch');
 require("dotenv").config();
 const hre = require("hardhat");
+const createLogger = require("./logs.js");
+
+var NODE_ENV = process.env.NODE_ENV || 'development';
+
 const ethers = hre.ethers;
 var abiCoder = ethers.utils.defaultAbiCoder;
 
@@ -31,6 +35,8 @@ const ASSETS = {
     }
 }
 
+const logger = createLogger('memex_scripts', 'update_balances');
+
 /**
  * @param {*} _assetType 
  * @returns max(blockNumber) for that asset, or null if none is found
@@ -45,7 +51,7 @@ async function getLastBlockHeightInDatabase(_assetType) {
         }
     });
     let blockHeight = aggregations._max.blockNumber || 0;
-    console.log(`Last block on db for asset ${_assetType} is ${blockHeight}`);
+    logger.info(`Last block on db for asset ${_assetType} is ${blockHeight}`);
     return blockHeight + 1;
 }
 
@@ -62,7 +68,7 @@ async function getLastBlockHeightInBlockchain(chainId) {
     let response = await fetch(url);
     let json = await response.json();
     let lastBlock = await json.data.items[0].height - 10; // Do not get the top blocks, in order to prevent chain reorganization
-    console.log(`Last block on chain ${chainId} is ${lastBlock}`);
+    logger.info(`Last block on chain ${chainId} is ${lastBlock}`);
     return lastBlock;
 }
 
@@ -119,7 +125,7 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
         if (iEnd > endingBlock) {
             iEnd = endingBlock;
         }
-        console.log(`Fetching events on chain ${chainId} contract ${contractAddress} from block ${iStart} to block ${iEnd}`);
+        logger.info(`Fetching events on chain ${chainId} contract ${contractAddress} from block ${iStart} to block ${iEnd}`);
         let url = `https://api.covalenthq.com/v1/${chainId}/events/topics/${transferTopic}/?sender-address=${contractAddress}&starting-block=${iStart}&ending-block=${iEnd}&page-number=0&page-size=999999999&key=${process.env.COVALENT_KEY}`;
         let result = await fetch(url);
         let resultJson = await result.json();
@@ -154,7 +160,7 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
         });
 
         // transactions.push(...mappedTransactions);
-        console.log(`${mappedTransactions.length} transactions in block range`);
+        logger.info(`${mappedTransactions.length} transactions in block range`);
     }
     return transactions;
 }
@@ -247,8 +253,13 @@ async function getUserBalanceAtTimestamp(address, assetType, timestamp) {
 const buf2hex = x => '0x' + x.toString('hex');
 
 async function main() {
-    const publishResults = process.argv.slice(2)[0];
     await hre.run('compile');
+    logger.info(`Started update_balances job on ${hre.network.name}`);
+
+    const publishResults = process.argv.slice(2)[0];
+    if (publishResults) {
+        logger.info('Publishing results');
+    }
 
     let transactions = await getLatestTransactionsFromAllBlockchains();
 
@@ -277,7 +288,7 @@ async function main() {
                     points: earnedPoints,
                 });
             } else if (hre.network.name == "rinkeby") {
-                console.log(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
+                logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
                 leaves.push({
                     address: user.walletAddress,
                     points: 1500000000,
@@ -285,19 +296,19 @@ async function main() {
             }
         }
 
-        console.log(`Publishing rewards`);
+        logger.info(`Publishing rewards`);
         let hashedLeaves = leaves.map(leaf => getEncodedLeaf(leaf));
         const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
 
         const root = tree.getHexRoot().toString('hex');
-        console.log(`Storing Merkle tree root in the contract: ${root}`);
+        logger.info(`Storing Merkle tree root in the contract: ${root}`);
         await rewardsContract.setPointsMerkleRoot(root);
 
         // generate proofs for each reward
         for (index in leaves) {
             leaf = leaves[index];
             proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
-            console.log(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
+            logger.info(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
 
             // store proof in the DB so it can be easily queried
             await prisma.rewardPublished.upsert({
@@ -316,17 +327,22 @@ async function main() {
             });
         }
     }
+    logger.info('Finished successfully');
 }
 
 function getEncodedLeaf(leaf) {
-    console.log(`Encoding leaf: ${leaf.address} ${leaf.points}`);
+    logger.info(`Encoding leaf: ${leaf.address} ${leaf.points}`);
     return keccak256(abiCoder.encode(["address", "uint256"],
         [leaf.address, leaf.points]));
 }
 
+function exit(code) {
+    process.exit(code);
+}
+
 main()
-    .then(() => process.exit(0))
+    .then(() => setTimeout(exit, 2000, 0))
     .catch((error) => {
-        console.error(error);
-        process.exit(1);
+        logger.error(error);
+        setTimeout(exit, 2000, 1);
     });
