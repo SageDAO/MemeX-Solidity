@@ -276,12 +276,7 @@ async function main() {
                 createdAt: true,
             }
         });
-        count = 0;
         for (user of dbUsers) {
-            count++;
-            if (count > 50) {
-                break;
-            }
             let earnedPoints = 0;
             for (assetType in ASSETS) {
                 earnedPoints += await getUserPointsAtTimestamp(user.walletAddress, assetType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000));
@@ -293,8 +288,7 @@ async function main() {
                 });
             } else if (hre.network.name == "rinkeby") {
                 logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
-                let points = parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000);
-                logger.info(points);
+                let points = 1500000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000);
                 leaves.push({
                     address: user.walletAddress,
                     points: points,
@@ -348,6 +342,6 @@ function exit(code) {
 main()
     .then(() => setTimeout(exit, 2000, 0))
     .catch((error) => {
-        logger.error(error);
+        logger.error(error.stack);
         setTimeout(exit, 2000, 1);
     });
