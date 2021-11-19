@@ -129,6 +129,10 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
         let url = `https://api.covalenthq.com/v1/${chainId}/events/topics/${transferTopic}/?sender-address=${contractAddress}&starting-block=${iStart}&ending-block=${iEnd}&page-number=0&page-size=999999999&key=${process.env.COVALENT_KEY}`;
         let result = await fetch(url);
         let resultJson = await result.json();
+        if (resultJson.error) {
+            logger.error(`Error fetching events: ${resultJson.error_message}`);
+            exit(1);
+        }
         let mappedTransactions = resultJson.data.items.map(item => {
             return {
                 txHash: item.tx_hash,
