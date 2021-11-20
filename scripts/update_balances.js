@@ -131,7 +131,7 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
         let resultJson = await result.json();
         if (resultJson.error) {
             logger.error(`Error fetching events: ${resultJson.error_message}`);
-            exit(1);
+            setTimeout(exit, 2000, 1);
         }
         let mappedTransactions = resultJson.data.items.map(item => {
             return {
