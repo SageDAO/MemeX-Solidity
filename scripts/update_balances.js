@@ -3,8 +3,6 @@ require("dotenv").config();
 const hre = require("hardhat");
 const createLogger = require("./logs.js");
 
-var NODE_ENV = process.env.NODE_ENV || 'development';
-
 const ethers = hre.ethers;
 var abiCoder = ethers.utils.defaultAbiCoder;
 
@@ -19,20 +17,12 @@ const CONTRACTS = require('../contracts.js');
 const ASSETS = {
     ETH_MEME: {
         chainId: "1",
-        startingBlock: 10662598,
-        assetType: "ETH_MEME",
-        contract: "0xd5525d397898e5502075ea5e830d8914f6f0affe",
+        startingBlock: 13649693,
+        assetType: "ETH_MEMEINU",
+        contract: "0x74b988156925937bd4e082f0ed7429da8eaea8db",
         transferTopic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-        rewardRate: 0.00001157407407407407407,
+        rewardRate: 0.00000000000000000001157407407407407407,
     },
-    FTM_MEME: {
-        chainId: "250",
-        startingBlock: 17080587,
-        assetType: "FTM_MEME",
-        contract: "0xe3d7a068a7d99ee79d9112d989c5aff4e7594a21",
-        transferTopic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-        rewardRate: 0.00001157407407407407407,
-    }
 }
 
 const logger = createLogger('memex_scripts', 'update_balances');
@@ -160,6 +150,9 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
                 type: asset.assetType,
                 lastBlockInspected: iEnd,
                 rewardRate: asset.rewardRate,
+                chainId: parseInt(asset.chainId),
+                contract: asset.contract,
+                startingBlock: asset.startingBlock,
             },
         });
 
@@ -285,19 +278,14 @@ async function main() {
             for (assetType in ASSETS) {
                 earnedPoints += await getUserPointsAtTimestamp(user.walletAddress, assetType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000));
             }
-            if (earnedPoints > 0) {
-                leaves.push({
-                    address: user.walletAddress,
-                    points: earnedPoints,
-                });
-            } else if (hre.network.name == "rinkeby") {
+            if (earnedPoints == 0 && hre.network.name == "rinkeby") {
                 logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
-                let points = 1500000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000);
-                leaves.push({
-                    address: user.walletAddress,
-                    points: points,
-                });
+                earnedPoints = 1500000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000);
             }
+            leaves.push({
+                address: user.walletAddress,
+                points: earnedPoints,
+            });
         }
 
         logger.info(`Publishing rewards`);
