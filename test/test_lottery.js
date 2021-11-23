@@ -240,12 +240,21 @@ describe("Lottery Contract", function () {
 
     });
 
-    it("Should refund points if lottery was cancelled", async function () {
+    it("Should allow refund points manually", async function () {
         await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 1500000000, hexproof);
         expect(await rewards.availablePoints(addr1.address)).to.equal(0);
         await rewards.connect(owner).refundPoints(addr1.address, 1500000000);
         expect(await rewards.availablePoints(addr1.address)).to.equal(1500000000);
         await expect(rewards.connect(owner).refundPoints(addr1.address, 1500000000)).to.be.revertedWith("Can't refund more points than used");
+    });
+
+    it("Should refund points if lottery is cancelled", async function () {
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 1500000000, hexproof);
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
+        expect(await rewards.availablePoints(addr1.address)).to.equal(0);
+        await lottery.cancelLottery(1);
+        expect(await rewards.availablePoints(addr1.address)).to.equal(1500000000);
+        expect(await rewards.availablePoints(addr2.address)).to.equal(15000000000);
     });
 
     describe("Merkle tree", () => {
