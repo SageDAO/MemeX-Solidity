@@ -61,7 +61,7 @@ model MemeTransactions {
   blockTimestamp Int
   from           String    @db.Char(42)
   to             String    @db.Char(42)
-  value          BigInt
+  value          String
   assetType      AssetType
   id             Int       @id @default(autoincrement())
   txHash         String    @db.Char(66)
