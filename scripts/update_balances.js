@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
 const CONTRACTS = require('../contracts.js');
 
 const ASSETS = {
-    ETH_MEME: {
+    ETH_MEMEINU: {
         chainId: "1",
         startingBlock: 13649693,
         assetType: "ETH_MEMEINU",
@@ -131,7 +131,7 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
                 blockNumber: item.block_height,
                 from: item.decoded.params[0].value,
                 to: item.decoded.params[1].value,
-                value: Number(item.decoded.params[2].value),
+                value: item.decoded.params[2].value
             };
         });
         // store the transactions in the database
@@ -183,14 +183,14 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end) {
             pinaPoints += assetBalance * (transaction.blockTimestamp - refTimestamp) * rewardRate;
             refTimestamp = transaction.blockTimestamp;
             if (transaction.from === address) {
-                assetBalance -= Number(transaction.value);
+                assetBalance -= ethers.BigNumber.from(transaction.value);
             } else {
-                assetBalance += Number(transaction.value);
+                assetBalance += ethers.BigNumber.from(transaction.value);
             }
         }
     }
-    pinaPoints += assetBalance * (end - refTimestamp) * rewardRate;
-    return parseInt(pinaPoints);
+    pinaPoints += assetBalance * rewardRate * (end - refTimestamp);
+    return ethers.BigNumber.from(pinaPoints);
 }
 
 async function getUserTransactions(address, assetType, begin, end) {
@@ -234,13 +234,14 @@ async function getUserTransactions(address, assetType, begin, end) {
  */
 async function getUserBalanceAtTimestamp(address, assetType, timestamp) {
     let userTransactions = await getUserTransactions(address, assetType, 0, timestamp);
+    // define a bigint variable to store the user's balance
     let balance = 0;
     for (transaction of userTransactions) {
         if (transaction.from != transaction.to) {
             if (transaction.from === address) {
-                balance -= Number(transaction.value);
+                balance -= ethers.BigNumber.from(transaction.value);
             } else {
-                balance += Number(transaction.value);
+                balance += ethers.BigNumber.from(transaction.value);
             }
         }
     }
@@ -282,9 +283,10 @@ async function main() {
                 logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
                 earnedPoints = 1500000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000);
             }
+            console.log(`${user.walletAddress} has ${earnedPoints} points`);
             leaves.push({
                 address: user.walletAddress,
-                points: earnedPoints,
+                points: BigInt(earnedPoints),
             });
         }
 
@@ -323,6 +325,7 @@ async function main() {
 }
 
 function getEncodedLeaf(leaf) {
+    console.log(leaf);
     return keccak256(abiCoder.encode(["address", "uint256"],
         [leaf.address, leaf.points]));
 }
