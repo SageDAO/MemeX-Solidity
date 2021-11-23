@@ -253,7 +253,7 @@ contract Lottery is Ownable, ILottery {
             "Number of prize ids and amounts must be equal"
         );
         IMemeXNFT nftContract = lottery.nftContract;
-        for (uint8 i = 0; i < _prizeIds.length; i++) {
+        for (uint16 i = 0; i < _prizeIds.length; i++) {
             nftContract.createTokenType(
                 _prizeIds[i],
                 _prizeAmounts[i],
@@ -377,13 +377,16 @@ contract Lottery is Ownable, ILottery {
      * @param _lotteryId ID of the lottery to canccel
      */
     function cancelLottery(uint256 _lotteryId) public onlyOwner {
-        // TODO: if there are participants, should we refund their points?
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(
             lottery.status != Status.Completed,
             "Lottery already completed"
         );
         lottery.status = Status.Canceled;
+        address[] memory tickets = participantTickets[_lotteryId];
+        for (uint16 i = 0; i < tickets.length; i++) {
+            rewardsContract.refundPoints(tickets[i], lottery.ticketCostPinas);
+        }
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
