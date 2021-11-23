@@ -41,6 +41,17 @@ contract Rewards is MemeXAccessControls, IRewards {
         return available - _amount;
     }
 
+    function refundPoints(address _account, uint256 _points) public {
+        require(
+            hasSmartContractRole(msg.sender) || hasAdminRole(msg.sender),
+            "No role to do refunds"
+        );
+        require(_points > 0, "Can't refund 0 points");
+        uint256 used = totalPointsUsed[_account];
+        require(_points <= used, "Can't refund more points than used");
+        totalPointsUsed[_account] = used - _points;
+    }
+
     function setPointsMerkleRoot(bytes32 _root) public {
         require(hasAdminRole(msg.sender), "Only Admin can set the merkle root");
         pointsMerkleRoot = _root;

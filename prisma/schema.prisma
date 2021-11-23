@@ -47,11 +47,11 @@ model Drop {
 model PrizeProof {
   lotteryId     Int
   winnerAddress String    @db.Char(42)
-  nft           Nft       @relation(fields: [nftId], references: [id])
-  nftId         Int
   proof         String
   claimedAt     DateTime?
   createdAt     DateTime
+  nftId         Int
+  nft           Nft       @relation(fields: [nftId], references: [id])
 
   @@id([lotteryId, winnerAddress])
 }
@@ -61,7 +61,7 @@ model MemeTransactions {
   blockTimestamp Int
   from           String    @db.Char(42)
   to             String    @db.Char(42)
-  value          BigInt
+  value          String
   assetType      AssetType
   id             Int       @id @default(autoincrement())
   txHash         String    @db.Char(66)
@@ -77,8 +77,11 @@ model RewardPublished {
 
 model RewardType {
   type               AssetType @id
-  rewardRate         Float     @default(0)
-  lastBlockInspected BigInt    @default(0)
+  rewardRate         Float
+  lastBlockInspected BigInt
+  contract           String    @db.Char(42)
+  chainId            Int
+  startingBlock      BigInt
 }
 
 model User {
@@ -94,9 +97,9 @@ model User {
 }
 
 enum AssetType {
-  ETH_MEME
-  FTM_MEME
-  FTM_LIQ
+  ETH_MEMEINU
+  FTM_MEMEINU
+  FTM_LIQUIDITY
 }
 
 enum Role {

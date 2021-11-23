@@ -2,8 +2,7 @@ const fetch = require('node-fetch');
 require("dotenv").config();
 const hre = require("hardhat");
 const createLogger = require("./logs.js");
-
-var NODE_ENV = process.env.NODE_ENV || 'development';
+const BigNumber = require('bignumber.js');
 
 const ethers = hre.ethers;
 var abiCoder = ethers.utils.defaultAbiCoder;
@@ -17,22 +16,14 @@ const prisma = new PrismaClient();
 const CONTRACTS = require('../contracts.js');
 
 const ASSETS = {
-    ETH_MEME: {
+    ETH_MEMEINU: {
         chainId: "1",
-        startingBlock: 10662598,
-        assetType: "ETH_MEME",
-        contract: "0xd5525d397898e5502075ea5e830d8914f6f0affe",
+        startingBlock: 13649693,
+        assetType: "ETH_MEMEINU",
+        contract: "0x74b988156925937bd4e082f0ed7429da8eaea8db",
         transferTopic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-        rewardRate: 0.00001157407407407407407,
+        rewardRate: 0.00000000000000000001157407407407407407,
     },
-    FTM_MEME: {
-        chainId: "250",
-        startingBlock: 17080587,
-        assetType: "FTM_MEME",
-        contract: "0xe3d7a068a7d99ee79d9112d989c5aff4e7594a21",
-        transferTopic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-        rewardRate: 0.00001157407407407407407,
-    }
 }
 
 const logger = createLogger('memex_scripts', 'update_balances');
@@ -129,6 +120,10 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
         let url = `https://api.covalenthq.com/v1/${chainId}/events/topics/${transferTopic}/?sender-address=${contractAddress}&starting-block=${iStart}&ending-block=${iEnd}&page-number=0&page-size=999999999&key=${process.env.COVALENT_KEY}`;
         let result = await fetch(url);
         let resultJson = await result.json();
+        if (resultJson.error) {
+            logger.error(`Error fetching events: ${resultJson.error_message}`);
+            setTimeout(exit, 2000, 1);
+        }
         let mappedTransactions = resultJson.data.items.map(item => {
             return {
                 txHash: item.tx_hash,
@@ -137,7 +132,7 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
                 blockNumber: item.block_height,
                 from: item.decoded.params[0].value,
                 to: item.decoded.params[1].value,
-                value: Number(item.decoded.params[2].value),
+                value: item.decoded.params[2].value
             };
         });
         // store the transactions in the database
@@ -156,6 +151,9 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
                 type: asset.assetType,
                 lastBlockInspected: iEnd,
                 rewardRate: asset.rewardRate,
+                chainId: parseInt(asset.chainId),
+                contract: asset.contract,
+                startingBlock: asset.startingBlock,
             },
         });
 
@@ -176,24 +174,24 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
 async function getUserPointsAtTimestamp(address, assetType, begin, end) {
     let assetBalance = await getUserBalanceAtTimestamp(address, assetType, begin);
     let refTimestamp = begin;
-    let pinaPoints = 0;
+    let pinaPoints = BigNumber(0);
 
-    let rewardRate = ASSETS[assetType].rewardRate;
+    let rewardRate = BigNumber(ASSETS[assetType].rewardRate);
     let userTransactions = await getUserTransactions(address, assetType, begin + 1, end);
 
     for (transaction of userTransactions) {
         if (transaction.from != transaction.to) {
-            pinaPoints += assetBalance * (transaction.blockTimestamp - refTimestamp) * rewardRate;
+            pinaPoints = pinaPoints.plus(assetBalance.multipliedBy(rewardRate).multipliedBy(transaction.blockTimestamp - refTimestamp));
             refTimestamp = transaction.blockTimestamp;
             if (transaction.from === address) {
-                assetBalance -= Number(transaction.value);
+                assetBalance = assetBalance.minus(BigNumber(transaction.value));
             } else {
-                assetBalance += Number(transaction.value);
+                assetBalance = assetBalance.plus(BigNumber(transaction.value));
             }
         }
     }
-    pinaPoints += assetBalance * (end - refTimestamp) * rewardRate;
-    return parseInt(pinaPoints);
+    pinaPoints = pinaPoints.plus(assetBalance.multipliedBy(rewardRate).multipliedBy(end - refTimestamp));
+    return pinaPoints;
 }
 
 async function getUserTransactions(address, assetType, begin, end) {
@@ -237,13 +235,14 @@ async function getUserTransactions(address, assetType, begin, end) {
  */
 async function getUserBalanceAtTimestamp(address, assetType, timestamp) {
     let userTransactions = await getUserTransactions(address, assetType, 0, timestamp);
-    let balance = 0;
+    // define a bigint variable to store the user's balance
+    let balance = BigNumber(0);
     for (transaction of userTransactions) {
         if (transaction.from != transaction.to) {
             if (transaction.from === address) {
-                balance -= Number(transaction.value);
+                balance = balance.minus(BigNumber(transaction.value));
             } else {
-                balance += Number(transaction.value);
+                balance = balance.plus(BigNumber(transaction.value));
             }
         }
     }
@@ -276,24 +275,21 @@ async function main() {
                 createdAt: true,
             }
         });
-
         for (user of dbUsers) {
-            let earnedPoints = 0;
+            let earnedPoints = new BigNumber(0);
             for (assetType in ASSETS) {
-                earnedPoints += await getUserPointsAtTimestamp(user.walletAddress, assetType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000));
+                earnedPoints = earnedPoints.plus(await getUserPointsAtTimestamp(user.walletAddress, assetType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000)));
             }
-            if (earnedPoints > 0) {
-                leaves.push({
-                    address: user.walletAddress,
-                    points: earnedPoints,
-                });
-            } else if (hre.network.name == "rinkeby") {
+            if (earnedPoints == 0 && hre.network.name == "rinkeby") {
                 logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
-                leaves.push({
-                    address: user.walletAddress,
-                    points: 1500000000,
-                });
+                earnedPoints = BigNumber(1500000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000));
+
             }
+            console.log(`${user.walletAddress} has ${earnedPoints} points`);
+            leaves.push({
+                address: user.walletAddress,
+                points: earnedPoints,
+            });
         }
 
         logger.info(`Publishing rewards`);
@@ -317,11 +313,11 @@ async function main() {
                 },
                 update: {
                     proof: proof,
-                    totalPointsEarned: leaf.points,
+                    totalPointsEarned: leaf.points.toNumber(),
                 },
                 create: {
                     proof: proof,
-                    totalPointsEarned: leaf.points,
+                    totalPointsEarned: leaf.points.toNumber(),
                     address: leaf.address,
                 },
             });
@@ -333,7 +329,11 @@ async function main() {
 function getEncodedLeaf(leaf) {
     logger.info(`Encoding leaf: ${leaf.address} ${leaf.points}`);
     return keccak256(abiCoder.encode(["address", "uint256"],
-        [leaf.address, leaf.points]));
+        [leaf.address, leaf.points.toNumber()]));
+}
+
+function exit(code) {
+    process.exit(code);
 }
 
 function exit(code) {
@@ -343,6 +343,6 @@ function exit(code) {
 main()
     .then(() => setTimeout(exit, 2000, 0))
     .catch((error) => {
-        logger.error(error);
+        logger.error(error.stack);
         setTimeout(exit, 2000, 1);
     });

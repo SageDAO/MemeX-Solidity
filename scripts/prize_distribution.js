@@ -185,7 +185,7 @@ function exit(code) {
 main()
     .then(() => setTimeout(exit, 2000, 0))
     .catch((error) => {
-        logger.error(error);
+        logger.error(error.stack);
         setTimeout(exit, 2000, 1);
     });
 

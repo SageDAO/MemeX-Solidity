@@ -9,8 +9,6 @@ const nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
 
 const file_name = process.argv.slice(2)[0];
 
-const timer = ms => new Promise(res => setTimeout(res, ms));
-
 async function main() {
     await hre.run('compile');
 
@@ -39,9 +37,9 @@ async function main() {
                     drop.metadata.endTime,
                     nftContract.address,
                     drop.metadata.boostCost, // boost cost in FTM
-                    drop.maxParticipants,
-                    drop.artistAddress,
-                    drop.metadat.metadataBasePath,
+                    drop.metadata.maxParticipants,
+                    drop.metadata.artistAddress,
+                    drop.metadata.metadataBasePath,
                     {
                         gasLimit: 4000000,
                     });
