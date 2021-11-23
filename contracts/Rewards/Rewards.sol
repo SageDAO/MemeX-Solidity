@@ -48,7 +48,7 @@ contract Rewards is MemeXAccessControls, IRewards {
         );
         require(_points > 0, "Can't refund 0 points");
         uint256 used = totalPointsUsed[_account];
-        require(_points >= used, "Can't refund more points than used");
+        require(_points <= used, "Can't refund more points than used");
         totalPointsUsed[_account] = used - _points;
     }
 

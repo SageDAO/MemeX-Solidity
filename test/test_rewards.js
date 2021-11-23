@@ -16,7 +16,7 @@ describe("Rewards Contract", function () {
         expect(await rewards.availablePoints(owner.address)).to.equal(0);
     });
 
-    it("Should throw if burn points called not by lottery contract", async function () {
+    it("Should throw if burn points not called by lottery contract", async function () {
         await expect(rewards.connect(addr1).burnUserPoints(addr1.address, 1500000000)).to.be.revertedWith("Smart contract role required");
     });
 

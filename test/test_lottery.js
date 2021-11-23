@@ -4,8 +4,6 @@ const { Wallet } = require('ethers');
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require('keccak256')
 
-const timer = ms => new Promise(res => setTimeout(res, ms));
-
 describe("Lottery Contract", function () {
     beforeEach(async () => {
         [owner, addr1, addr2, addr3, addr4, ...addrs] = await ethers.getSigners();
@@ -19,7 +17,7 @@ describe("Lottery Contract", function () {
         await rewards.addSmartContractRole(lottery.address);
         Nft = await ethers.getContractFactory("MemeXNFT");
         nft = await Nft.deploy("Memex", "MEMEX", owner.address);
-        nft.addMinterRole(owner.address);
+        await nft.addMinterRole(owner.address);
         // // nft.create(1, 1, 1, owner.address);
         // // nft.create(2, 5000, 1, owner.address);
         await nft.setLotteryContract(lottery.address);
@@ -240,6 +238,14 @@ describe("Lottery Contract", function () {
         await expect(lottery.boostParticipant(2, addr2.address, 1,
             { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't boost on this lottery");
 
+    });
+
+    it("Should refund points if lottery was cancelled", async function () {
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 1500000000, hexproof);
+        expect(await rewards.availablePoints(addr1.address)).to.equal(0);
+        await rewards.connect(owner).refundPoints(addr1.address, 1500000000);
+        expect(await rewards.availablePoints(addr1.address)).to.equal(1500000000);
+        await expect(rewards.connect(owner).refundPoints(addr1.address, 1500000000)).to.be.revertedWith("Can't refund more points than used");
     });
 
     describe("Merkle tree", () => {
