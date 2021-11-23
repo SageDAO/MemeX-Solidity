@@ -283,6 +283,7 @@ async function main() {
             if (earnedPoints == 0 && hre.network.name == "rinkeby") {
                 logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
                 earnedPoints = BigNumber(1500000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000));
+
             }
             console.log(`${user.walletAddress} has ${earnedPoints} points`);
             leaves.push({
@@ -326,9 +327,13 @@ async function main() {
 }
 
 function getEncodedLeaf(leaf) {
-    console.log(leaf);
+    logger.info(`Encoding leaf: ${leaf.address} ${leaf.points}`);
     return keccak256(abiCoder.encode(["address", "uint256"],
         [leaf.address, leaf.points.toNumber()]));
+}
+
+function exit(code) {
+    process.exit(code);
 }
 
 function exit(code) {
