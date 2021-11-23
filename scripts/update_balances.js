@@ -2,6 +2,7 @@ const fetch = require('node-fetch');
 require("dotenv").config();
 const hre = require("hardhat");
 const createLogger = require("./logs.js");
+const BigNumber = require('bignumber.js');
 
 const ethers = hre.ethers;
 var abiCoder = ethers.utils.defaultAbiCoder;
@@ -173,24 +174,24 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
 async function getUserPointsAtTimestamp(address, assetType, begin, end) {
     let assetBalance = await getUserBalanceAtTimestamp(address, assetType, begin);
     let refTimestamp = begin;
-    let pinaPoints = 0;
+    let pinaPoints = BigNumber(0);
 
-    let rewardRate = ASSETS[assetType].rewardRate;
+    let rewardRate = BigNumber(ASSETS[assetType].rewardRate);
     let userTransactions = await getUserTransactions(address, assetType, begin + 1, end);
 
     for (transaction of userTransactions) {
         if (transaction.from != transaction.to) {
-            pinaPoints += assetBalance * (transaction.blockTimestamp - refTimestamp) * rewardRate;
+            pinaPoints = pinaPoints.plus(assetBalance.multipliedBy(rewardRate).multipliedBy(transaction.blockTimestamp - refTimestamp));
             refTimestamp = transaction.blockTimestamp;
             if (transaction.from === address) {
-                assetBalance -= ethers.BigNumber.from(transaction.value);
+                assetBalance = assetBalance.minus(BigNumber(transaction.value));
             } else {
-                assetBalance += ethers.BigNumber.from(transaction.value);
+                assetBalance = assetBalance.plus(BigNumber(transaction.value));
             }
         }
     }
-    pinaPoints += assetBalance * rewardRate * (end - refTimestamp);
-    return ethers.BigNumber.from(pinaPoints);
+    pinaPoints = pinaPoints.plus(assetBalance.multipliedBy(rewardRate).multipliedBy(end - refTimestamp));
+    return pinaPoints;
 }
 
 async function getUserTransactions(address, assetType, begin, end) {
@@ -235,13 +236,13 @@ async function getUserTransactions(address, assetType, begin, end) {
 async function getUserBalanceAtTimestamp(address, assetType, timestamp) {
     let userTransactions = await getUserTransactions(address, assetType, 0, timestamp);
     // define a bigint variable to store the user's balance
-    let balance = 0;
+    let balance = BigNumber(0);
     for (transaction of userTransactions) {
         if (transaction.from != transaction.to) {
             if (transaction.from === address) {
-                balance -= ethers.BigNumber.from(transaction.value);
+                balance = balance.minus(BigNumber(transaction.value));
             } else {
-                balance += ethers.BigNumber.from(transaction.value);
+                balance = balance.plus(BigNumber(transaction.value));
             }
         }
     }
@@ -275,18 +276,18 @@ async function main() {
             }
         });
         for (user of dbUsers) {
-            let earnedPoints = 0;
+            let earnedPoints = new BigNumber(0);
             for (assetType in ASSETS) {
-                earnedPoints += await getUserPointsAtTimestamp(user.walletAddress, assetType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000));
+                earnedPoints = earnedPoints.plus(await getUserPointsAtTimestamp(user.walletAddress, assetType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000)));
             }
             if (earnedPoints == 0 && hre.network.name == "rinkeby") {
                 logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
-                earnedPoints = 1500000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000);
+                earnedPoints = BigNumber(1500000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000));
             }
             console.log(`${user.walletAddress} has ${earnedPoints} points`);
             leaves.push({
                 address: user.walletAddress,
-                points: BigInt(earnedPoints),
+                points: earnedPoints,
             });
         }
 
@@ -311,11 +312,11 @@ async function main() {
                 },
                 update: {
                     proof: proof,
-                    totalPointsEarned: leaf.points,
+                    totalPointsEarned: leaf.points.toNumber(),
                 },
                 create: {
                     proof: proof,
-                    totalPointsEarned: leaf.points,
+                    totalPointsEarned: leaf.points.toNumber(),
                     address: leaf.address,
                 },
             });
@@ -327,7 +328,7 @@ async function main() {
 function getEncodedLeaf(leaf) {
     console.log(leaf);
     return keccak256(abiCoder.encode(["address", "uint256"],
-        [leaf.address, leaf.points]));
+        [leaf.address, leaf.points.toNumber()]));
 }
 
 function exit(code) {
