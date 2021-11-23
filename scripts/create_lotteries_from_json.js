@@ -37,9 +37,9 @@ async function main() {
                     drop.metadata.endTime,
                     nftContract.address,
                     drop.metadata.boostCost, // boost cost in FTM
-                    drop.maxParticipants,
-                    drop.artistAddress,
-                    drop.metadat.metadataBasePath,
+                    drop.metadata.maxParticipants,
+                    drop.metadata.artistAddress,
+                    drop.metadata.metadataBasePath,
                     {
                         gasLimit: 4000000,
                     });
