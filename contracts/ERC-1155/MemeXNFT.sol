@@ -7,7 +7,6 @@ import "../Utils/StringUtils.sol";
 
 contract MemeXNFT is ERC1155, MemeXAccessControls {
     uint256 public collectionCount;
-    uint256 public tokenCount;
 
     uint16 public defaultRoyaltyPercentage = 200;
 
@@ -91,9 +90,11 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
      * @param _maxSupply maximum amount of tokens that can be created
      * @param _collectionId identifies the drop collection (lotteryId for lotteries)
      */
-    function createTokenType(uint32 _maxSupply, uint256 _collectionId)
-        external
-    {
+    function createTokenType(
+        uint256 _id,
+        uint32 _maxSupply,
+        uint256 _collectionId
+    ) external {
         require(
             hasAdminRole(msg.sender) ||
                 hasSmartContractRole(msg.sender) ||
@@ -101,9 +102,9 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
             "ERC1155.create only Lottery or Minter can create"
         );
         require(_maxSupply > 0, "Max supply can't be 0");
-        tokenCount++;
+        require(!exists(_id), "Token Id Already exists");
         TokenInfo memory token = TokenInfo(0, _maxSupply, _collectionId);
-        tokenInfo[tokenCount] = token;
+        tokenInfo[_id] = token;
     }
 
     function createCollection(
