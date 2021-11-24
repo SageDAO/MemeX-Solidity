@@ -1,5 +1,6 @@
 const hre = require("hardhat");
 const ethers = hre.ethers;
+const BigNumber = require('bignumber.js');
 const CONTRACTS = require('../contracts.js');
 
 const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
@@ -14,10 +15,10 @@ async function main() {
     result = await lottery.createNewLottery(
         100000000, // cost in PINA
         0, // cost in FTM
-        Date.now() / 1000, //start 
-        Date.now() / 1000 + 86400 * 30, // end
+        parseInt(Date.now() / 1000), //start 
+        parseInt(Date.now() / 1000 + 86400 * 30), // end
         nftAddress, // nft contract
-        0, // boost cost in FTM
+        ethers.utils.parseEther('0.001'), // boost cost in FTM
         0, // max participants
         owner.address, // artist address
         'ipfs://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze/');

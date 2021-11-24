@@ -67,7 +67,7 @@ deployNFT = async (deployer, lottery) => {
   return nft
 }
 
-deployLottery = async (rewards) => {
+deployLottery = async (rewards, randomness) => {
   lottery_address = CONTRACTS[hre.network.name]["lotteryAddress"]
   const Lottery = await hre.ethers.getContractFactory("Lottery");
   if (lottery_address == "") {
@@ -79,6 +79,7 @@ deployLottery = async (rewards) => {
       address: lottery.address,
       constructorArguments: [rewards.address],
     });
+    await rewards.addSmartContractRole(lottery.address);
     await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
   } else {
     lottery = await Lottery.attach(lottery_address);
