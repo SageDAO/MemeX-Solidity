@@ -18,7 +18,7 @@ const logger = createLogger('memex_scripts', 'prize_distribution');
 
 async function main() {
     await hre.run('compile');
-    logger.info(`Starting prize distribution script ${hre.network.name}`);
+    logger.info(`Starting prize distribution script on ${hre.network.name}`);
 
     const Lottery = await ethers.getContractFactory("Lottery");
     const blockNum = await ethers.provider.getBlockNumber();

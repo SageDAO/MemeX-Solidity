@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { Wallet } = require('ethers');
 const { MerkleTree } = require("merkletreejs");
-const keccak256 = require('keccak256')
+const keccak256 = require('keccak256');
 
 describe("Lottery Contract", function () {
     beforeEach(async () => {
@@ -272,6 +272,7 @@ describe("Lottery Contract", function () {
             await lottery.setPrizeMerkleRoot(1, root);
             hexproof = tree.getProof(keccak256(leafA)).map(x => buf2hex(x.data))
         });
+
 
         it("Should claim with merkle proof", async function () {
             await lottery.connect(addr1).claimPrize(1, addr1.address, 1, hexproof);
