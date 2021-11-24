@@ -20,7 +20,7 @@ describe("Lottery Contract", function () {
         await nft.addMinterRole(owner.address);
         // // nft.create(1, 1, 1, owner.address);
         // // nft.create(2, 5000, 1, owner.address);
-        await nft.setLotteryContract(lottery.address);
+        await nft.addSmartContractRole(lottery.address);
         MockRNG = await ethers.getContractFactory("MockRNG");
         mockRng = await MockRNG.deploy(lottery.address);
         await lottery.setRandomGenerator(mockRng.address);
