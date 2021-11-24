@@ -7,14 +7,13 @@ import "../Utils/StringUtils.sol";
 
 contract MemeXNFT is ERC1155, MemeXAccessControls {
     uint256 public collectionCount;
+    uint256 public tokenCount;
 
     uint16 public defaultRoyaltyPercentage = 200;
 
     string public name;
     // Contract symbol
     string public symbol;
-
-    address internal lotteryContract;
 
     // tokenId => token Info
     mapping(uint256 => TokenInfo) public tokenInfo;
@@ -52,11 +51,6 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
             super.supportsInterface(interfaceId);
     }
 
-    event LotteryContractUpdated(
-        address oldLotteryContract,
-        address newLotteryContract
-    );
-
     function totalSupply(uint256 _id) public view returns (uint256) {
         return tokenInfo[_id].tokenSupply;
     }
@@ -73,18 +67,6 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         name = _name;
         symbol = _symbol;
         initAccessControls(_admin);
-    }
-
-    function setLotteryContract(address _lotteryContract) public {
-        require(
-            hasAdminRole(msg.sender),
-            "MemeXNFT: Only Admin can change lottery address"
-        );
-        require(_lotteryContract != address(0));
-        address oldAddr = address(lotteryContract);
-        lotteryContract = _lotteryContract;
-        addSmartContractRole(lotteryContract);
-        emit LotteryContractUpdated(oldAddr, lotteryContract);
     }
 
     function setCollection(
@@ -109,11 +91,9 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
      * @param _maxSupply maximum amount of tokens that can be created
      * @param _collectionId identifies the drop collection (lotteryId for lotteries)
      */
-    function createTokenType(
-        uint256 _id,
-        uint32 _maxSupply,
-        uint256 _collectionId
-    ) external {
+    function createTokenType(uint32 _maxSupply, uint256 _collectionId)
+        external
+    {
         require(
             hasAdminRole(msg.sender) ||
                 hasSmartContractRole(msg.sender) ||
@@ -121,9 +101,9 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
             "ERC1155.create only Lottery or Minter can create"
         );
         require(_maxSupply > 0, "Max supply can't be 0");
-        require(!exists(_id), "Token Id Already exists");
+        tokenCount++;
         TokenInfo memory token = TokenInfo(0, _maxSupply, _collectionId);
-        tokenInfo[_id] = token;
+        tokenInfo[tokenCount] = token;
     }
 
     function createCollection(
@@ -134,6 +114,7 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
             hasAdminRole(msg.sender) || hasSmartContractRole(msg.sender),
             "ERC1155.createCollection only Admin or Minter can create"
         );
+        require(_artistAddress != address(0), "Artist address can't be 0");
         CollectionInfo memory collection = CollectionInfo(
             _artistAddress,
             defaultRoyaltyPercentage,
@@ -207,10 +188,6 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         CollectionInfo memory collection = collections[
             tokenInfo[tokenId].collectionId
         ];
-        require(
-            collection.artistAddress != address(0),
-            "MemeXNFT: Artist address not set"
-        );
         return (
             collection.artistAddress,
             (salePrice * collection.royalty) / 10000
