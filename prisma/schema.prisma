@@ -19,8 +19,9 @@ model Nft {
   s3Path        String
   tags          String
   numberOfMints Int          @default(0)
-  drop          Drop         @relation(fields: [dropId], references: [id])
+  drop          Drop         @relation(name: "nftOnDrop", fields: [dropId], references: [id])
   prizeProof    PrizeProof[]
+  defaultPrizes Drop[]
 }
 
 model Drop {
@@ -41,12 +42,14 @@ model Drop {
   metadataS3Path      String
   tags                String
   royaltyPercentage   Float     @default(0.0)
+  defaultPrizeId      Int?
+  defaultPrize        Nft?      @relation(fields: [defaultPrizeId], references: [id])
   blockchainCreatedAt DateTime?
   approvedAt          DateTime?
   approvedBy          String?   @db.Char(42)
   ApprovedBy          User?     @relation(name: "approvals", fields: [approvedBy], references: [walletAddress])
   createdAt           DateTime  @default(now())
-  Nft                 Nft[]
+  Nft                 Nft[]     @relation(name: "nftOnDrop")
   createdBy           String    @db.Char(42)
   CreatedBy           User      @relation(name: "artists", fields: [createdBy], references: [walletAddress])
   User                User[]    @relation(name: "userFavoriteDrops")
