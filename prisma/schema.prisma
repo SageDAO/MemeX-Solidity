@@ -28,7 +28,7 @@ model Drop {
   bannerImageName     String
   costPerTicketPina   Int
   costPerTicketFtm    Float     @default(0.0)
-  boostCostFtm        Int       @default(0)
+  boostCostFtm        Float     @default(0.0)
   dropDescription     String
   dropName            String
   endTime             String
@@ -46,10 +46,10 @@ model Drop {
   approvedBy          String?   @db.Char(42)
   ApprovedBy          User?     @relation(name: "approvals", fields: [approvedBy], references: [walletAddress])
   createdAt           DateTime  @default(now())
-  createdBy           String?   @db.Char(42)
-  CreatedBy           Artist?   @relation(name: "artists", fields: [createdBy], references: [walletAddress])
   Nft                 Nft[]
-  User                User[]
+  createdBy           String    @db.Char(42)
+  CreatedBy           User      @relation(name: "artists", fields: [createdBy], references: [walletAddress])
+  User                User[]    @relation(name: "userFavoriteDrops")
 }
 
 model PrizeProof {
@@ -92,12 +92,6 @@ model RewardType {
   startingBlock      BigInt
 }
 
-model Artist {
-  walletAddress String @id @db.Char(42)
-
-  Drop Drop[] @relation("artists")
-}
-
 model User {
   walletAddress String   @id @db.Char(42)
   userName      String?
@@ -106,7 +100,8 @@ model User {
   role          Role     @default(USER)
   bio           String?  @db.VarChar(200)
   Approval      Drop[]   @relation(name: "approvals")
-  Drop          Drop[]
+  Artist        Drop[]   @relation("artists")
+  FavoriteDrop  Drop[]   @relation(name: "userFavoriteDrops")
 
   @@index([walletAddress])
 }
