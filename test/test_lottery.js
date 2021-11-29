@@ -68,7 +68,6 @@ describe("Lottery Contract", function () {
         await lottery.createNewLottery(0, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
             nft.address, 0, artist.address, "ipfs://path/");
         prizes = Array(100).fill().map((_, idx) => 10 + idx);
-        console.log(prizes);
         amounts = Array(100).fill(1);
         await lottery.addPrizes(2, prizes, amounts);
     });
