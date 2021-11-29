@@ -81,9 +81,9 @@ contract MemeXLottery is Ownable, ILottery {
         uint256 priceOfTicket
     );
     event NewEntry(
-        uint256 lotteryId,
+        uint256 indexed lotteryId,
         uint256 number,
-        address participantAddress
+        address indexed participantAddress
     );
 
     event PrizeClaimed(
