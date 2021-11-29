@@ -36,8 +36,7 @@ contract Lottery is Ownable, ILottery {
     }
 
     //lotteryid => address => participantInfo
-    mapping(uint256 => mapping(address => ParticipantInfo))
-        internal participants;
+    mapping(uint256 => mapping(address => ParticipantInfo)) public participants;
 
     struct ParticipantInfo {
         uint8 boosts;
@@ -51,7 +50,7 @@ contract Lottery is Ownable, ILottery {
     mapping(uint256 => uint8) public maxBoostsPerLottery;
 
     //lotteryId => address array
-    mapping(uint256 => address[]) participantTickets;
+    mapping(uint256 => address[]) lotteryTickets;
 
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
@@ -204,8 +203,12 @@ contract Lottery is Ownable, ILottery {
      * @param _lotteryId The lottery ID
      * @return Amount entries for a lottery (number of tickets and boosts bought)
      */
-    function getTotalEntries(uint256 _lotteryId) public view returns (uint256) {
-        return participantTickets[_lotteryId].length;
+    function getLotteryTicketCount(uint256 _lotteryId)
+        public
+        view
+        returns (uint256)
+    {
+        return lotteryTickets[_lotteryId].length;
     }
 
     function getLotteryCount() public view returns (uint256) {
@@ -351,12 +354,17 @@ contract Lottery is Ownable, ILottery {
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
-    function getParticipantTickets(uint256 _lotteryId)
+    /**
+     * @notice Returns de array of tickets (each purchase and boost provide a ticket).
+     * @param _lotteryId The lottery ID
+     * @return Array with tickets for a lottery
+     */
+    function getLotteryTickets(uint256 _lotteryId)
         public
         view
         returns (address[] memory)
     {
-        return participantTickets[_lotteryId];
+        return lotteryTickets[_lotteryId];
     }
 
     /**
@@ -383,7 +391,7 @@ contract Lottery is Ownable, ILottery {
             "Lottery already completed"
         );
         lottery.status = Status.Canceled;
-        address[] memory tickets = participantTickets[_lotteryId];
+        address[] memory tickets = lotteryTickets[_lotteryId];
         for (uint16 i = 0; i < tickets.length; i++) {
             rewardsContract.refundPoints(tickets[i], lottery.ticketCostPinas);
         }
@@ -495,10 +503,10 @@ contract Lottery is Ownable, ILottery {
         uint256 _lotteryId,
         address _participantAddress
     ) private {
-        participantTickets[_lotteryId].push(_participantAddress);
+        lotteryTickets[_lotteryId].push(_participantAddress);
         emit NewEntry(
             _lotteryId,
-            participantTickets[_lotteryId].length,
+            lotteryTickets[_lotteryId].length,
             _participantAddress
         );
     }
