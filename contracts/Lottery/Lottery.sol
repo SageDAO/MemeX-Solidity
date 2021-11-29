@@ -75,11 +75,6 @@ contract MemeXLottery is Ownable, ILottery {
     event PrizesChanged(uint256 _lotteryId, uint256 numberOfPrizes);
     event LotteryStatusChanged(uint256 _lotteryId, Status _status);
     event RequestNumbers(uint256 lotteryId, bytes32 requestId);
-    event NewParticipant(
-        uint256 lotteryId,
-        address participantAddress,
-        uint16 amountOfNumbers
-    );
     event TicketCostChanged(
         address operator,
         uint256 lotteryId,
