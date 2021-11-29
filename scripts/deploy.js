@@ -69,7 +69,7 @@ deployNFT = async (deployer, lottery) => {
 
 deployLottery = async (rewards, randomness) => {
   lottery_address = CONTRACTS[hre.network.name]["lotteryAddress"]
-  const Lottery = await hre.ethers.getContractFactory("Lottery");
+  const Lottery = await hre.ethers.getContractFactory("MemeXLottery");
   if (lottery_address == "") {
     lottery = await Lottery.deploy(rewards.address);
     await lottery.deployed();

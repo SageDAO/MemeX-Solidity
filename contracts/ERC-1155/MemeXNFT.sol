@@ -20,10 +20,19 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
     // collectionId => collection info
     mapping(uint256 => CollectionInfo) public collections;
 
+    // collectionId => array of NFT ids
+    mapping(uint256 => uint256[]) public nftsInCollection;
+
     struct CollectionInfo {
         address artistAddress;
         uint16 royalty;
         string dropMetadataURI;
+    }
+
+    struct DropInfo {
+        uint256 firstId;
+        uint256 lastId;
+        
     }
 
     struct TokenInfo {

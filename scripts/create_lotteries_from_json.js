@@ -12,7 +12,7 @@ const file_name = process.argv.slice(2)[0];
 async function main() {
     await hre.run('compile');
 
-    const Lottery = await ethers.getContractFactory("Lottery");
+    const Lottery = await ethers.getContractFactory("MemeXLottery");
     const lottery = await Lottery.attach(lotteryAddress);
 
     const fs = require('fs');

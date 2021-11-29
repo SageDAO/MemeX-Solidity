@@ -12,7 +12,7 @@ describe('MemeXNFT Contract', () => {
         _admin = owner.address;
         _lotteryAddress = addr1.address;
         nft = await NFT.deploy("Memex", "MEMEX", owner.address);
-        await nft.setLotteryContract(_lotteryAddress);
+        await nft.addSmartContractRole(_lotteryAddress);
         await nft.createTokenType(1, 10, 1);
         await nft.createCollection(addr1.address, basePath);
         await nft.connect(owner).addMinterRole(addr2.address);

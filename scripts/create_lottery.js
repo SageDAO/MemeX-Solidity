@@ -10,7 +10,7 @@ async function main() {
     await hre.run('compile');
     const owner = await ethers.getSigner();
 
-    const Lottery = await ethers.getContractFactory("Lottery");
+    const Lottery = await ethers.getContractFactory("MemeXLottery");
     const lottery = await Lottery.attach(lotteryAddress);
     result = await lottery.createNewLottery(
         100000000, // cost in PINA
