@@ -36,7 +36,6 @@ async function main() {
                     drop.metadata.startTime,
                     drop.metadata.endTime,
                     nftContract.address,
-                    drop.metadata.boostCost, // boost cost in FTM
                     drop.metadata.maxParticipants,
                     drop.metadata.artistAddress,
                     drop.metadata.metadataBasePath,

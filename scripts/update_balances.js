@@ -336,10 +336,6 @@ function exit(code) {
     process.exit(code);
 }
 
-function exit(code) {
-    process.exit(code);
-}
-
 main()
     .then(() => setTimeout(exit, 2000, 0))
     .catch((error) => {

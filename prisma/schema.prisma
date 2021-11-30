@@ -27,9 +27,8 @@ model Nft {
 model Drop {
   id                  Int       @id @default(autoincrement())
   bannerImageName     String
-  costPerTicketPina   Int
-  costPerTicketFtm    Float     @default(0.0)
-  boostCostFtm        Float     @default(0.0)
+  costPerTicketPoints BigInt    @default(0)
+  costPerTicketCoins  Float     @default(0.0)
   dropDescription     String
   dropName            String
   endTime             String
@@ -44,6 +43,7 @@ model Drop {
   royaltyPercentage   Float     @default(0.0)
   defaultPrizeId      Int?
   defaultPrize        Nft?      @relation(fields: [defaultPrizeId], references: [id])
+  maxParticipants     Int       @default(0)
   blockchainCreatedAt DateTime?
   approvedAt          DateTime?
   approvedBy          String?   @db.Char(42)

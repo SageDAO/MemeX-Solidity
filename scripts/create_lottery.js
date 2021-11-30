@@ -18,10 +18,14 @@ async function main() {
         parseInt(Date.now() / 1000), //start 
         parseInt(Date.now() / 1000 + 86400 * 30), // end
         nftAddress, // nft contract
-        ethers.utils.parseEther('0.001'), // boost cost in FTM
         0, // max participants
         owner.address, // artist address
-        'ipfs://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze/');
+        'ipfs://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze/',
+        {
+            gasLimit: 4000000
+        });
+
+    console.log(result);
 }
 
 main()
