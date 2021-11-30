@@ -71,10 +71,13 @@ contract MemeXLottery is Ownable, ILottery {
         IMemeXNFT nftContract; // reference to the NFT Contract
     }
 
-    event ResponseReceived(bytes32 _requestId);
-    event PrizesChanged(uint256 _lotteryId, uint256 numberOfPrizes);
-    event LotteryStatusChanged(uint256 _lotteryId, Status _status);
-    event RequestNumbers(uint256 lotteryId, bytes32 requestId);
+    event ResponseReceived(bytes32 indexed _requestId);
+    event PrizesChanged(uint256 indexed _lotteryId, uint256 numberOfPrizes);
+    event LotteryStatusChanged(
+        uint256 indexed _lotteryId,
+        Status indexed _status
+    );
+    event RequestNumbers(uint256 indexed lotteryId, bytes32 indexed requestId);
     event TicketCostChanged(
         address operator,
         uint256 lotteryId,
@@ -87,9 +90,9 @@ contract MemeXLottery is Ownable, ILottery {
     );
 
     event PrizeClaimed(
-        uint256 lotteryId,
-        address participantAddress,
-        uint256 prizeId
+        uint256 indexed lotteryId,
+        address indexed participantAddress,
+        uint256 indexed prizeId
     );
 
     constructor(address _rewardsContract) {
@@ -285,6 +288,7 @@ contract MemeXLottery is Ownable, ILottery {
         );
         lotteryHistory[lotteryId] = newLottery;
         lotteries.push(lotteryId);
+        emit LotteryStatusChanged(lotteryId, lotteryStatus);
         return lotteryId;
     }
 
