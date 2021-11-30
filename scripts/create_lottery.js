@@ -12,9 +12,9 @@ async function main() {
 
     const Lottery = await ethers.getContractFactory("MemeXLottery");
     const lottery = await Lottery.attach(lotteryAddress);
-    result = await lottery.createNewLottery(
+    const tx = await lottery.createNewLottery(
         100000000, // cost in PINA
-        0, // cost in FTM
+        ethers.utils.parseEther('0.001'), // cost in FTM
         parseInt(Date.now() / 1000), //start 
         parseInt(Date.now() / 1000 + 86400 * 30), // end
         nftAddress, // nft contract
@@ -24,8 +24,9 @@ async function main() {
         {
             gasLimit: 4000000
         });
-
-    console.log(result);
+    // get the receipt from tx
+    const receipt = await tx.wait();
+    console.log(`Lottery created with id: ${receipt.events[0].args[0]}`);
 }
 
 main()

@@ -11,46 +11,51 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const logger = createLogger('memex_scripts', 'create_lotteries_from_db');
+const Lottery = await ethers.getContractFactory("MemeXLottery");
+const lottery = await Lottery.attach(lotteryAddress);
+
+const NFT = await hre.ethers.getContractFactory("MemeXNFT");
+const nftContract = await NFT.attach(nftAddress);
 
 async function main() {
     await hre.run('compile');
 
-    const Lottery = await ethers.getContractFactory("MemeXLottery");
-    const lottery = await Lottery.attach(lotteryAddress);
-
-    const NFT = await hre.ethers.getContractFactory("MemeXNFT");
-    const nftContract = await NFT.attach(nftAddress);
-
     // find drops approved but not yet created on chain
     let drops = await fetchDropsReadyForBlockchain();
-    // iterate over json content
-    for (const drop of drops) {
 
-        // create new lottery and update metadata with lotteryId
-        logger.info("Creating new lottery with #id: " + drop.lotteryId);
-        await lottery.createNewLottery(
-            drop.costPerTicketPoints,
-            drop.costPerTicketCoins,
-            drop.startTime / 1000,
-            drop.endTime / 1000,
-            nftContract.address,
-            drop.maxParticipants,
-            drop.CreatedBy.walletAddress,
-            drop.metadataIpfsPath
-        );
-        // TODO: substitute for getCurrentLotteryId
-        drop.lotteryId = (await lottery.getCurrentLotteryId()).toNumber() + 1;
-        drop.blockchainCreatedAt = new Date();
-        await prisma.drop.update({
-            where: {
-                id: drop.id
-            },
-            data: {
-                lotteryId: drop.lotteryId,
-                blockchainCreatedAt: drop.blockchainCreatedAt
-            }
-        });
+    for (const drop of drops) {
+        // create new lottery and update DB with lotteryId
+        await createLottery(drop, lottery);
     }
+    logger.info("Finished creating lotteries succesfully")
+}
+
+async function createLottery(drop, lottery) {
+    logger.info("Drop #id: " + drop.id);
+    const receipt = await lottery.createNewLottery(
+        drop.costPerTicketPoints,
+        drop.costPerTicketCoins,
+        drop.startTime / 1000,
+        drop.endTime / 1000,
+        nftContract.address,
+        drop.maxParticipants,
+        drop.CreatedBy.walletAddress,
+        drop.metadataIpfsPath
+    );
+    const receipt = await tx.wait();
+    drop.lotteryId = receipt.events[0].args[0];
+    logger.info(`Lottery created with lotteryId: ${drop.lotteryId}`);
+    drop.blockchainCreatedAt = new Date();
+    await prisma.drop.update({
+        where: {
+            id: drop.id
+        },
+        data: {
+            lotteryId: drop.lotteryId,
+            blockchainCreatedAt: drop.blockchainCreatedAt
+        }
+    });
+    logger.info("Created new lottery with #lotteryId: " + drop.lotteryId);
 }
 
 function exit(code) {
