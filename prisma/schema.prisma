@@ -81,9 +81,10 @@ model MemeTransactions {
 }
 
 model RewardPublished {
-  address           String @id @db.Char(42)
-  totalPointsEarned BigInt @default(0)
+  address           String   @id @db.Char(42)
+  totalPointsEarned BigInt   @default(0)
   proof             String
+  updatedAt         DateTime @default(now())
 }
 
 model RewardType {

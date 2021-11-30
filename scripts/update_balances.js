@@ -191,7 +191,7 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end) {
         }
     }
     pinaPoints = pinaPoints.plus(assetBalance.multipliedBy(rewardRate).multipliedBy(end - refTimestamp));
-    return pinaPoints;
+    return pinaPoints.dp(0, 1);
 }
 
 async function getUserTransactions(address, assetType, begin, end) {
@@ -314,6 +314,7 @@ async function main() {
                 update: {
                     proof: proof,
                     totalPointsEarned: leaf.points.toNumber(),
+                    updatedAt: new Date()
                 },
                 create: {
                     proof: proof,
