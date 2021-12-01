@@ -20,7 +20,6 @@ interface ILottery {
         uint32 _startTime,
         uint32 _closeTime,
         IMemeXNFT _nftContract,
-        uint256 _boostCost,
         uint16 _maxParticipants,
         address _artistAddress,
         string calldata _dropMetadataURI

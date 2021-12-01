@@ -11,6 +11,7 @@ const prisma = new PrismaClient();
 const ethers = hre.ethers;
 
 const CONTRACTS = require('../contracts.js');
+const { info } = require("winston");
 
 var abiCoder = ethers.utils.defaultAbiCoder;
 const buf2hex = x => '0x' + x.toString('hex');
@@ -18,12 +19,12 @@ const logger = createLogger('memex_scripts', 'prize_distribution');
 
 async function main() {
     await hre.run('compile');
-    logger.info(`Starting prize distribution script ${hre.network.name}`);
+    logger.info(`Starting prize distribution script on ${hre.network.name}`);
 
-    const Lottery = await ethers.getContractFactory("Lottery");
+    const Lottery = await ethers.getContractFactory("MemeXLottery");
     const blockNum = await ethers.provider.getBlockNumber();
     const block = await ethers.provider.getBlock(blockNum);
-    owner = await ethers.getSigners();
+    owner = await ethers.getSigner();
     Rewards = await ethers.getContractFactory('Rewards');
     Nft = await ethers.getContractFactory("MemeXNFT");
     if (hre.network.name == "hardhat") {
@@ -31,25 +32,24 @@ async function main() {
 
         Token = await ethers.getContractFactory("MemeXToken");
         token = await Token.deploy("MEMEX", "MemeX", 1, owner.address);
-
         rewards = await Rewards.deploy(owner.address);
         lottery = await Lottery.deploy(rewards.address);
         await rewards.addSmartContractRole(lottery.address);
 
         nft = await Nft.deploy("Memex", "MEMEX", owner.address);
         nft.addMinterRole(owner.address);
-        await nft.setLotteryContract(lottery.address);
+        nft.addMinterRole(lottery.address);
+        nft.addSmartContractRole(lottery.address);
         MockRNG = await ethers.getContractFactory("MockRNG");
         mockRng = await MockRNG.deploy(lottery.address);
         await lottery.setRandomGenerator(mockRng.address);
-        await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 1100,
-            nft.address,
-            0, 0, owner.address, "ipfs://path/");
+        await lottery.createNewLottery(0, 1, block.timestamp, block.timestamp + 1100,
+            nft.address, 0, owner.address, "ipfs://path/");
         await lottery.addPrizes(1, [1, 2], [1, 1000]);
         accounts = await ethers.getSigners();
         for (i = 0; i < 100; i++) {
             logger.info(`Buying ticket with account ${i}`);
-            await lottery.connect(accounts[i]).buyTickets(1, 1);
+            await lottery.connect(accounts[i]).buyTickets(1, 1, false, { value: 1 });
         }
         await ethers.provider.send("evm_increaseTime", [1500]); // long wait, enough to be after the end of the lottery
         await ethers.provider.send("evm_mine", []);
@@ -86,7 +86,8 @@ async function main() {
             // if there aren't any, create the proofs
             if (!hasProof) {
                 logger.info(`Lottery ${lotteryId} is closed but has no PrizeProof`);
-                entries = await lottery.getParticipantTickets(lotteryId, { gasLimit: 500000000 });
+                entries = await lottery.getLotteryTickets(lotteryId, { gasLimit: 500000000 });
+                logger.info(1);
                 totalEntries = entries.length;
                 logger.info(entries);
                 logger.info(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
@@ -170,8 +171,11 @@ async function main() {
                     logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`)
                 }
                 // store proofs on the DB so it can be easily queried
-                created = await prisma.prizeProof.createMany({ data: leaves });
-                logger.info(`${created.count} Proofs created in the DB.`);
+                if (hre.network.name != "hardhat") {
+                    created = await prisma.prizeProof.createMany({ data: leaves });
+                    logger.info(`${created.count} Proofs created in the DB.`);
+                }
+
             }
         }
     }

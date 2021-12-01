@@ -25,7 +25,7 @@ module.exports = {
       accounts: [`${process.env.DEPLOYER_PK}`],
     },
     fantomtestnet: {
-      url: `https://apis.ankr.com/${process.env.ANKR_KEY}/fantom/full/test`,
+      url: `https://apis.ankr.com/${process.env.ANKR_KEY_TESTNET}/fantom/full/test`,
       accounts: [`${process.env.DEPLOYER_PK}`],
       chainId: 0xfa2
     },
@@ -36,7 +36,7 @@ module.exports = {
     },
     hardhat: {
       gas: 12000000,
-      allowUnlimitedContractSize: true,
+      allowUnlimitedContractSize: false,
       timeout: 1800000,
       accounts: {
         count: 100

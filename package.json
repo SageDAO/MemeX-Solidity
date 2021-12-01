@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@chainlink/contracts": "^0.2.1",
-    "@openzeppelin/contracts": "^4.3.1",
+    "@openzeppelin/contracts": "^4.4.0",
     "@prisma/client": "^3.0.2",
     "aws-sdk": "^2.1030.0",
     "bignumber": "^1.1.0",

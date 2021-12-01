@@ -14,18 +14,25 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
     // Contract symbol
     string public symbol;
 
-    address internal lotteryContract;
-
     // tokenId => token Info
     mapping(uint256 => TokenInfo) public tokenInfo;
 
     // collectionId => collection info
     mapping(uint256 => CollectionInfo) public collections;
 
+    // collectionId => array of NFT ids
+    mapping(uint256 => uint256[]) public nftsInCollection;
+
     struct CollectionInfo {
         address artistAddress;
         uint16 royalty;
         string dropMetadataURI;
+    }
+
+    struct DropInfo {
+        uint256 firstId;
+        uint256 lastId;
+        
     }
 
     struct TokenInfo {
@@ -52,11 +59,6 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
             super.supportsInterface(interfaceId);
     }
 
-    event LotteryContractUpdated(
-        address oldLotteryContract,
-        address newLotteryContract
-    );
-
     function totalSupply(uint256 _id) public view returns (uint256) {
         return tokenInfo[_id].tokenSupply;
     }
@@ -73,18 +75,6 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         name = _name;
         symbol = _symbol;
         initAccessControls(_admin);
-    }
-
-    function setLotteryContract(address _lotteryContract) public {
-        require(
-            hasAdminRole(msg.sender),
-            "MemeXNFT: Only Admin can change lottery address"
-        );
-        require(_lotteryContract != address(0));
-        address oldAddr = address(lotteryContract);
-        lotteryContract = _lotteryContract;
-        addSmartContractRole(lotteryContract);
-        emit LotteryContractUpdated(oldAddr, lotteryContract);
     }
 
     function setCollection(
@@ -134,6 +124,7 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
             hasAdminRole(msg.sender) || hasSmartContractRole(msg.sender),
             "ERC1155.createCollection only Admin or Minter can create"
         );
+        require(_artistAddress != address(0), "Artist address can't be 0");
         CollectionInfo memory collection = CollectionInfo(
             _artistAddress,
             defaultRoyaltyPercentage,
@@ -207,10 +198,6 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         CollectionInfo memory collection = collections[
             tokenInfo[tokenId].collectionId
         ];
-        require(
-            collection.artistAddress != address(0),
-            "MemeXNFT: Artist address not set"
-        );
         return (
             collection.artistAddress,
             (salePrice * collection.royalty) / 10000

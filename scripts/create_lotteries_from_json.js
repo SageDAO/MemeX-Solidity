@@ -12,7 +12,7 @@ const file_name = process.argv.slice(2)[0];
 async function main() {
     await hre.run('compile');
 
-    const Lottery = await ethers.getContractFactory("Lottery");
+    const Lottery = await ethers.getContractFactory("MemeXLottery");
     const lottery = await Lottery.attach(lotteryAddress);
 
     const fs = require('fs');
@@ -36,7 +36,6 @@ async function main() {
                     drop.metadata.startTime,
                     drop.metadata.endTime,
                     nftContract.address,
-                    drop.metadata.boostCost, // boost cost in FTM
                     drop.metadata.maxParticipants,
                     drop.metadata.artistAddress,
                     drop.metadata.metadataBasePath,

@@ -191,7 +191,7 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end) {
         }
     }
     pinaPoints = pinaPoints.plus(assetBalance.multipliedBy(rewardRate).multipliedBy(end - refTimestamp));
-    return pinaPoints;
+    return pinaPoints.dp(0, 1);
 }
 
 async function getUserTransactions(address, assetType, begin, end) {
@@ -314,6 +314,7 @@ async function main() {
                 update: {
                     proof: proof,
                     totalPointsEarned: leaf.points.toNumber(),
+                    updatedAt: new Date()
                 },
                 create: {
                     proof: proof,
@@ -330,10 +331,6 @@ function getEncodedLeaf(leaf) {
     logger.info(`Encoding leaf: ${leaf.address} ${leaf.points}`);
     return keccak256(abiCoder.encode(["address", "uint256"],
         [leaf.address, leaf.points.toNumber()]));
-}
-
-function exit(code) {
-    process.exit(code);
 }
 
 function exit(code) {

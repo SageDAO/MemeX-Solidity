@@ -9,7 +9,7 @@ import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 import "../../interfaces/ILottery.sol";
 
-contract Lottery is Ownable, ILottery {
+contract MemeXLottery is Ownable, ILottery {
     uint8 public maxTicketsPerParticipant;
 
     bytes32 internal requestId_;
@@ -20,15 +20,15 @@ contract Lottery is Ownable, ILottery {
 
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
 
-    uint256[] internal lotteries;
+    uint256[] public lotteries;
 
-    mapping(uint256 => bytes32) internal prizeMerkleRoots;
+    mapping(uint256 => bytes32) public prizeMerkleRoots;
 
     // participant address => lottery ids he entered
     mapping(address => uint256[]) public participantHistory;
 
     //lotteryid => prizeIds
-    mapping(uint256 => PrizeInfo[]) internal prizes;
+    mapping(uint256 => PrizeInfo[]) public prizes;
 
     struct PrizeInfo {
         uint256 prizeId;
@@ -36,22 +36,19 @@ contract Lottery is Ownable, ILottery {
     }
 
     //lotteryid => address => participantInfo
-    mapping(uint256 => mapping(address => ParticipantInfo))
-        internal participants;
+    mapping(uint256 => mapping(address => ParticipantInfo)) public participants;
 
     struct ParticipantInfo {
-        uint8 boosts;
+        uint8 ticketsFromCoins;
+        uint8 ticketsFromPoints;
         bool prizeClaimed;
-        uint8 entries;
     }
 
     //loteryId => randomNumber received from RNG
     mapping(uint256 => uint256) public randomSeeds;
 
-    mapping(uint256 => uint8) public maxBoostsPerLottery;
-
     //lotteryId => address array
-    mapping(uint256 => address[]) participantTickets;
+    mapping(uint256 => address[]) internal lotteryTickets;
 
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
@@ -71,46 +68,35 @@ contract Lottery is Ownable, ILottery {
         Status status; // Status for lotto
         uint256 ticketCostPinas; // Cost per ticket in points/tokens
         uint256 ticketCostCoins; // Cost per ticket in FTM
-        uint256 boostCost; // cost to boost the odds
         IMemeXNFT nftContract; // reference to the NFT Contract
     }
 
-    event ResponseReceived(bytes32 _requestId);
-    event PrizesChanged(uint256 _lotteryId, uint256 numberOfPrizes);
-    event LotteryStatusChanged(uint256 _lotteryId, Status _status);
-    event RequestNumbers(uint256 lotteryId, bytes32 requestId);
-    event NewParticipant(
-        uint256 lotteryId,
-        address participantAddress,
-        uint16 amountOfNumbers
+    event ResponseReceived(bytes32 indexed _requestId);
+    event PrizesChanged(uint256 indexed _lotteryId, uint256 numberOfPrizes);
+    event LotteryStatusChanged(
+        uint256 indexed _lotteryId,
+        Status indexed _status
     );
+    event RequestNumbers(uint256 indexed lotteryId, bytes32 indexed requestId);
     event TicketCostChanged(
         address operator,
         uint256 lotteryId,
         uint256 priceOfTicket
     );
     event NewEntry(
-        uint256 lotteryId,
+        uint256 indexed lotteryId,
         uint256 number,
-        address participantAddress
+        address indexed participantAddress
     );
 
     event PrizeClaimed(
-        uint256 lotteryId,
-        address participantAddress,
-        uint256 prizeId
+        uint256 indexed lotteryId,
+        address indexed participantAddress,
+        uint256 indexed prizeId
     );
 
     constructor(address _rewardsContract) {
         rewardsContract = IRewards(_rewardsContract);
-    }
-
-    function setMaxBoostsPerLottery(uint256 _lotteryId, uint8 _maxBoosts)
-        public
-        onlyOwner
-    {
-        require(_maxBoosts > 0);
-        maxBoostsPerLottery[_lotteryId] = _maxBoosts;
     }
 
     function setTicketCostPinas(uint256 _price, uint256 _lotteryId)
@@ -191,21 +177,17 @@ contract Lottery is Ownable, ILottery {
         return participants[_lotteryId][_participant].prizeClaimed;
     }
 
-    function getParticipantHistory(address _participantAddress)
+    /**
+     * @notice Get the number of tickets sold for a lottery
+     * @param _lotteryId The lottery ID
+     * @return Amount tickets for a lottery
+     */
+    function getLotteryTicketCount(uint256 _lotteryId)
         public
         view
-        returns (uint256[] memory)
+        returns (uint256)
     {
-        return participantHistory[_participantAddress];
-    }
-
-    /**
-     * @notice Get the number of entries (each ticket and each boost provide an entry).
-     * @param _lotteryId The lottery ID
-     * @return Amount entries for a lottery (number of tickets and boosts bought)
-     */
-    function getTotalEntries(uint256 _lotteryId) public view returns (uint256) {
-        return participantTickets[_lotteryId].length;
+        return lotteryTickets[_lotteryId].length;
     }
 
     function getLotteryCount() public view returns (uint256) {
@@ -271,7 +253,6 @@ contract Lottery is Ownable, ILottery {
      * @param _costPerTicketCoins cost in wei per ticket in FTM
      * @param _startTime timestamp to begin lottery entries
      * @param _nftContract reference to the NFT contract
-     * @param _boostCost cost in wei (FTM) for users to boost their odds
      * @param _maxParticipants max number of participants. Use 0 for unlimited
      */
     function createNewLottery(
@@ -280,7 +261,6 @@ contract Lottery is Ownable, ILottery {
         uint32 _startTime,
         uint32 _closeTime,
         IMemeXNFT _nftContract,
-        uint256 _boostCost,
         uint16 _maxParticipants,
         address _artistAddress,
         string calldata _dropMetadataURI
@@ -304,11 +284,11 @@ contract Lottery is Ownable, ILottery {
             lotteryStatus,
             _costPerTicketPinas,
             _costPerTicketCoins,
-            _boostCost,
             _nftContract
         );
         lotteryHistory[lotteryId] = newLottery;
         lotteries.push(lotteryId);
+        emit LotteryStatusChanged(lotteryId, lotteryStatus);
         return lotteryId;
     }
 
@@ -351,12 +331,17 @@ contract Lottery is Ownable, ILottery {
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
-    function getParticipantTickets(uint256 _lotteryId)
+    /**
+     * @notice Returns de array of tickets (each purchase and boost provide a ticket).
+     * @param _lotteryId The lottery ID
+     * @return Array with tickets for a lottery
+     */
+    function getLotteryTickets(uint256 _lotteryId)
         public
         view
         returns (address[] memory)
     {
-        return participantTickets[_lotteryId];
+        return lotteryTickets[_lotteryId];
     }
 
     /**
@@ -383,7 +368,7 @@ contract Lottery is Ownable, ILottery {
             "Lottery already completed"
         );
         lottery.status = Status.Canceled;
-        address[] memory tickets = participantTickets[_lotteryId];
+        address[] memory tickets = lotteryTickets[_lotteryId];
         for (uint16 i = 0; i < tickets.length; i++) {
             rewardsContract.refundPoints(tickets[i], lottery.ticketCostPinas);
         }
@@ -406,19 +391,19 @@ contract Lottery is Ownable, ILottery {
         if (rewardsContract.totalPointsEarned(msg.sender) < _points) {
             rewardsContract.claimPointsWithProof(msg.sender, _points, _proof);
         }
-        return buyTickets(_lotteryId, numberOfTickets);
+        return buyTickets(_lotteryId, numberOfTickets, true);
     }
 
     /**
-     * @notice Function called by users to buy lottery tickets
+     * @notice Function called by users to buy lottery tickets using PINA points
      * @param _lotteryId ID of the lottery to buy tickets for
      * @param numberOfTickets Number of tickets to buy
      */
-    function buyTickets(uint256 _lotteryId, uint8 numberOfTickets)
-        public
-        payable
-        returns (uint256)
-    {
+    function buyTickets(
+        uint256 _lotteryId,
+        uint8 numberOfTickets,
+        bool _usePoints
+    ) public payable returns (uint256) {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         uint256 remainingPoints;
         if (lottery.maxParticipants != 0) {
@@ -427,11 +412,14 @@ contract Lottery is Ownable, ILottery {
                 "Lottery is full"
             );
         }
+        ParticipantInfo storage participantInfo = participants[_lotteryId][
+            msg.sender
+        ];
+        uint256 numTicketsBought = participantInfo.ticketsFromPoints +
+            participantInfo.ticketsFromCoins;
         if (maxTicketsPerParticipant > 0) {
             require(
-                participants[_lotteryId][msg.sender].entries +
-                    numberOfTickets <=
-                    maxTicketsPerParticipant,
+                numTicketsBought + numberOfTickets <= maxTicketsPerParticipant,
                 "Can't buy this amount of tickets"
             );
         }
@@ -450,35 +438,37 @@ contract Lottery is Ownable, ILottery {
             emit LotteryStatusChanged(_lotteryId, lottery.status);
         }
         require(lottery.status == Status.Open, "Lottery is not open");
-
-        uint256 totalCostInPoints = numberOfTickets * lottery.ticketCostPinas;
-        if (totalCostInPoints > 0) {
+        if (_usePoints) {
+            uint256 totalCostInPoints = numberOfTickets *
+                lottery.ticketCostPinas;
+            require(totalCostInPoints > 0, "Can't buy tickets with points");
             remainingPoints = rewardsContract.availablePoints(msg.sender);
             require(
                 remainingPoints >= totalCostInPoints,
                 "Not enough points to buy tickets"
             );
             remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
-        }
-        uint256 totalCostInCoins = numberOfTickets * lottery.ticketCostCoins;
-        if (totalCostInCoins > 0) {
+            participantInfo.ticketsFromPoints += numberOfTickets;
+        } else {
+            uint256 totalCostInCoins = numberOfTickets *
+                lottery.ticketCostCoins;
+            require(totalCostInCoins > 0, "Can't buy tickets with coins");
             require(
                 msg.value >= totalCostInCoins,
                 "Didn't transfer enough funds to buy tickets"
             );
+            if (lottery.ticketCostPinas != 0) {
+                require(
+                    participantInfo.ticketsFromPoints > 0,
+                    "Participant not found"
+                );
+            }
+            participantInfo.ticketsFromCoins += numberOfTickets;
         }
-        uint256 numTicketsBought = participants[_lotteryId][msg.sender].entries;
         if (numTicketsBought == 0) {
             participantHistory[msg.sender].push(_lotteryId);
             lottery.participantsCount++;
-            ParticipantInfo memory participant = ParticipantInfo(
-                0,
-                false,
-                numberOfTickets
-            );
-            participants[_lotteryId][msg.sender] = participant;
-        } else {
-            participants[_lotteryId][msg.sender].entries += numberOfTickets;
+            participants[_lotteryId][msg.sender] = participantInfo;
         }
         for (uint8 i = 0; i < numberOfTickets; i++) {
             assignNewTicketToParticipant(_lotteryId, msg.sender);
@@ -487,7 +477,7 @@ contract Lottery is Ownable, ILottery {
     }
 
     /**
-     * @notice Function called when user buys a ticket or boost. Gives the user a new lottery entry.
+     * @notice Function called when user buys a ticket. Gives the user a new lottery entry.
      * @param _lotteryId ID of the lottery to buy tickets for
      * @param _participantAddress Address of the participant that will receive the new entry
      */
@@ -495,61 +485,12 @@ contract Lottery is Ownable, ILottery {
         uint256 _lotteryId,
         address _participantAddress
     ) private {
-        participantTickets[_lotteryId].push(_participantAddress);
+        lotteryTickets[_lotteryId].push(_participantAddress);
         emit NewEntry(
             _lotteryId,
-            participantTickets[_lotteryId].length,
+            lotteryTickets[_lotteryId].length,
             _participantAddress
         );
-    }
-
-    /**
-     * @notice Function called to check the amount of times a user boosted on a particular lottery.
-     * @param _lotteryId ID of the lottery to check if user boosted
-     * @param _participantAddress Address of the participant to check
-     */
-    function numBoosts(uint256 _lotteryId, address _participantAddress)
-        public
-        view
-        returns (uint8)
-    {
-        return participants[_lotteryId][_participantAddress].boosts;
-    }
-
-    /**
-     * @notice Boost the participant odds on the lottery.
-     * @param _lotteryId ID of the lottery to boost
-     * @param _participantAddress Address of the participant that will receive the boost
-     */
-    function boostParticipant(
-        uint256 _lotteryId,
-        address _participantAddress,
-        uint8 _boostAmount
-    ) public payable {
-        ParticipantInfo storage participant = participants[_lotteryId][
-            _participantAddress
-        ];
-        require(
-            lotteryHistory[_lotteryId].boostCost != 0 &&
-                maxBoostsPerLottery[_lotteryId] != 0,
-            "Can't boost on this lottery"
-        );
-        require(participant.entries > 0, "Participant not found");
-        require(
-            participant.boosts + _boostAmount <=
-                maxBoostsPerLottery[_lotteryId],
-            "Max boosts limit"
-        );
-        // check if the transaction contains the boost cost
-        require(
-            msg.value == lotteryHistory[_lotteryId].boostCost * _boostAmount,
-            "Didn't send enough to boost"
-        );
-
-        participant.boosts += _boostAmount;
-        for (uint8 i = 0; i < _boostAmount; i++) {
-            assignNewTicketToParticipant(_lotteryId, _participantAddress);
-        }
     }
 
     function claimPrize(
