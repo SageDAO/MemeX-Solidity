@@ -13,9 +13,9 @@ MemeX is currently based on five contracts:
 ## Setup instructions
 
 We are using hardhat as the development framework.
-To install hardhat:
+To install all dependencias, run:
 ```
-npm install --save-dev hardhat
+npm install
 ```
 
 When interacting with contracts on testnets you'll need Alchemy and Etherscan API keys for the Ethereum network and ANKR, FTMScan keys for the Fantom network.
@@ -47,13 +47,13 @@ will create a new lottery for each new drop, updating the json with the created 
 
 The script to run prize distributions can be called with the following command:
 
-`node scripts/prize_distribution.js <lotteryId>`
+`node scripts/prize_distribution.js`
 
 It will find prize winners, create the merkle tree and update the lottery contract with the root hash. It also saves proofs on our database. After that lottery results can be queried from the database fetching the proofs required when claiming a prize.
 
 ## Rewards
 
-Rewards are based on users holding the MEME token on their wallet (either on Ethereum or Fantom). We don't require users to stake those tokens, instead, there is a script to check and update all balances on a certain interval:
+Rewards are based on users holding the Meme Inu token on their wallet (either on Ethereum or Fantom). We don't require users to stake those tokens, instead, there is a script to check and update all balances on a certain interval:
 
 `export HARDHAT_NETWORK=rinkeby; node scripts/update_balances.js`
 
@@ -63,20 +63,3 @@ Rewards are based on users holding the MEME token on their wallet (either on Eth
 To run unit tests:
 
 `npx hardhat test`
-
-## E2E Tests
-
-The scripts folder contains multiple functions to interact with the deployed contracts. 
-
-To simulate the entire lottery flow, including lottery creation, user entries, and drawing numbers (can be executed multiple times to create different lotteries):
-
-```
-export HARDHAT_NETWORK=rinkeby
-node scripts/simulate_lottery_flow.js 
-```
-
-Every call to the Chainlink oracle requires the randomness contract to have some LINK tokens. During tests use this [faucet](https://rinkeby.chain.link/) to refill if necessary.
-
-To make queries about the winners and mint their prizes please make sure to allow some blocks to be mined as we need to wait for an answer from the randomness oracle:
-
-`node scripts/simulate_check_winners.js`
