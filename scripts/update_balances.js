@@ -14,35 +14,36 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const CONTRACTS = require('../contracts.js');
+const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
-const ASSETS = {
-    ETH_MEMEINU: {
-        chainId: "1",
-        startingBlock: 13649693,
-        assetType: "ETH_MEMEINU",
-        contract: "0x74b988156925937bd4e082f0ed7429da8eaea8db",
-        transferTopic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-        rewardRate: 0.00000000000000000001157407407407407407,
-    },
-}
+// const ASSETS = {
+//     ETH_MEMEINU: {
+//         chainId: "1",
+//         startingBlock: 13649693,
+//         assetType: "ETH_MEMEINU",
+//         contract: "0x74b988156925937bd4e082f0ed7429da8eaea8db",
+//         transferTopic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+//         rewardRate: 0.00000000000000000001157407407407407407,
+//     },
+// }
 
 const logger = createLogger('memex_scripts', 'update_balances');
 
 /**
- * @param {*} _assetType 
+ * @param {*} assetType 
  * @returns max(blockNumber) for that asset, or null if none is found
  */
-async function getLastBlockHeightInDatabase(_assetType) {
+async function getLastBlockHeightInDatabase(assetType) {
     const aggregations = await prisma.memeTransactions.aggregate({
         _max: {
             blockNumber: true,
         },
         where: {
-            assetType: _assetType
+            assetType: assetType.type
         }
     });
     let blockHeight = aggregations._max.blockNumber || 0;
-    logger.info(`Last block on db for asset ${_assetType} is ${blockHeight}`);
+    logger.info(`Last block on db for asset ${assetType.type} is ${blockHeight}`);
     return blockHeight + 1;
 }
 
@@ -64,30 +65,21 @@ async function getLastBlockHeightInBlockchain(chainId) {
 }
 
 async function getLastBlockInspected(assetType) {
-    let result = await prisma.rewardType.findUnique({
-        select: {
-            lastBlockInspected: true,
-        },
-        where: {
-            type: assetType
-        }
-    });
-    return result == null ? 0 : Number(result.lastBlockInspected);
+    return assetType.lastBlockInspected || 0;
 }
 
-async function getLatestTransactionsFromAllBlockchains() {
+async function getLatestTransactionsFromAllBlockchains(rewardRateTypes) {
     let allTransactions = [];
-    for (var item in ASSETS) {
-        let asset = ASSETS[item];
-        let startingBlock = await getLastBlockInspected(asset.assetType);
+    for (var rewardRate of rewardRateTypes) {
+        let startingBlock = await getLastBlockInspected(rewardRate);
         if (startingBlock == 0) {
-            startingBlock = await getLastBlockHeightInDatabase(item);
+            startingBlock = await getLastBlockHeightInDatabase(rewardRate);
         }
-        if (startingBlock < asset.startingBlock) {
-            startingBlock = asset.startingBlock;
+        if (startingBlock < rewardRate.startingBlock) {
+            startingBlock = rewardRate.startingBlock;
         }
-        let endingBlock = await getLastBlockHeightInBlockchain(asset.chainId);
-        let chainTransactions = await getTransactionsFromBlockchain(asset, startingBlock, endingBlock);
+        let endingBlock = await getLastBlockHeightInBlockchain(rewardRate.chainId);
+        let chainTransactions = await getTransactionsFromBlockchain(rewardRate, startingBlock, endingBlock);
         allTransactions.push(...chainTransactions);
     }
     return allTransactions;
@@ -109,25 +101,25 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
     }
     let chainId = asset.chainId;
     let contractAddress = asset.contract;
-    let transferTopic = asset.transferTopic;
-    const CHUNK_SIZE = 100000;
+    const CHUNK_SIZE = BigNumber(100000);
     for (let iStart = startingBlock; iStart < endingBlock; iStart += CHUNK_SIZE) {
-        let iEnd = iStart + CHUNK_SIZE - 1;
+        let iEnd = iStart + CHUNK_SIZE - BigNumber(1);
         if (iEnd > endingBlock) {
             iEnd = endingBlock;
         }
         logger.info(`Fetching events on chain ${chainId} contract ${contractAddress} from block ${iStart} to block ${iEnd}`);
-        let url = `https://api.covalenthq.com/v1/${chainId}/events/topics/${transferTopic}/?sender-address=${contractAddress}&starting-block=${iStart}&ending-block=${iEnd}&page-number=0&page-size=999999999&key=${process.env.COVALENT_KEY}`;
+        let url = `https://api.covalenthq.com/v1/${chainId}/events/topics/${TRANSFER_TOPIC}/?sender-address=${contractAddress}&starting-block=${iStart}&ending-block=${iEnd}&page-number=0&page-size=999999999&key=${process.env.COVALENT_KEY}`;
         let result = await fetch(url);
         let resultJson = await result.json();
         if (resultJson.error) {
             logger.error(`Error fetching events: ${resultJson.error_message}`);
+            //using a timeout to avoid the script to exit before the error is logged
             setTimeout(exit, 2000, 1);
         }
         let mappedTransactions = resultJson.data.items.map(item => {
             return {
                 txHash: item.tx_hash,
-                assetType: asset.assetType,
+                assetType: asset.type,
                 blockTimestamp: Date.parse(item.block_signed_at) / 1000, // Converting to unix timestamp
                 blockNumber: item.block_height,
                 from: item.decoded.params[0].value,
@@ -142,13 +134,13 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
         // store the last block number inspected in the DB
         await prisma.rewardType.upsert({
             where: {
-                type: asset.assetType
+                type: asset.type
             },
             update: {
                 lastBlockInspected: iEnd,
             },
             create: {
-                type: asset.assetType,
+                type: asset.type,
                 lastBlockInspected: iEnd,
                 rewardRate: asset.rewardRate,
                 chainId: parseInt(asset.chainId),
@@ -176,7 +168,8 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end) {
     let refTimestamp = begin;
     let pinaPoints = BigNumber(0);
 
-    let rewardRate = BigNumber(ASSETS[assetType].rewardRate);
+    let rewardRate = BigNumber(assetType.rewardRate);
+
     let userTransactions = await getUserTransactions(address, assetType, begin + 1, end);
 
     for (transaction of userTransactions) {
@@ -214,7 +207,7 @@ async function getUserTransactions(address, assetType, begin, end) {
                 }
             },],
             assetType: {
-                equals: assetType
+                equals: assetType.type
             },
             blockTimestamp: {
                 gte: begin,
@@ -260,7 +253,9 @@ async function main() {
         logger.info('Publishing results');
     }
 
-    let transactions = await getLatestTransactionsFromAllBlockchains();
+    let rewardRateTypes = await getRewardRates();
+
+    let transactions = await getLatestTransactionsFromAllBlockchains(rewardRateTypes);
 
     if (publishResults) {
         const Rewards = await ethers.getContractFactory("Rewards");
@@ -277,15 +272,16 @@ async function main() {
         });
         for (user of dbUsers) {
             let earnedPoints = new BigNumber(0);
-            for (assetType in ASSETS) {
-                earnedPoints = earnedPoints.plus(await getUserPointsAtTimestamp(user.walletAddress, assetType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000)));
+            // for each asset (Meme on Ethereum, Meme on Fantom, liquidity on Fantom) calculate the user's points
+            for (let rewardRateType of rewardRateTypes) {
+                earnedPoints = earnedPoints.plus(await getUserPointsAtTimestamp(user.walletAddress, rewardRateType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000)));
             }
             if (earnedPoints == 0 && hre.network.name == "rinkeby") {
                 logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
                 earnedPoints = BigNumber(1500000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000));
 
             }
-            console.log(`${user.walletAddress} has ${earnedPoints} points`);
+            // push each address-points pair to be a leaf in the Merkle tree
             leaves.push({
                 address: user.walletAddress,
                 points: earnedPoints,
@@ -306,7 +302,7 @@ async function main() {
             proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
             logger.info(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
 
-            // store proof in the DB so it can be easily queried
+            // store proof in the DB so it can be easily queried when users claim points
             await prisma.rewardPublished.upsert({
                 where: {
                     address: leaf.address
@@ -325,6 +321,19 @@ async function main() {
         }
     }
     logger.info('Finished successfully');
+}
+
+async function getRewardRates() {
+    return await prisma.rewardType.findMany({
+        select: {
+            contract: true,
+            lastBlockInspected: true,
+            rewardRate: true,
+            startingBlock: true,
+            chainId: true,
+            type: true,
+        },
+    });
 }
 
 function getEncodedLeaf(leaf) {
