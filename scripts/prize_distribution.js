@@ -15,56 +15,27 @@ const { info } = require("winston");
 
 var abiCoder = ethers.utils.defaultAbiCoder;
 const buf2hex = x => '0x' + x.toString('hex');
-const logger = createLogger('memex_scripts', 'prize_distribution');
+let logger;
+let lottery;
 
 async function main() {
     await hre.run('compile');
+    logger = createLogger('memex_scripts', `prize_distribution_${hre.network.name}`);
     logger.info(`Starting prize distribution script on ${hre.network.name}`);
 
     const Lottery = await ethers.getContractFactory("MemeXLottery");
     const blockNum = await ethers.provider.getBlockNumber();
     const block = await ethers.provider.getBlock(blockNum);
+
     owner = await ethers.getSigner();
     Rewards = await ethers.getContractFactory('Rewards');
     Nft = await ethers.getContractFactory("MemeXNFT");
+
     if (hre.network.name == "hardhat") {
-        // if running on memory, deploy the contracts and initialize 
-
-        Token = await ethers.getContractFactory("MemeXToken");
-        token = await Token.deploy("MEMEX", "MemeX", 1, owner.address);
-        rewards = await Rewards.deploy(owner.address);
-        lottery = await Lottery.deploy(rewards.address);
-        await rewards.addSmartContractRole(lottery.address);
-
-        nft = await Nft.deploy("Memex", "MEMEX", owner.address);
-        nft.addMinterRole(owner.address);
-        nft.addMinterRole(lottery.address);
-        nft.addSmartContractRole(lottery.address);
-        MockRNG = await ethers.getContractFactory("MockRNG");
-        mockRng = await MockRNG.deploy(lottery.address);
-        await lottery.setRandomGenerator(mockRng.address);
-        await lottery.createNewLottery(0, 1, block.timestamp, block.timestamp + 1100,
-            nft.address, 0, owner.address, "ipfs://path/");
-        await lottery.addPrizes(1, [1, 2], [1, 1000]);
-        accounts = await ethers.getSigners();
-        for (i = 0; i < 100; i++) {
-            logger.info(`Buying ticket with account ${i}`);
-            await lottery.connect(accounts[i]).buyTickets(1, 1, false, { value: 1 });
-        }
-        await ethers.provider.send("evm_increaseTime", [1500]); // long wait, enough to be after the end of the lottery
-        await ethers.provider.send("evm_mine", []);
-        await lottery.requestRandomNumber(1);
-        await mockRng.fulfillRequest(1, 1);
-
+        await hardhatTests(Lottery, block);
     } else {
         lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
         lottery = await Lottery.attach(lotteryAddress);
-        // nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
-        // nft = await Nft.attach(nftAddress);
-        // await lottery.createNewLottery(0, 0, block.timestamp, block.timestamp + 86400 * 10,
-        //     nft.address,
-        //     0, 0, owner.address, "ipfs://path/");
-        // process.exit(0);
     }
     logger.info('Searching for lotteries that require action');
     lotteries = await lottery.getLotteryIds();
@@ -87,7 +58,6 @@ async function main() {
             if (!hasProof) {
                 logger.info(`Lottery ${lotteryId} is closed but has no PrizeProof`);
                 entries = await lottery.getLotteryTickets(lotteryId, { gasLimit: 500000000 });
-                logger.info(1);
                 totalEntries = entries.length;
                 logger.info(entries);
                 logger.info(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
@@ -161,7 +131,7 @@ async function main() {
                 const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
 
                 const root = tree.getHexRoot().toString('hex');
-                logger.info(`Storing Merkle tree root in the contract: ${root}`);
+                logger.info(`Storing the Merkle tree root in the contract: ${root}`);
                 await lottery.setPrizeMerkleRoot(lotteryId, root);
 
                 // generate proofs for each winner
@@ -180,6 +150,35 @@ async function main() {
         }
     }
     logger.info('Finished successfully');
+}
+
+async function hardhatTests(Lottery, block) {
+    // if running on the hardhat network, deploy the contracts and initialize 
+    Token = await ethers.getContractFactory("MemeXToken");
+    token = await Token.deploy("MEMEX", "MemeX", 1, owner.address);
+    rewards = await Rewards.deploy(owner.address);
+    lottery = await Lottery.deploy(rewards.address);
+    await rewards.addSmartContractRole(lottery.address);
+
+    nft = await Nft.deploy("Memex", "MEMEX", owner.address);
+    nft.addMinterRole(owner.address);
+    nft.addMinterRole(lottery.address);
+    nft.addSmartContractRole(lottery.address);
+    MockRNG = await ethers.getContractFactory("MockRNG");
+    mockRng = await MockRNG.deploy(lottery.address);
+    await lottery.setRandomGenerator(mockRng.address);
+    await lottery.createNewLottery(0, 1, block.timestamp, block.timestamp + 1100,
+        nft.address, 0, owner.address, "ipfs://path/");
+    await lottery.addPrizes(1, [1, 2], [1, 1000]);
+    accounts = await ethers.getSigners();
+    for (i = 0; i < 100; i++) {
+        logger.info(`Buying ticket with account ${i}`);
+        await lottery.connect(accounts[i]).buyTickets(1, 1, false, { value: 1 });
+    }
+    await ethers.provider.send("evm_increaseTime", [1500]); // long wait, enough to be after the end of the lottery
+    await ethers.provider.send("evm_mine", []);
+    await lottery.requestRandomNumber(1);
+    await mockRng.fulfillRequest(1, 1);
 }
 
 function exit(code) {

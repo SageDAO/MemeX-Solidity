@@ -27,7 +27,7 @@ const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a
 //     },
 // }
 
-const logger = createLogger('memex_scripts', 'update_balances');
+let logger;
 
 /**
  * @param {*} assetType 
@@ -246,6 +246,7 @@ const buf2hex = x => '0x' + x.toString('hex');
 
 async function main() {
     await hre.run('compile');
+    logger = createLogger('memex_scripts', `update_balances_${hre.network.name}`);
     logger.info(`Started update_balances job on ${hre.network.name}`);
 
     const publishResults = process.argv.slice(2)[0];
