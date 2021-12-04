@@ -1,21 +1,20 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
 import "../Access/MemeXAccessControls.sol";
 import "../Utils/StringUtils.sol";
+import "../../interfaces/IMemeXNFT.sol";
 
-contract MemeXNFT is ERC1155, MemeXAccessControls {
+contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
     uint256 public collectionCount;
-
-    uint16 public defaultRoyaltyPercentage = 200;
 
     string public name;
     // Contract symbol
     string public symbol;
 
-    // tokenId => token Info
-    mapping(uint256 => TokenInfo) public tokenInfo;
+    // tokenId => collectionId
+    mapping(uint256 => uint256) public tokenToCollection;
 
     // collectionId => collection info
     mapping(uint256 => CollectionInfo) public collections;
@@ -32,13 +31,6 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
     struct DropInfo {
         uint256 firstId;
         uint256 lastId;
-        
-    }
-
-    struct TokenInfo {
-        uint32 tokenSupply;
-        uint32 tokenMaxSupply;
-        uint256 collectionId;
     }
 
     function incrementCollectionCount() internal {
@@ -59,14 +51,6 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
             super.supportsInterface(interfaceId);
     }
 
-    function totalSupply(uint256 _id) public view returns (uint256) {
-        return tokenInfo[_id].tokenSupply;
-    }
-
-    function maxSupply(uint256 _id) public view returns (uint256) {
-        return tokenInfo[_id].tokenMaxSupply;
-    }
-
     constructor(
         string memory _name,
         string memory _symbol,
@@ -77,47 +61,38 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         initAccessControls(_admin);
     }
 
+    /**
+     * @notice Changes information about a collection (drop).
+     * @param _collectionId the collectionId
+     * @param _artistAddress the wallet address of the artist
+     * @param _royaltyPercentage the royalty percentage in base points (200 = 2%)
+     * @param _dropMetadataURI the metadata URI of the drop
+     */
     function setCollection(
         uint256 _collectionId,
         address _artistAddress,
-        uint16 _royalty,
+        uint16 _royaltyPercentage,
         string memory _dropMetadataURI
     ) public {
         require(
-            hasAdminRole(msg.sender) ||
-                msg.sender == collections[_collectionId].artistAddress,
+            hasAdminRole(msg.sender),
             "MemeXNFT: Only Admin can set collection info"
         );
         require(_artistAddress != address(0));
         collections[_collectionId].artistAddress = _artistAddress;
-        collections[_collectionId].royalty = _royalty;
+        collections[_collectionId].royalty = _royaltyPercentage;
         collections[_collectionId].dropMetadataURI = _dropMetadataURI;
     }
 
     /**
-     * @dev Creates a new token type
-     * @param _maxSupply maximum amount of tokens that can be created
-     * @param _collectionId identifies the drop collection (lotteryId for lotteries)
+     * @notice Creates a new collection (drop).
+     * @param _artistAddress the wallet address of the artist
+     * @param _royaltyPercentage the royalty percentage in base points (200 = 2%)
+     * @param _dropMetadataURI the metadata URI of the drop
      */
-    function createTokenType(
-        uint256 _id,
-        uint32 _maxSupply,
-        uint256 _collectionId
-    ) external {
-        require(
-            hasAdminRole(msg.sender) ||
-                hasSmartContractRole(msg.sender) ||
-                hasMinterRole(msg.sender),
-            "ERC1155.create only Lottery or Minter can create"
-        );
-        require(_maxSupply > 0, "Max supply can't be 0");
-        require(!exists(_id), "Token Id Already exists");
-        TokenInfo memory token = TokenInfo(0, _maxSupply, _collectionId);
-        tokenInfo[_id] = token;
-    }
-
     function createCollection(
         address _artistAddress,
+        uint16 _royaltyPercentage,
         string memory _dropMetadataURI
     ) external returns (uint256) {
         require(
@@ -127,7 +102,7 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         require(_artistAddress != address(0), "Artist address can't be 0");
         CollectionInfo memory collection = CollectionInfo(
             _artistAddress,
-            defaultRoyaltyPercentage,
+            _royaltyPercentage,
             _dropMetadataURI
         );
         incrementCollectionCount();
@@ -146,18 +121,15 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         address _to,
         uint256 _id,
         uint32 _quantity,
+        uint256 _collectionId,
         bytes memory _data
     ) public {
         require(
             hasSmartContractRole(msg.sender) || hasMinterRole(msg.sender),
             "MemeXNFT: Only Lottery or Minter role can mint"
         );
-        TokenInfo storage token = tokenInfo[_id];
-        require(
-            token.tokenSupply + _quantity <= token.tokenMaxSupply,
-            "Max supply reached"
-        );
-        token.tokenSupply += _quantity;
+        tokenToCollection[_id] = _collectionId;
+        nftsInCollection[_collectionId].push(_id);
         _mint(_to, _id, _quantity, _data);
     }
 
@@ -172,14 +144,10 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         collections[_collectionId].dropMetadataURI = _newBaseMetadataURI;
     }
 
-    function exists(uint256 _id) public view returns (bool) {
-        return tokenInfo[_id].tokenMaxSupply != 0;
-    }
-
     function uri(uint256 _id) public view override returns (string memory) {
         require(exists(_id), "NONEXISTENT_TOKEN");
         // fetch base URI for this collection
-        string memory baseURI = collections[tokenInfo[_id].collectionId]
+        string memory baseURI = collections[tokenToCollection[_id]]
             .dropMetadataURI;
 
         return StringUtils.strConcat(baseURI, StringUtils.uint2str(_id));
@@ -196,7 +164,7 @@ contract MemeXNFT is ERC1155, MemeXAccessControls {
         returns (address receiver, uint256 royaltyAmount)
     {
         CollectionInfo memory collection = collections[
-            tokenInfo[tokenId].collectionId
+            tokenToCollection[tokenId]
         ];
         return (
             collection.artistAddress,

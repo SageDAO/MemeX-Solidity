@@ -22,6 +22,8 @@ interface ILottery {
         IMemeXNFT _nftContract,
         uint16 _maxParticipants,
         address _artistAddress,
+        uint256 _defaultPrizeId,
+        uint16 _royaltyPercentage,
         string calldata _dropMetadataURI
     ) external returns (uint256 lotteryId);
 }

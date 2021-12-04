@@ -11,14 +11,16 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const logger = createLogger('memex_scripts', 'create_lotteries_from_db');
-const Lottery = await ethers.getContractFactory("MemeXLottery");
-const lottery = await Lottery.attach(lotteryAddress);
-
-const NFT = await hre.ethers.getContractFactory("MemeXNFT");
-const nftContract = await NFT.attach(nftAddress);
+let nftContract;
 
 async function main() {
     await hre.run('compile');
+    const Lottery = await ethers.getContractFactory("MemeXLottery");
+    const lottery = await Lottery.attach(lotteryAddress);
+
+    const NFT = await hre.ethers.getContractFactory("MemeXNFT");
+    nftContract = await NFT.attach(nftAddress);
+    // define a float value
 
     // find drops approved but not yet created on chain
     let drops = await fetchDropsReadyForBlockchain();
@@ -32,7 +34,9 @@ async function main() {
 
 async function createLottery(drop, lottery) {
     logger.info("Drop #id: " + drop.id);
-    const receipt = await lottery.createNewLottery(
+    // percentage in base points (200 = 2%)
+    let royaltyPercentageBasePoints = parseInt(drop.royaltyPercentage * 100);
+    const tx = await lottery.createNewLottery(
         drop.costPerTicketPoints,
         drop.costPerTicketCoins,
         drop.startTime / 1000,
@@ -40,6 +44,8 @@ async function createLottery(drop, lottery) {
         nftContract.address,
         drop.maxParticipants,
         drop.CreatedBy.walletAddress,
+        drop.defaultPrizeId || 0,
+        royaltyPercentageBasePoints,
         drop.metadataIpfsPath
     );
     const receipt = await tx.wait();
@@ -51,7 +57,7 @@ async function createLottery(drop, lottery) {
             id: drop.id
         },
         data: {
-            lotteryId: drop.lotteryId,
+            lotteryId: drop.lotteryId.toNumber(),
             blockchainCreatedAt: drop.blockchainCreatedAt
         }
     });
@@ -73,9 +79,6 @@ async function fetchDropsReadyForBlockchain() {
     return await prisma.drop.findMany(
         {
             where: {
-                approvedAt: {
-                    not: null
-                },
                 blockchainCreatedAt: {
                     equals: null
                 }

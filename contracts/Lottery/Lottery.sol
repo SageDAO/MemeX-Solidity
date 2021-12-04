@@ -69,6 +69,7 @@ contract MemeXLottery is Ownable, ILottery {
         uint256 ticketCostPinas; // Cost per ticket in points/tokens
         uint256 ticketCostCoins; // Cost per ticket in FTM
         IMemeXNFT nftContract; // reference to the NFT Contract
+        uint256 defaultPrizeId; // prize all participants win if no other prizes are given
     }
 
     event ResponseReceived(bytes32 indexed _requestId);
@@ -234,13 +235,7 @@ contract MemeXLottery is Ownable, ILottery {
             _prizeIds.length == _prizeAmounts.length,
             "Number of prize ids and amounts must be equal"
         );
-        IMemeXNFT nftContract = lottery.nftContract;
         for (uint16 i = 0; i < _prizeIds.length; i++) {
-            nftContract.createTokenType(
-                _prizeIds[i],
-                _prizeAmounts[i],
-                _lotteryId
-            );
             prizes[_lotteryId].push(PrizeInfo(_prizeIds[i], _prizeAmounts[i]));
         }
 
@@ -254,6 +249,11 @@ contract MemeXLottery is Ownable, ILottery {
      * @param _startTime timestamp to begin lottery entries
      * @param _nftContract reference to the NFT contract
      * @param _maxParticipants max number of participants. Use 0 for unlimited
+     * @param _artistAddress wallet address of the artist
+     * @param _defaultPrizeId default prize id
+     * @param _royaltyPercentage royalty percentage for the drop in base points (200 = 2% )
+     * @param _dropMetadataURI base URI for the drop metadata
+     * @return lotteryId
      */
     function createNewLottery(
         uint256 _costPerTicketPinas,
@@ -263,6 +263,8 @@ contract MemeXLottery is Ownable, ILottery {
         IMemeXNFT _nftContract,
         uint16 _maxParticipants,
         address _artistAddress,
+        uint256 _defaultPrizeId,
+        uint16 _royaltyPercentage,
         string calldata _dropMetadataURI
     ) public onlyOwner returns (uint256 lotteryId) {
         Status lotteryStatus;
@@ -273,6 +275,7 @@ contract MemeXLottery is Ownable, ILottery {
         }
         lotteryId = _nftContract.createCollection(
             _artistAddress,
+            _royaltyPercentage,
             _dropMetadataURI
         );
         LotteryInfo memory newLottery = LotteryInfo(
@@ -284,7 +287,8 @@ contract MemeXLottery is Ownable, ILottery {
             lotteryStatus,
             _costPerTicketPinas,
             _costPerTicketCoins,
-            _nftContract
+            _nftContract,
+            _defaultPrizeId
         );
         lotteryHistory[lotteryId] = newLottery;
         lotteries.push(lotteryId);
@@ -516,7 +520,7 @@ contract MemeXLottery is Ownable, ILottery {
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
         participant.prizeClaimed = true;
-        nftContract.mint(_winner, _prizeId, 1, "");
+        nftContract.mint(_winner, _prizeId, 1, _lotteryId, "");
         emit PrizeClaimed(_lotteryId, _winner, _prizeId);
     }
 
