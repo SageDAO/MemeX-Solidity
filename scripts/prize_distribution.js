@@ -41,111 +41,121 @@ async function main() {
     lotteries = await lottery.getLotteryIds();
     for (lotteryId of lotteries) {
         lotteryInfo = await lottery.getLotteryInfo(lotteryId);
+
         if (lotteryInfo.status == 2 && lotteryInfo.closingTime < block.timestamp) {
-            logger.info(`Lottery ${lotteryId} is closed, requesting random number`);
-            await lottery.requestRandomNumber(lotteryId);
-            continue;
+            participants = await lottery.getParticipantsCount(lotteryId);
+            if (participants > 0) {
+                logger.info(`Lottery ${lotteryId} is closed, requesting random number`);
+                await lottery.requestRandomNumber(lotteryId);
+                continue;
+            } else {
+                logger.info(`Lottery ${lotteryId} is closed and had no participants, canceling`);
+                await lottery.cancelLottery(lotteryId);
+                continue;
+            }
         }
         if (lotteryInfo.status == 4) {
-            // check if there are prizeProofs stored in the DB for that lottery
-            hasProof = await prisma.prizeProof.findFirst({
-                where: {
-                    lotteryId: lotteryId.toNumber()
-                }
-            });
-
-            // if there aren't any, create the proofs
-            if (!hasProof) {
-                logger.info(`Lottery ${lotteryId} is closed but has no PrizeProof`);
-                entries = await lottery.getLotteryTickets(lotteryId, { gasLimit: 500000000 });
-                totalEntries = entries.length;
-                logger.info(entries);
-                logger.info(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
-
-                lotteryInfo = await lottery.getLotteryInfo(lotteryId);
-                assert(lotteryInfo.status == 4, "Lottery must be closed to distribute prizes");
-
-                defaultPrizeId = lotteryInfo.defaultPrizeId;
-
-                randomSeed = await lottery.randomSeeds(lotteryId);
-                logger.info(`Random seed stored for this lottery: ${randomSeed}`);
-
-                totalParticipants = await lottery.getParticipantsCount(lotteryId);
-                logger.info(`Total participants: ${totalParticipants}`);
-
-                logger.info(`Getting prize info`);
-                prizes = await lottery.getPrizes(lotteryId);
-                var totalPrizes = 0;
-                // iterate the prize array getting the number of prizes for each entry
-                for (let i = 0; i < prizes.length; i++) {
-                    totalPrizes += prizes[i].maxSupply;
-                }
-                if (totalPrizes > totalParticipants) {
-                    totalPrizes = totalParticipants;
-                }
-
-                logger.info(`Total prizes: ${totalPrizes}`);
-                var prizesAwarded = 0;
-                logger.info(`Starting prize distribution`);
-                const winners = new Set();
-                var leaves = new Array();
-                for (prizeIndex in prizes) {
-                    for (i = 0; i < prizes[prizeIndex].maxSupply; i++) {
-                        if (prizesAwarded == totalPrizes) {
-                            break;
-                        }
-                        hashOfSeed = keccak256(abiCoder.encode(['uint256', 'uint256'], [randomSeed, prizesAwarded]));
-
-                        // convert hash into a number
-                        randomPosition = ethers.BigNumber.from(hashOfSeed).mod(totalEntries);
-                        logger.info(`Generated random position ${randomPosition}`);
-                        while (winners.has(entries[randomPosition])) {
-                            logger.info(`${entries[randomPosition]} already won a prize, checking next position in array`);
-                            randomPosition++;
-                            randomPosition = randomPosition % totalEntries;
-                        }
-                        winners.add(entries[randomPosition]);
-                        prizesAwarded++;
-                        logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${entries[randomPosition]}`);
-
-                        var leaf = {
-                            lotteryId: Number(lotteryId), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), proof: "", createdAt: new Date()
-                        };
-                        leaves.push(leaf);
+            participants = await lottery.getParticipantsCount(lotteryId);
+            if (participants > 0) {
+                // check if there are prizeProofs stored in the DB for that lottery
+                hasProof = await prisma.prizeProof.findFirst({
+                    where: {
+                        lotteryId: lotteryId.toNumber()
                     }
-                }
-                // if lottery has defaultPrize, distribute it to all participants that did not win a prize above
-                if (defaultPrizeId != 0) {
-                    for (i = 0; i < entries.length; i++) {
-                        if (!winners.has(entries[i])) {
+                });
+
+                // if there aren't any, create the proofs
+                if (!hasProof) {
+                    logger.info(`Lottery ${lotteryId} is closed but has no PrizeProof`);
+                    entries = await lottery.getLotteryTickets(lotteryId, { gasLimit: 500000000 });
+                    totalEntries = entries.length;
+                    logger.info(entries);
+                    logger.info(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
+
+                    lotteryInfo = await lottery.getLotteryInfo(lotteryId);
+                    assert(lotteryInfo.status == 4, "Lottery must be closed to distribute prizes");
+
+                    defaultPrizeId = lotteryInfo.defaultPrizeId;
+
+                    randomSeed = await lottery.randomSeeds(lotteryId);
+                    logger.info(`Random seed stored for this lottery: ${randomSeed}`);
+
+                    totalParticipants = await lottery.getParticipantsCount(lotteryId);
+                    logger.info(`Total participants: ${totalParticipants}`);
+
+                    logger.info(`Getting prize info`);
+                    prizes = await lottery.getPrizes(lotteryId);
+                    var totalPrizes = 0;
+                    // iterate the prize array getting the number of prizes for each entry
+                    for (let i = 0; i < prizes.length; i++) {
+                        totalPrizes += prizes[i].maxSupply;
+                    }
+                    if (totalPrizes > totalParticipants) {
+                        totalPrizes = totalParticipants;
+                    }
+
+                    logger.info(`Total prizes: ${totalPrizes}`);
+                    var prizesAwarded = 0;
+                    logger.info(`Starting prize distribution`);
+                    const winners = new Set();
+                    var leaves = new Array();
+                    for (prizeIndex in prizes) {
+                        for (i = 0; i < prizes[prizeIndex].maxSupply; i++) {
+                            if (prizesAwarded == totalPrizes) {
+                                break;
+                            }
+                            hashOfSeed = keccak256(abiCoder.encode(['uint256', 'uint256'], [randomSeed, prizesAwarded]));
+
+                            // convert hash into a number
+                            randomPosition = ethers.BigNumber.from(hashOfSeed).mod(totalEntries);
+                            logger.info(`Generated random position ${randomPosition}`);
+                            while (winners.has(entries[randomPosition])) {
+                                logger.info(`${entries[randomPosition]} already won a prize, checking next position in array`);
+                                randomPosition++;
+                                randomPosition = randomPosition % totalEntries;
+                            }
+                            winners.add(entries[randomPosition]);
+                            prizesAwarded++;
+                            logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${entries[randomPosition]}`);
+
                             var leaf = {
-                                lotteryId: Number(lotteryId), winnerAddress: entries[i], nftId: defaultPrizeId.toNumber(), proof: "", createdAt: new Date()
+                                lotteryId: Number(lotteryId), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), proof: "", createdAt: new Date()
                             };
-                            winners.add(entries[i]);
                             leaves.push(leaf);
                         }
                     }
-                }
-                logger.info(`All prizes awarded. Building the merkle tree`);
-                hashedLeaves = leaves.map(leaf => getEncodedLeaf(leaf));
-                const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
+                    // if lottery has defaultPrize, distribute it to all participants that did not win a prize above
+                    if (defaultPrizeId != 0) {
+                        for (i = 0; i < entries.length; i++) {
+                            if (!winners.has(entries[i])) {
+                                var leaf = {
+                                    lotteryId: Number(lotteryId), winnerAddress: entries[i], nftId: defaultPrizeId.toNumber(), proof: "", createdAt: new Date()
+                                };
+                                winners.add(entries[i]);
+                                leaves.push(leaf);
+                            }
+                        }
+                    }
+                    logger.info(`All prizes awarded. Building the merkle tree`);
+                    hashedLeaves = leaves.map(leaf => getEncodedLeaf(leaf));
+                    const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
 
-                const root = tree.getHexRoot().toString('hex');
-                logger.info(`Storing the Merkle tree root in the contract: ${root}`);
-                await lottery.setPrizeMerkleRoot(lotteryId, root);
+                    const root = tree.getHexRoot().toString('hex');
+                    logger.info(`Storing the Merkle tree root in the contract: ${root}`);
+                    await lottery.setPrizeMerkleRoot(lotteryId, root);
 
-                // generate proofs for each winner
-                for (index in leaves) {
-                    leaf = leaves[index];
-                    leaf.proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
-                    logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`)
+                    // generate proofs for each winner
+                    for (index in leaves) {
+                        leaf = leaves[index];
+                        leaf.proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
+                        logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`)
+                    }
+                    // store proofs on the DB so it can be easily queried
+                    if (hre.network.name != "hardhat") {
+                        created = await prisma.prizeProof.createMany({ data: leaves });
+                        logger.info(`${created.count} Proofs created in the DB.`);
+                    }
                 }
-                // store proofs on the DB so it can be easily queried
-                if (hre.network.name != "hardhat") {
-                    created = await prisma.prizeProof.createMany({ data: leaves });
-                    logger.info(`${created.count} Proofs created in the DB.`);
-                }
-
             }
         }
     }
