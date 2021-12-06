@@ -87,7 +87,8 @@ contract MemeXLottery is Ownable, ILottery {
     event NewEntry(
         uint256 indexed lotteryId,
         uint256 number,
-        address indexed participantAddress
+        address indexed participantAddress,
+        bool withPoints
     );
 
     event PrizeClaimed(
@@ -475,7 +476,7 @@ contract MemeXLottery is Ownable, ILottery {
             participants[_lotteryId][msg.sender] = participantInfo;
         }
         for (uint8 i = 0; i < numberOfTickets; i++) {
-            assignNewTicketToParticipant(_lotteryId, msg.sender);
+            assignNewTicketToParticipant(_lotteryId, msg.sender, _usePoints);
         }
         return remainingPoints;
     }
@@ -487,13 +488,15 @@ contract MemeXLottery is Ownable, ILottery {
      */
     function assignNewTicketToParticipant(
         uint256 _lotteryId,
-        address _participantAddress
+        address _participantAddress,
+        bool _withPoints
     ) private {
         lotteryTickets[_lotteryId].push(_participantAddress);
         emit NewEntry(
             _lotteryId,
             lotteryTickets[_lotteryId].length,
-            _participantAddress
+            _participantAddress,
+            _withPoints
         );
     }
 

@@ -1,7 +1,7 @@
 CONTRACTS = {
     "rinkeby": {
         "chainId": "",
-        "lotteryAddress": "0x8861Ce12bea1503f889ae7d271B8CC9E2474cc86",
+        "lotteryAddress": "0xF62A9F51e0172aEC42D3eE35aC6F79A2D7543C43",
         "tokenAddress": "0x65cD770B9FA597F11f4665746A10e19294aFF65f",
         "nftAddress": "0x9d02Ac9230516aa4FA820b0D3A4DEaf89bED9Adc",
         "randomnessAddress": "0xB988eF0C42B682E59b0215b08a985a0d4C3225A9",
