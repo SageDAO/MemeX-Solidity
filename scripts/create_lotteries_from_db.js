@@ -39,8 +39,8 @@ async function createLottery(drop, lottery) {
     const tx = await lottery.createNewLottery(
         drop.costPerTicketPoints,
         drop.costPerTicketCoins,
-        drop.startTime / 1000,
-        drop.endTime / 1000,
+        drop.startTime,
+        drop.endTime,
         nftContract.address,
         drop.maxParticipants,
         drop.CreatedBy.walletAddress,
@@ -81,6 +81,9 @@ async function fetchDropsReadyForBlockchain() {
             where: {
                 blockchainCreatedAt: {
                     equals: null
+                },
+                approvedAt: {
+                    not: null
                 }
             },
             include: {
