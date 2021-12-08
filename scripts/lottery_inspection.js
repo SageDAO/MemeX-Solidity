@@ -252,7 +252,29 @@ async function createLottery(drop, lottery, nftContractAddress) {
             blockchainCreatedAt: drop.blockchainCreatedAt
         }
     });
+    await addPrizes(drop, lottery);
+
     logger.info("Created new lottery with #lotteryId: " + drop.lotteryId);
 }
 
 const buf2hex = x => '0x' + x.toString('hex');
+
+async function addPrizes(drop, lottery) {
+    let prizes = await prisma.nft.findMany({
+        where: {
+            dropId: drop.lotteryId.toNumber()
+        },
+        orderBy: {
+            numberOfMints: "asc"
+        }
+    });
+    console.log(prizes);
+    let prizeIds = Array();
+    let prizeAmounts = Array();
+    for (prize of prizes) {
+        prizeIds.push(prize.id);
+        prizeAmounts.push(prize.numberOfMints);
+    }
+    await lottery.addPrizes(drop.lotteryId.toNumber(), prizeIds, prizeAmounts);
+}
+
