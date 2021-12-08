@@ -272,21 +272,16 @@ async function main() {
             }
         });
         for (user of dbUsers) {
-            let earnedPoints = new BigNumber(0);
-            // for each asset (Meme on Ethereum, Meme on Fantom, liquidity on Fantom) calculate the user's points
-            for (let rewardRateType of rewardRateTypes) {
-                earnedPoints = earnedPoints.plus(await getUserPointsAtTimestamp(user.walletAddress, rewardRateType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000)));
+            if (isValidAddress(user.walletAddress)) {
+                let earnedPoints = await getUserEarnedPoints(rewardRateTypes, user);
+                // push each address-points pair to be a leaf in the Merkle tree
+                leaves.push({
+                    address: user.walletAddress,
+                    points: earnedPoints,
+                });
+            } else {
+                logger.error(`Error: invalid address ${user.walletAddress}`);
             }
-            if (earnedPoints == 0 && hre.network.name == "rinkeby") {
-                logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
-                earnedPoints = BigNumber(1500000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000));
-
-            }
-            // push each address-points pair to be a leaf in the Merkle tree
-            leaves.push({
-                address: user.walletAddress,
-                points: earnedPoints,
-            });
         }
 
         logger.info(`Publishing rewards`);
@@ -322,6 +317,27 @@ async function main() {
         }
     }
     logger.info('Finished successfully');
+}
+
+function isValidAddress(address) {
+    try {
+        ethers.utils.getAddress(address);
+    } catch (e) { return false; }
+    return true;
+}
+
+async function getUserEarnedPoints(rewardRateTypes, user) {
+    let earnedPoints = new BigNumber(0);
+    // for each asset (Meme on Ethereum, Meme on Fantom, liquidity on Fantom) calculate the user's points
+    for (let rewardRateType of rewardRateTypes) {
+        earnedPoints = earnedPoints.plus(await getUserPointsAtTimestamp(user.walletAddress, rewardRateType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000)));
+    }
+    if (earnedPoints == 0 && hre.network.name == "rinkeby") {
+        logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
+        earnedPoints = BigNumber(1500000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 500000000));
+
+    }
+    return earnedPoints;
 }
 
 async function getRewardRates() {
