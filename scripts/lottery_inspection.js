@@ -77,7 +77,7 @@ async function inspectLotteryState(lotteryId, lottery, block) {
             // check if there are prizeProofs stored in the DB for that lottery
             hasProof = await prisma.prizeProof.findFirst({
                 where: {
-                    lotteryId: lotteryId.toNumber()
+                    lotteryId: lotteryId
                 }
             });
 
@@ -154,7 +154,7 @@ async function inspectLotteryState(lotteryId, lottery, block) {
                     }
                 }
                 logger.info(`All prizes awarded. Building the merkle tree`);
-                hashedLeaves = leaves.map(leaf => getEncodedLeaf(leaf));
+                hashedLeaves = leaves.map(leaf => getEncodedLeaf(lotteryId, leaf));
                 const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
 
                 const root = tree.getHexRoot().toString('hex');
@@ -164,7 +164,7 @@ async function inspectLotteryState(lotteryId, lottery, block) {
                 // generate proofs for each winner
                 for (index in leaves) {
                     leaf = leaves[index];
-                    leaf.proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
+                    leaf.proof = tree.getProof(getEncodedLeaf(lotteryId, leaf)).map(x => buf2hex(x.data)).toString();
                     logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`)
                 }
                 // store proofs on the DB so it can be easily queried
@@ -217,7 +217,7 @@ main()
         setTimeout(exit, 2000, 1);
     });
 
-function getEncodedLeaf(leaf) {
+function getEncodedLeaf(lotteryId, leaf) {
     logger.info(`Encoding leaf: ${leaf.winnerAddress} ${leaf.nftId}`);
     return keccak256(abiCoder.encode(["uint256", "address", "uint256"],
         [lotteryId, leaf.winnerAddress, leaf.nftId]));
