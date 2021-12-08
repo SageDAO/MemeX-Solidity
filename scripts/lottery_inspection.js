@@ -262,13 +262,12 @@ const buf2hex = x => '0x' + x.toString('hex');
 async function addPrizes(drop, lottery) {
     let prizes = await prisma.nft.findMany({
         where: {
-            dropId: drop.lotteryId.toNumber()
+            dropId: drop.id
         },
         orderBy: {
             numberOfMints: "asc"
         }
     });
-    console.log(prizes);
     let prizeIds = Array();
     let prizeAmounts = Array();
     for (prize of prizes) {
