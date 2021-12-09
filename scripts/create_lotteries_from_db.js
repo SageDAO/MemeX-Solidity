@@ -65,6 +65,7 @@ async function createLottery(drop, lottery) {
 }
 
 function exit(code) {
+    prisma.$disconnect;
     process.exit(code);
 }
 

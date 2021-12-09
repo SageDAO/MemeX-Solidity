@@ -207,6 +207,7 @@ async function hardhatTests(Lottery, block) {
 }
 
 function exit(code) {
+    prisma.$disconnect;
     process.exit(code);
 }
 

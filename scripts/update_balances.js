@@ -360,6 +360,7 @@ function getEncodedLeaf(leaf) {
 }
 
 function exit(code) {
+    prisma.$disconnect;
     process.exit(code);
 }
 
