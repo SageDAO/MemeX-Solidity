@@ -293,13 +293,15 @@ async function main() {
         await rewardsContract.setPointsMerkleRoot(root);
 
         // generate proofs for each reward
+        // store each proof in the DB so it can be easily queried when users claim points
+        // it needs to be run inside a transaction (all leafs of the tree update at the same time or roll back)
+        let updates = new Array();
         for (index in leaves) {
             leaf = leaves[index];
             proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
             logger.info(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
 
-            // store proof in the DB so it can be easily queried when users claim points
-            await prisma.rewardPublished.upsert({
+            updates.push(prisma.rewardPublished.upsert({
                 where: {
                     address: leaf.address
                 },
@@ -313,8 +315,9 @@ async function main() {
                     totalPointsEarned: leaf.points.toNumber(),
                     address: leaf.address,
                 },
-            });
+            }));
         }
+        await prisma.$transaction(updates);
     }
     logger.info('Finished successfully');
 }
