@@ -11,8 +11,7 @@ jobs:
   
     steps:
     - uses: actions/checkout@v2
-    - name: Create .env 
-      run: echo $ENV_FILE | tee .env
+    - run: echo ${{secrets.ENV_FILE}} > .env
     - name: Use Node.js
       uses: actions/setup-node@v2
       with:
