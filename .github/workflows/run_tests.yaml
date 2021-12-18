@@ -11,7 +11,7 @@ jobs:
   
     steps:
     - uses: actions/checkout@v2
-    - run: echo ${{secrets.ENV_FILE}} | base64 -d > .env
+    - run: echo $ENV_FILE  | base64 -d > .env
     - name: Use Node.js
       uses: actions/setup-node@v2
       with:
