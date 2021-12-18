@@ -2,17 +2,18 @@ name: Node.js CI
 
 on:
   [push]
-
+env:
+  ENV_FILE: ${{secrets.ENV_FILE}}
 jobs:
   test:
 
     runs-on: ubuntu-latest
-
+  
     steps:
     - uses: actions/checkout@v2
+    - name: Create .env 
+      run: echo $ENV_FILE | tee .env
     - name: Use Node.js
-      env:
-        DEPLOYER_PK: ${{ secrets.DEPLOYER_PK }}
       uses: actions/setup-node@v2
       with:
         node-version: 16.x
