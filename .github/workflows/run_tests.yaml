@@ -18,6 +18,5 @@ jobs:
       with:
         node-version: 16.x
         cache: 'npm'
-    - run: cat .env
     - run: npm install
     - run: npx hardhat test --network hardhat

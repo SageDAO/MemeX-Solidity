@@ -22,16 +22,16 @@ module.exports = {
   networks: {
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
-      accounts: [`${process.env.DEPLOYER_PK}`],
+      accounts: [`${process.env.DEPLOYER_PK || "0x0000000000000000000000000000000000000000"}`],
     },
     fantomtestnet: {
       url: `https://apis.ankr.com/${process.env.ANKR_KEY_TESTNET}/fantom/full/test`,
-      accounts: [`${process.env.DEPLOYER_PK}`],
+      accounts: [`${process.env.DEPLOYER_PK || "0x0000000000000000000000000000000000000000"}`],
       chainId: 0xfa2
     },
     fantom: {
       url: `https://apis.ankr.com/${process.env.ANKR_KEY}/fantom/full/main`,
-      accounts: [`${process.env.DEPLOYER_PK}`],
+      accounts: [`${process.env.DEPLOYER_PK || "0x0000000000000000000000000000000000000000"}`],
       chainId: 0xfa
     },
     hardhat: {
