@@ -335,8 +335,8 @@ async function getUserEarnedPoints(rewardRateTypes, user) {
     for (let rewardRateType of rewardRateTypes) {
         earnedPoints = earnedPoints.plus(await getUserPointsAtTimestamp(user.walletAddress, rewardRateType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000)));
     }
-    if (earnedPoints == 0 && hre.network.name == "rinkeby") {
-        logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
+    if (earnedPoints == 0 && (hre.network.name == "rinkeby" || hre.network.name == "fantomtestnet")) {
+        logger.info(`This is a testnet and ${user.walletAddress} has 0 points. Adding some test points`);
         earnedPoints = BigNumber(15000000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 5000000000));
 
     }

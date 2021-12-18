@@ -51,7 +51,7 @@ deployNFT = async (deployer, lottery) => {
   nft_address = CONTRACTS[hre.network.name]["nftAddress"]
   const Nft = await hre.ethers.getContractFactory("MemeXNFT");
   if (nft_address == "") {
-    console.log("deploying NFT token")
+    console.log("deploying NFT contract")
     nft = await Nft.deploy("MemeX", "MMXNFT", deployer.address);
     await nft.deployed();
     console.log("NFT deployed to:", nft.address);
@@ -121,6 +121,31 @@ deployRandomness = async () => {
   return [randomness, false]
 }
 
+deployRNGTemp = async () => {
+  rand_address = CONTRACTS[hre.network.name]["randomnessAddress"]
+  const Randomness = await hre.ethers.getContractFactory("RNGTemp");
+  if (rand_address == "") {
+    _lotteryAddr = CONTRACTS[hre.network.name]["lotteryAddress"]
+    randomness = await Randomness.deploy(
+      _lotteryAddr)
+    console.log("Randomness deployed to:", randomness.address);
+    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    await hre.run("verify:verify", {
+      address: randomness.address,
+      constructorArguments: [
+        _lotteryAddr
+      ],
+    });
+    return [randomness, true]
+  }
+  else {
+    randomness = await Randomness.attach(rand_address)
+  }
+
+  return [randomness, false]
+}
+
+
 setRandomGenerator = async (lottery, rng) => {
   console.log(`Setting RNG ${rng} on lottery ${lottery.address}`);
   await lottery.setRandomGenerator(rng, { gasLimit: 4000000 });
@@ -139,7 +164,7 @@ async function main() {
 
   token = await deployMemeXToken(deployer);
   rewards = await deployRewards(deployer);
-  values = await deployRandomness();
+  values = await deployRNGTemp();
   randomness = values[0];
   newRandomness = values[1];
 
