@@ -290,7 +290,13 @@ async function main() {
 
         const root = tree.getHexRoot().toString('hex');
         logger.info(`Storing Merkle tree root in the contract: ${root}`);
-        await rewardsContract.setPointsMerkleRoot(root);
+        const wallet = await ethers.getSigner();
+        const nonce = await ethers.provider.getTransactionCount(wallet.address);
+        const tx = await rewardsContract.setPointsMerkleRoot(root, {
+            nonce: nonce
+        });
+
+        //await rewardsContract.setPointsMerkleRoot(root, { nonce: getNonce() });
 
         // generate proofs for each reward
         // store each proof in the DB so it can be easily queried when users claim points
@@ -335,8 +341,8 @@ async function getUserEarnedPoints(rewardRateTypes, user) {
     for (let rewardRateType of rewardRateTypes) {
         earnedPoints = earnedPoints.plus(await getUserPointsAtTimestamp(user.walletAddress, rewardRateType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000)));
     }
-    if (earnedPoints == 0 && hre.network.name == "rinkeby") {
-        logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
+    if (earnedPoints == 0 && (hre.network.name == "rinkeby" || hre.network.name == "fantomtestnet")) {
+        logger.info(`This is a testnet and ${user.walletAddress} has 0 points. Adding some test points`);
         earnedPoints = BigNumber(15000000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 5000000000));
 
     }

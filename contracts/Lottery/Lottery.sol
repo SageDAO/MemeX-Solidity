@@ -66,7 +66,7 @@ contract MemeXLottery is Ownable, ILottery {
         uint32 maxParticipants; // max number of participants
         uint256 lotteryID; // ID for lotto
         Status status; // Status for lotto
-        uint256 ticketCostPinas; // Cost per ticket in points/tokens
+        uint256 ticketCostPoints; // Cost per ticket in points
         uint256 ticketCostCoins; // Cost per ticket in FTM
         IMemeXNFT nftContract; // reference to the NFT Contract
         uint256 defaultPrizeId; // prize all participants win if no other prizes are given
@@ -99,19 +99,6 @@ contract MemeXLottery is Ownable, ILottery {
 
     constructor(address _rewardsContract) {
         rewardsContract = IRewards(_rewardsContract);
-    }
-
-    function setTicketCostPinas(uint256 _price, uint256 _lotteryId)
-        public
-        onlyOwner
-    {
-        require(
-            lotteryHistory[_lotteryId].status == Status.Planned,
-            "Lottery must be planned to change ticket cost"
-        );
-        lotteryHistory[_lotteryId].ticketCostPinas = _price;
-
-        emit TicketCostChanged(msg.sender, _lotteryId, _price);
     }
 
     function setPrizeMerkleRoot(uint256 _lotteryId, bytes32 _root)
@@ -243,6 +230,30 @@ contract MemeXLottery is Ownable, ILottery {
         emit PrizesChanged(_lotteryId, _prizeIds.length);
     }
 
+    function updateLottery(
+        uint256 lotteryId,
+        uint256 _costPerTicketPoints,
+        uint256 _costPerTicketCoins,
+        uint32 _startTime,
+        uint32 _closeTime,
+        IMemeXNFT _nftContract,
+        uint16 _maxParticipants,
+        uint256 _defaultPrizeId,
+        Status _status
+    ) public onlyOwner {
+        LotteryInfo storage lottery = lotteryHistory[lotteryId];
+        require(lottery.startTime > 0, "Lottery does not exist");
+        lottery.startTime = _startTime;
+        lottery.closingTime = _closeTime;
+        lottery.ticketCostPoints = _costPerTicketPoints;
+        lottery.ticketCostCoins = _costPerTicketCoins;
+        lottery.nftContract = _nftContract;
+        lottery.maxParticipants = _maxParticipants;
+        lottery.defaultPrizeId = _defaultPrizeId;
+        lottery.status = _status;
+        emit LotteryStatusChanged(lotteryId, _status);
+    }
+
     /**
      * @notice Creates a new lottery.
      * @param _costPerTicketPinas cost in wei per ticket in points/tokens (token only when using ERC20 on the rewards contract)
@@ -303,7 +314,6 @@ contract MemeXLottery is Ownable, ILottery {
      */
     function requestRandomNumber(uint256 _lotteryId) external onlyOwner {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-        require(prizes[_lotteryId].length != 0, "No prizes for this lottery");
         require(lottery.closingTime < block.timestamp, "Lottery is not closed");
         if (lottery.status == Status.Open) {
             lottery.status = Status.Closed;
@@ -375,7 +385,7 @@ contract MemeXLottery is Ownable, ILottery {
         lottery.status = Status.Canceled;
         address[] memory tickets = lotteryTickets[_lotteryId];
         for (uint16 i = 0; i < tickets.length; i++) {
-            rewardsContract.refundPoints(tickets[i], lottery.ticketCostPinas);
+            rewardsContract.refundPoints(tickets[i], lottery.ticketCostPoints);
         }
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
@@ -445,7 +455,7 @@ contract MemeXLottery is Ownable, ILottery {
         require(lottery.status == Status.Open, "Lottery is not open");
         if (_usePoints) {
             uint256 totalCostInPoints = numberOfTickets *
-                lottery.ticketCostPinas;
+                lottery.ticketCostPoints;
             require(totalCostInPoints > 0, "Can't buy tickets with points");
             remainingPoints = rewardsContract.availablePoints(msg.sender);
             require(
@@ -462,7 +472,7 @@ contract MemeXLottery is Ownable, ILottery {
                 msg.value >= totalCostInCoins,
                 "Didn't transfer enough funds to buy tickets"
             );
-            if (lottery.ticketCostPinas != 0) {
+            if (lottery.ticketCostPoints != 0) {
                 require(
                     participantInfo.ticketsFromPoints > 0,
                     "Participant not found"
