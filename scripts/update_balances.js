@@ -290,7 +290,13 @@ async function main() {
 
         const root = tree.getHexRoot().toString('hex');
         logger.info(`Storing Merkle tree root in the contract: ${root}`);
-        await rewardsContract.setPointsMerkleRoot(root);
+        const wallet = await ethers.getSigner();
+        const nonce = await ethers.provider.getTransactionCount(wallet.address);
+        const tx = await rewardsContract.setPointsMerkleRoot(root, {
+            nonce: nonce
+        });
+
+        //await rewardsContract.setPointsMerkleRoot(root, { nonce: getNonce() });
 
         // generate proofs for each reward
         // store each proof in the DB so it can be easily queried when users claim points

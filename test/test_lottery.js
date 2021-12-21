@@ -46,8 +46,24 @@ describe("Lottery Contract", function () {
         hexproofB = tree.getProof(keccak256(leafB)).map(x => buf2hex(x.data))
     });
 
-    it("Should create a lottery game", async function () {
+    it("Should create a lottery", async function () {
         expect(await lottery.getLotteryCount()).to.equal(1);
+    });
+
+    it("Should update a lottery", async function () {
+        await lottery.updateLottery(1, 0, 1000000000000, block.timestamp, block.timestamp + 86400 * 3,
+            nft.address,
+            1, 2, 3);
+        expect(await lottery.getLotteryCount()).to.equal(1);
+        lottery = await lottery.getLotteryInfo(1);
+        expect(lottery.status).to.equal(3);
+        expect(lottery.ticketCostPoints).to.equal(0);
+        expect(lottery.ticketCostCoins).to.equal(1000000000000);
+        expect(lottery.startTime).to.equal(block.timestamp);
+        expect(lottery.closingTime).to.equal(block.timestamp + 86400 * 3);
+        expect(lottery.nftContract).to.equal(nft.address);
+        expect(lottery.maxParticipants).to.equal(1);
+        expect(lottery.defaultPrizeId).to.equal(2);
     });
 
     it("Should allow user to buy ticket with points", async function () {
@@ -203,10 +219,6 @@ describe("Lottery Contract", function () {
 
     it("Should not call requestRandomNumber if not owner", async function () {
         await expect(lottery.connect(addr1).requestRandomNumber(1)).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Should not call setTicketCostPinas if not owner", async function () {
-        await expect(lottery.connect(addr1).setTicketCostPinas(1, 1)).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
     it("Should not call cancelLottery if not owner", async function () {

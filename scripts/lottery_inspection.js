@@ -242,7 +242,8 @@ async function createLottery(drop, lottery, nftContractAddress) {
     );
     const receipt = await tx.wait();
     drop.lotteryId = receipt.events[0].args[0];
-    logger.info(`Lottery created with lotteryId: ${drop.lotteryId}`);
+    logger.info(`Lottery created with lotteryId: ${drop.lotteryId} | costPoints: ${drop.costPerTicketPoints} | costCoins: ${drop.costPerTicketCoins} | startTime: ${drop.startTime} | endTime: ${drop.endTime} | maxParticipants: ${drop.maxParticipants} | 
+    CreatedBy: ${drop.CreatedBy.walletAddress} | defaultPrizeId: ${drop.defaultPrizeId} | royaltyPercentageBasePoints: ${royaltyPercentageBasePoints} | metadataIpfsPath: ${drop.metadataIpfsPath}`);
     drop.blockchainCreatedAt = new Date();
     await prisma.drop.update({
         where: {
