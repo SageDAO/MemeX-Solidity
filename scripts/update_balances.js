@@ -199,11 +199,11 @@ async function getUserTransactions(address, assetType, begin, end) {
         where: {
             OR: [{
                 from: {
-                    equals: address
+                    equals: address.toLowerCase()
                 }
             }, {
                 to: {
-                    equals: address
+                    equals: address.toLowerCase()
                 }
             },],
             assetType: {
