@@ -1,7 +1,7 @@
 #!/bin/ksh
 
 SCRIPTDIR=$(cd $(dirname $0);echo $PWD)
-pid=$SCRIPTDIR+"/lottery_inspection.pid"
+pid=$SCRIPTDIR"/lottery_inspection.pid"
 trap "rm -f $pid" SIGSEGV
 trap "rm -f $pid" SIGINT
 
