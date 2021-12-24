@@ -15,7 +15,7 @@ fi
 cd $SCRIPTDIR; cd ../..
 git pull
 case "$SCRIPTDIR" in
-  *staging*) export HARDHAT_NETWORK=rinkeby ;;
+  *staging*) export HARDHAT_NETWORK=fantomtestnet ;;
   *)         export HARDHAT_NETWORK=fantom ;;
 esac
 /home/ubuntu/.nvm/versions/node/v16.13.0/bin/node scripts/update_balances.js 1
