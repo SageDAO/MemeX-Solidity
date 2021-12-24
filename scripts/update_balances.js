@@ -44,7 +44,7 @@ async function getLastBlockHeightInDatabase(assetType) {
     });
     let blockHeight = aggregations._max.blockNumber || 0;
     logger.info(`Last block on db for asset ${assetType.type} is ${blockHeight}`);
-    return blockHeight + 1;
+    return blockHeight;
 }
 
 /**
@@ -73,7 +73,7 @@ async function getLatestTransactionsFromAllBlockchains(rewardRateTypes) {
     for (var rewardRate of rewardRateTypes) {
         let startingBlock = await getLastBlockInspected(rewardRate);
         if (startingBlock == 0) {
-            startingBlock = await getLastBlockHeightInDatabase(rewardRate);
+            startingBlock = await getLastBlockHeightInDatabase(rewardRate) + 1;
         }
         if (startingBlock < rewardRate.startingBlock) {
             startingBlock = rewardRate.startingBlock;
@@ -101,9 +101,9 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
     }
     let chainId = asset.chainId;
     let contractAddress = asset.contract;
-    const CHUNK_SIZE = BigNumber(100000);
+    const CHUNK_SIZE = 100000;
     for (let iStart = startingBlock; iStart < endingBlock; iStart += CHUNK_SIZE) {
-        let iEnd = iStart + CHUNK_SIZE - BigNumber(1);
+        let iEnd = iStart + CHUNK_SIZE - 1;
         if (iEnd > endingBlock) {
             iEnd = endingBlock;
         }

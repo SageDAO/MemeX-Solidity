@@ -68,8 +68,11 @@ describe("Lottery Contract", function () {
 
     it("Should allow user to buy ticket with points", async function () {
         await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 1500000000, hexproof);
-        expect(await lottery.getParticipantsCount(1)).to.equal(1);
-        expect(await lottery.getLotteryTicketCount(1)).to.equal(1);
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 2, 15000000000, hexproofB);
+        expect(await lottery.getParticipantsCount(1)).to.equal(2);
+        expect(await lottery.getLotteryTicketCount(1)).to.equal(3);
+        lottery = await lottery.getLotteryInfo(1);
+        expect (lottery.numTicketsWithPoints).to.equal(3);
     });
 
     it("Should allow user to buy tickets with coins", async function () {

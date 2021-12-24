@@ -52,14 +52,14 @@ deployNFT = async (deployer, lottery) => {
   const Nft = await hre.ethers.getContractFactory("MemeXNFT");
   if (nft_address == "") {
     console.log("deploying NFT contract")
-    nft = await Nft.deploy("MemeX", "MMXNFT", deployer.address);
+    nft = await Nft.deploy("MemeX NFTs", "MemeXNFT", deployer.address);
     await nft.deployed();
     console.log("NFT deployed to:", nft.address);
-    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
-    await hre.run("verify:verify", {
-      address: nft.address,
-      constructorArguments: ["MemeX", "MMXNFT", deployer.address],
-    });
+    // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    // await hre.run("verify:verify", {
+    //   address: nft.address,
+    //   constructorArguments: ["MemeX NFTs", "MemeXNFT", deployer.address],
+    // });
     await nft.addSmartContractRole(lottery.address, { gasLimit: 4000000 })
   } else {
     nft = await Nft.attach(nft_address);
@@ -74,11 +74,11 @@ deployLottery = async (rewards, randomness) => {
     lottery = await Lottery.deploy(rewards.address);
     await lottery.deployed();
     console.log("Lottery deployed to:", lottery.address);
-    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
-    await hre.run("verify:verify", {
-      address: lottery.address,
-      constructorArguments: [rewards.address],
-    });
+    // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    // await hre.run("verify:verify", {
+    //   address: lottery.address,
+    //   constructorArguments: [rewards.address],
+    // });
     await rewards.addSmartContractRole(lottery.address);
     await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
     return [lottery, true]

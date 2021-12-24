@@ -68,6 +68,8 @@ contract MemeXLottery is Ownable, ILottery {
         Status status; // Status for lotto
         uint256 ticketCostPoints; // Cost per ticket in points
         uint256 ticketCostCoins; // Cost per ticket in FTM
+        uint16 numTicketsWithPoints; // amount of tickets sold with points
+        uint16 numTicketsWithCoins; // amount of tickets sold with coins
         IMemeXNFT nftContract; // reference to the NFT Contract
         uint256 defaultPrizeId; // prize all participants win if no other prizes are given
     }
@@ -299,6 +301,8 @@ contract MemeXLottery is Ownable, ILottery {
             lotteryStatus,
             _costPerTicketPinas,
             _costPerTicketCoins,
+            0,
+            0,
             _nftContract,
             _defaultPrizeId
         );
@@ -464,6 +468,7 @@ contract MemeXLottery is Ownable, ILottery {
             );
             remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
             participantInfo.ticketsFromPoints += numberOfTickets;
+            lottery.numTicketsWithPoints += numberOfTickets;
         } else {
             uint256 totalCostInCoins = numberOfTickets *
                 lottery.ticketCostCoins;
@@ -479,6 +484,7 @@ contract MemeXLottery is Ownable, ILottery {
                 );
             }
             participantInfo.ticketsFromCoins += numberOfTickets;
+            lottery.numTicketsWithCoins += numberOfTickets;
         }
         if (numTicketsBought == 0) {
             participantHistory[msg.sender].push(_lotteryId);
