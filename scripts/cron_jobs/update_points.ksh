@@ -1,6 +1,6 @@
 #!/bin/ksh
 SCRIPTDIR=$(cd $(dirname $0);echo $PWD)
-pid=SCRIPTDIR+"/update_balances.pid"
+pid=$SCRIPTDIR+"/update_balances.pid"
 trap "rm -f $pid" SIGSEGV
 trap "rm -f $pid" SIGINT
 
@@ -12,7 +12,7 @@ else
 fi
 
 
-cd SCRIPTDIR; cd ../..
+cd $SCRIPTDIR; cd ../..
 git pull
 case "$SCRIPTDIR" in
   *staging*) export HARDHAT_NETWORK=rinkeby ;;

@@ -26,35 +26,37 @@ model Nft {
 }
 
 model Drop {
-  id                  Int       @id @default(autoincrement())
-  bannerImageName     String
-  dropDescription     String
-  dropName            String
-  endTime             String
-  lotteryId           Int
-  prizeMetadataCid    String
-  startTime           String
-  bannerImageIpfsPath String
-  bannerImageS3Path   String
-  metadataIpfsPath    String
-  metadataS3Path      String
-  tags                String
-  approvedAt          DateTime?
-  approvedBy          String?   @db.Char(42)
-  blockchainCreatedAt DateTime?
-  costPerTicketCoins  Float     @default(0.0)
-  costPerTicketPoints BigInt    @default(0)
-  createdAt           DateTime  @default(now())
-  createdBy           String    @db.Char(42)
-  defaultPrizeId      Int?
-  isLive              Boolean   @default(false)
-  maxParticipants     Int       @default(0)
-  royaltyPercentage   Float     @default(0.0)
-  ApprovedBy          User?     @relation("approvals", fields: [approvedBy], references: [walletAddress])
-  CreatedBy           User      @relation("artists", fields: [createdBy], references: [walletAddress])
-  defaultPrize        Nft?      @relation(fields: [defaultPrizeId], references: [id])
-  Nft                 Nft[]     @relation("nftOnDrop")
-  User                User[]    @relation("userFavoriteDrops")
+  id                     Int       @id @default(autoincrement())
+  bannerImageName        String
+  dropDescription        String
+  dropName               String
+  endTime                String
+  lotteryId              Int
+  prizeMetadataCid       String
+  startTime              String
+  bannerImageIpfsPath    String
+  bannerImageS3Path      String
+  metadataIpfsPath       String
+  metadataS3Path         String
+  tags                   String
+  approvedAt             DateTime?
+  approvedBy             String?   @db.Char(42)
+  blockchainCreatedAt    DateTime?
+  costPerTicketCoins     Float     @default(0.0)
+  costPerTicketPoints    BigInt    @default(0)
+  createdAt              DateTime  @default(now())
+  createdBy              String    @db.Char(42)
+  defaultPrizeId         Int?
+  isLive                 Boolean   @default(false)
+  maxParticipants        Int       @default(0)
+  royaltyPercentage      Float     @default(0.0)
+  dropTileContentIpfsUrl String
+  dropTileContentS3Url   String
+  ApprovedBy             User?     @relation("approvals", fields: [approvedBy], references: [walletAddress])
+  CreatedBy              User      @relation("artists", fields: [createdBy], references: [walletAddress])
+  defaultPrize           Nft?      @relation(fields: [defaultPrizeId], references: [id])
+  Nft                    Nft[]     @relation("nftOnDrop")
+  User                   User[]    @relation("userFavoriteDrops")
 }
 
 model PrizeProof {
@@ -92,10 +94,10 @@ model RewardPublished {
 model RewardType {
   type               AssetType @id
   rewardRate         Float
-  lastBlockInspected BigInt
+  lastBlockInspected Int
   chainId            Int
   contract           String    @db.Char(42)
-  startingBlock      BigInt
+  startingBlock      Int
 }
 
 model User {

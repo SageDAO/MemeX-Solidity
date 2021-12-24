@@ -1,7 +1,7 @@
 #!/bin/ksh
 
 SCRIPTDIR=$(cd $(dirname $0);echo $PWD)
-pid=SCRIPTDIR+"/lottery_inspection.pid"
+pid=$SCRIPTDIR+"/lottery_inspection.pid"
 trap "rm -f $pid" SIGSEGV
 trap "rm -f $pid" SIGINT
 
@@ -13,10 +13,10 @@ else
 fi
 
 
-cd SCRIPTDIR; cd ../..
+cd $SCRIPTDIR; cd ../..
 git pull
 case "$SCRIPTDIR" in
-  *staging*) export HARDHAT_NETWORK=rinkeby ;;
+  *staging*) export HARDHAT_NETWORK=fantomtestnet ;;
   *)         export HARDHAT_NETWORK=fantom ;;
 esac
 /home/ubuntu/.nvm/versions/node/v16.13.0/bin/node scripts/lottery_inspection.js
