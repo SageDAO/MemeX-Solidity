@@ -14,8 +14,6 @@ fi
 
 cd $SCRIPTDIR; cd ../..
 git pull
-# if a new version of the script was pulled, we need to update the permission to execute
-chmod +x scripts/cron_jobs/*.ksh
 case "$SCRIPTDIR" in
   *staging*) export HARDHAT_NETWORK=rinkeby ;;
   *)         export HARDHAT_NETWORK=fantom ;;
