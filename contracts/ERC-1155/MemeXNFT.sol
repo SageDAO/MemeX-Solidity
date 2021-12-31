@@ -28,11 +28,6 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         string dropMetadataURI;
     }
 
-    struct DropInfo {
-        uint256 firstId;
-        uint256 lastId;
-    }
-
     function incrementCollectionCount() internal {
         collectionCount++;
     }
@@ -170,5 +165,31 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
             collection.artistAddress,
             (salePrice * collection.royalty) / 10000
         );
+    }
+
+    function burn(
+        address account,
+        uint256 id,
+        uint256 value
+    ) public virtual {
+        require(
+            account == _msgSender() || isApprovedForAll(account, _msgSender()),
+            "ERC1155: caller is not owner nor approved"
+        );
+
+        _burn(account, id, value);
+    }
+
+    function burnBatch(
+        address account,
+        uint256[] memory ids,
+        uint256[] memory values
+    ) public virtual {
+        require(
+            account == _msgSender() || isApprovedForAll(account, _msgSender()),
+            "ERC1155: caller is not owner nor approved"
+        );
+
+        _burnBatch(account, ids, values);
     }
 }

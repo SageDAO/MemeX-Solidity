@@ -35,13 +35,14 @@ contract MemeXLottery is Ownable, ILottery {
         uint16 maxSupply;
     }
 
+    mapping(address => mapping(uint256 => bool)) public claimedPrizes;
+
     //lotteryid => address => participantInfo
     mapping(uint256 => mapping(address => ParticipantInfo)) public participants;
 
     struct ParticipantInfo {
         uint8 ticketsFromCoins;
         uint8 ticketsFromPoints;
-        bool prizeClaimed;
     }
 
     //loteryId => randomNumber received from RNG
@@ -160,12 +161,12 @@ contract MemeXLottery is Ownable, ILottery {
         return prizes[_lotteryId];
     }
 
-    function prizeClaimed(uint256 _lotteryId, address _participant)
+    function prizeClaimed(uint256 _prizeId, address _participant)
         public
         view
         returns (bool)
     {
-        return participants[_lotteryId][_participant].prizeClaimed;
+        return claimedPrizes[_participant][_prizeId];
     }
 
     /**
@@ -530,15 +531,14 @@ contract MemeXLottery is Ownable, ILottery {
             ),
             "Invalid merkle proof"
         );
-        ParticipantInfo storage participant = participants[_lotteryId][_winner];
         require(
-            participant.prizeClaimed == false,
+            claimedPrizes[_winner][_prizeId] == false,
             "Participant already claimed prize"
         );
 
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
-        participant.prizeClaimed = true;
+        claimedPrizes[_winner][_prizeId] = true;
         nftContract.mint(_winner, _prizeId, 1, _lotteryId, "");
         emit PrizeClaimed(_lotteryId, _winner, _prizeId);
     }
