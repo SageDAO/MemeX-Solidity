@@ -13,7 +13,7 @@ describe("Lottery Contract", function () {
         Rewards = await ethers.getContractFactory('Rewards');
         rewards = await Rewards.deploy(owner.address);
         Lottery = await ethers.getContractFactory("MemeXLottery");
-        lottery = await Lottery.deploy(rewards.address);
+        lottery = await Lottery.deploy(rewards.address, owner.address);
         await rewards.addSmartContractRole(lottery.address);
         Nft = await ethers.getContractFactory("MemeXNFT");
         nft = await Nft.deploy("Memex", "MEMEX", owner.address);
@@ -220,36 +220,37 @@ describe("Lottery Contract", function () {
         expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "LotteryStatusChanged");
     });
 
-    it("Should not call requestRandomNumber if not owner", async function () {
-        await expect(lottery.connect(addr1).requestRandomNumber(1)).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call requestRandomNumber if not admin", async function () {
+        await expect(lottery.connect(addr1).requestRandomNumber(1)).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call cancelLottery if not owner", async function () {
-        await expect(lottery.connect(addr1).cancelLottery(1)).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call cancelLottery if not admin", async function () {
+        await expect(lottery.connect(addr1).cancelLottery(1)).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call withdraw if not owner", async function () {
-        await expect(lottery.connect(addr1).withdraw(owner.address, 1)).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call withdraw if not admin", async function () {
+        await expect(lottery.connect(addr1).withdraw(owner.address, 1)).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call setRewardsContract if not owner", async function () {
-        await expect(lottery.connect(addr1).setRewardsContract(rewards.address)).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call setRewardsContract if not admin", async function () {
+        await expect(lottery.connect(addr1).setRewardsContract(rewards.address)).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call changeCloseTime if not owner", async function () {
-        await expect(lottery.connect(addr1).changeCloseTime(1, 1)).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call changeCloseTime if not admin", async function () {
+        await expect(lottery.connect(addr1).changeCloseTime(1, 1)).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call setMerkleRoot if not owner", async function () {
-        await expect(lottery.connect(addr1).setPrizeMerkleRoot(1, keccak256('some text'))).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call setMerkleRoot if not admin", async function () {
+        ''
+        await expect(lottery.connect(addr1).setPrizeMerkleRoot(1, keccak256('some text'))).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call addPrizes if not owner", async function () {
-        await expect(lottery.connect(addr1).addPrizes(1, [1], [1])).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call addPrizes if not admin", async function () {
+        await expect(lottery.connect(addr1).addPrizes(1, [1], [1])).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call createNewLottery if not owner", async function () {
-        await expect(lottery.connect(addr1).createNewLottery(1, 1, 1, 1, nft.address, 1, lottery.address, 0, 200, "ipfs string")).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call createNewLottery if not admin", async function () {
+        await expect(lottery.connect(addr1).createNewLottery(1, 1, 1, 1, nft.address, 1, lottery.address, 0, 200, "ipfs string")).to.be.revertedWith("Admin calls only");
     });
 
     it("Should not allow to boost if boostCost = 0", async function () {
