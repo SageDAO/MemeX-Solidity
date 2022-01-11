@@ -45,7 +45,11 @@ module.exports = {
 
   },
   etherscan: {
-    apiKey: process.env.FTMSCAN_KEY
+    apiKey: {
+      opera: process.env.FTMSCAN_KEY,
+      ftmTestnet: process.env.FTMSCAN_KEY,
+      rinkeby: process.env.ETHERSCAN_KEY,
+    }
   },
 
   solidity: {

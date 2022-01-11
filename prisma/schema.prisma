@@ -68,7 +68,7 @@ model PrizeProof {
   nftId         Int
   nft           Nft       @relation(fields: [nftId], references: [id])
 
-  @@id([lotteryId, winnerAddress])
+  @@id([lotteryId, winnerAddress, nftId])
 }
 
 model MemeTransactions {

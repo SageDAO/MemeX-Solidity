@@ -10,24 +10,6 @@ const CONTRACTS = require('../contracts.js')
 
 const timer = ms => new Promise(res => setTimeout(res, ms));
 
-deployMemeXToken = async (deployer) => {
-  token_address = CONTRACTS[hre.network.name]["tokenAddress"]
-  const MemeToken = await hre.ethers.getContractFactory("MemeXToken");
-  if (token_address == "") {
-    token = await MemeToken.deploy("MEMEX", "MemeX", 1000000, deployer.address);
-    await token.deployed();
-    console.log("Token deployed to:", token.address);
-    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
-    await hre.run("verify:verify", {
-      address: token.address,
-      contract: "contracts/Token/TokenMemeX.sol:MemeXToken",
-      constructorArguments: ["MEMEX", "MemeX", 1000000, deployer.address],
-    });
-  } else {
-    token = await MemeToken.attach(token_address);
-  }
-  return token
-}
 
 deployRewards = async (deployer) => {
   rewards_address = CONTRACTS[hre.network.name]["rewardsAddress"]
@@ -67,11 +49,11 @@ deployNFT = async (deployer, lottery) => {
   return nft
 }
 
-deployLottery = async (rewards, randomness) => {
+deployLottery = async (rewards, randomness, deployer) => {
   lottery_address = CONTRACTS[hre.network.name]["lotteryAddress"]
   const Lottery = await hre.ethers.getContractFactory("MemeXLottery");
   if (lottery_address == "") {
-    lottery = await Lottery.deploy(rewards.address);
+    lottery = await Lottery.deploy(rewards.address, deployer.address);
     await lottery.deployed();
     console.log("Lottery deployed to:", lottery.address);
     // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
@@ -162,13 +144,12 @@ async function main() {
   const deployer = await ethers.getSigner();
   const accounts = await ethers.getSigners();
 
-  token = await deployMemeXToken(deployer);
   rewards = await deployRewards(deployer);
   values = await deployRNGTemp();
   randomness = values[0];
   newRandomness = values[1];
 
-  result = await deployLottery(rewards, randomness);
+  result = await deployLottery(rewards, randomness, deployer);
   lottery = result[0];
   newLottery = result[1];
 

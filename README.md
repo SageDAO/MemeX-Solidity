@@ -33,7 +33,7 @@ or
 `npx hardhat run scripts/deploy.js --network fantomtestnet`
 
 
-The `contracts.json` file contains the addresses of the already deployed contracts. If a contract address is in this file, the scripts would interact with the deployed contract, otherwhise a new contract will be deployed.
+The `contracts.js` file contains the addresses of the already deployed contracts. If a contract address is in this file, the scripts would interact with the deployed contract, otherwhise a new contract will be deployed.
 
 ## Creating lotteries from drops
 

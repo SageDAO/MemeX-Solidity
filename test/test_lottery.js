@@ -13,7 +13,7 @@ describe("Lottery Contract", function () {
         Rewards = await ethers.getContractFactory('Rewards');
         rewards = await Rewards.deploy(owner.address);
         Lottery = await ethers.getContractFactory("MemeXLottery");
-        lottery = await Lottery.deploy(rewards.address);
+        lottery = await Lottery.deploy(rewards.address, owner.address);
         await rewards.addSmartContractRole(lottery.address);
         Nft = await ethers.getContractFactory("MemeXNFT");
         nft = await Nft.deploy("Memex", "MEMEX", owner.address);
@@ -72,7 +72,7 @@ describe("Lottery Contract", function () {
         expect(await lottery.getParticipantsCount(1)).to.equal(2);
         expect(await lottery.getLotteryTicketCount(1)).to.equal(3);
         lottery = await lottery.getLotteryInfo(1);
-        expect (lottery.numTicketsWithPoints).to.equal(3);
+        expect(lottery.numTicketsWithPoints).to.equal(3);
     });
 
     it("Should allow user to buy tickets with coins", async function () {
@@ -220,36 +220,37 @@ describe("Lottery Contract", function () {
         expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "LotteryStatusChanged");
     });
 
-    it("Should not call requestRandomNumber if not owner", async function () {
-        await expect(lottery.connect(addr1).requestRandomNumber(1)).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call requestRandomNumber if not admin", async function () {
+        await expect(lottery.connect(addr1).requestRandomNumber(1)).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call cancelLottery if not owner", async function () {
-        await expect(lottery.connect(addr1).cancelLottery(1)).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call cancelLottery if not admin", async function () {
+        await expect(lottery.connect(addr1).cancelLottery(1)).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call withdraw if not owner", async function () {
-        await expect(lottery.connect(addr1).withdraw(owner.address, 1)).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call withdraw if not admin", async function () {
+        await expect(lottery.connect(addr1).withdraw(owner.address, 1)).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call setRewardsContract if not owner", async function () {
-        await expect(lottery.connect(addr1).setRewardsContract(rewards.address)).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call setRewardsContract if not admin", async function () {
+        await expect(lottery.connect(addr1).setRewardsContract(rewards.address)).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call changeCloseTime if not owner", async function () {
-        await expect(lottery.connect(addr1).changeCloseTime(1, 1)).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call changeCloseTime if not admin", async function () {
+        await expect(lottery.connect(addr1).changeCloseTime(1, 1)).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call setMerkleRoot if not owner", async function () {
-        await expect(lottery.connect(addr1).setPrizeMerkleRoot(1, keccak256('some text'))).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call setMerkleRoot if not admin", async function () {
+        ''
+        await expect(lottery.connect(addr1).setPrizeMerkleRoot(1, keccak256('some text'))).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call addPrizes if not owner", async function () {
-        await expect(lottery.connect(addr1).addPrizes(1, [1], [1])).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call addPrizes if not admin", async function () {
+        await expect(lottery.connect(addr1).addPrizes(1, [1], [1])).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call createNewLottery if not owner", async function () {
-        await expect(lottery.connect(addr1).createNewLottery(1, 1, 1, 1, nft.address, 1, lottery.address, 0, 200, "ipfs string")).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should not call createNewLottery if not admin", async function () {
+        await expect(lottery.connect(addr1).createNewLottery(1, 1, 1, 1, nft.address, 1, lottery.address, 0, 200, "ipfs string")).to.be.revertedWith("Admin calls only");
     });
 
     it("Should not allow to boost if boostCost = 0", async function () {
@@ -288,13 +289,15 @@ describe("Lottery Contract", function () {
             leafB = abiCoder.encode(["uint256", "address", "uint256"], [1, addr2.address, 2]);
             leafC = abiCoder.encode(["uint256", "address", "uint256"], [1, addr3.address, 3]);
             leafD = abiCoder.encode(["uint256", "address", "uint256"], [1, addr4.address, 4]);
+            leafE = abiCoder.encode(["uint256", "address", "uint256"], [1, addr1.address, 2]);
             buf2hex = x => '0x' + x.toString('hex');
-            leaves = [leafA, leafB, leafC, leafD].map(leaf => keccak256(leaf));
+            leaves = [leafA, leafB, leafC, leafD, leafE].map(leaf => keccak256(leaf));
             tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
             // get the merkle root and store in the contract 
             root = tree.getHexRoot().toString('hex');
             await lottery.setPrizeMerkleRoot(1, root);
-            hexproof = tree.getProof(keccak256(leafA)).map(x => buf2hex(x.data))
+            hexproof = tree.getProof(keccak256(leafA)).map(x => buf2hex(x.data));
+            hexproofE = tree.getProof(keccak256(leafE)).map(x => buf2hex(x.data));
         });
 
         it("Should retrieve merkle root", async function () {
@@ -304,6 +307,15 @@ describe("Lottery Contract", function () {
         it("Should claim with merkle proof", async function () {
             await lottery.connect(addr1).claimPrize(1, addr1.address, 1, hexproof);
             expect(await nft.balanceOf(addr1.address, 1)).to.equal(1);
+        });
+
+        it("Should allow to claim more than one prize", async function () {
+            expect(await lottery.prizeClaimed(1, addr1.address)).to.equal(false);
+            await lottery.connect(addr1).claimPrize(1, addr1.address, 1, hexproof);
+            expect(await lottery.prizeClaimed(1, addr1.address)).to.equal(true);
+            expect(await lottery.prizeClaimed(2, addr1.address)).to.equal(false);
+            await lottery.connect(addr1).claimPrize(1, addr1.address, 2, hexproofE);
+            expect(await lottery.prizeClaimed(2, addr1.address)).to.equal(true);
         });
 
         it("Should throw trying to claim twice", async function () {
