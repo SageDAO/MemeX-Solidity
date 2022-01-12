@@ -12,11 +12,39 @@ contract Rewards is MemeXAccessControls, IRewards {
 
     mapping(address => uint256) public totalPointsEarned;
 
+    mapping(address => RewardInfo) public rewardInfo;
+
+    struct RewardInfo {
+        uint16 chainId;
+        // points rewarded per day per position size considering 8 decimals
+        uint256 pinaRewardPerDay;
+        // amount of tokens required to get the reward per day. ie 100,000 tokens (18 decimals) to get 1 pina
+        uint256 positionSize;
+        // the rewards are capped at this amount of tokens
+        uint256 positionSizeLimit;
+    }
+
     event PointsUsed(address indexed user, uint256 amount, uint256 remaining);
     event PointsEarned(address indexed user, uint256 amount);
 
     constructor(address _admin) {
         initAccessControls(_admin);
+    }
+
+    function setRewardRate(
+        address _token,
+        uint16 _chainId,
+        uint256 _pinaRewardPerDay,
+        uint256 _positionSize,
+        uint256 _positionSizeLimit
+    ) public {
+        require(hasAdminRole(msg.sender), "Only admin calls");
+        rewardInfo[_token] = RewardInfo(
+            _chainId,
+            _pinaRewardPerDay,
+            _positionSize,
+            _positionSizeLimit
+        );
     }
 
     function availablePoints(address user) public view returns (uint256) {

@@ -18,15 +18,16 @@ deployRewards = async (deployer) => {
     rewards = await Rewards.deploy(deployer.address);
     await rewards.deployed();
     console.log("Rewards contract deployed to:", rewards.address);
-    await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
-    await hre.run("verify:verify", {
-      address: rewards.address,
-      constructorArguments: [deployer.address],
-    });
+    // await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
+    // await hre.run("verify:verify", {
+    //   address: rewards.address,
+    //   constructorArguments: [deployer.address],
+    // });
+    return [rewards, true]
   } else {
     rewards = await Rewards.attach(rewards_address);
   }
-  return rewards
+  return [rewards, false]
 }
 
 deployNFT = async (deployer, lottery) => {
@@ -144,7 +145,9 @@ async function main() {
   const deployer = await ethers.getSigner();
   const accounts = await ethers.getSigners();
 
-  rewards = await deployRewards(deployer);
+  result = await deployRewards(deployer);
+  rewards = result[0]
+  newRewards = result[1]
   values = await deployRNGTemp();
   randomness = values[0];
   newRandomness = values[1];
@@ -160,6 +163,10 @@ async function main() {
   if (newLottery) {
     await nft.addSmartContractRole(lottery.address);
     await setRandomGenerator(lottery, randomness.address);
+  }
+  if (newRewards) {
+    await rewards.addSmartContractRole(lottery.address);
+
   }
 }
 
