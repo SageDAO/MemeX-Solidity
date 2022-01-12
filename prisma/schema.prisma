@@ -98,6 +98,7 @@ model RewardType {
   chainId            Int
   contract           String    @db.Char(42)
   startingBlock      Int
+  positionSizeLimit  String    @default("0")
 }
 
 model User {

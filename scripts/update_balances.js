@@ -167,14 +167,14 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end) {
     let assetBalance = await getUserBalanceAtTimestamp(address, assetType, begin);
     let refTimestamp = begin;
     let pinaPoints = BigNumber(0);
-
+    let limit = BigNumber(assetType.positionSizeLimit);
     let rewardRate = BigNumber(assetType.rewardRate);
 
     let userTransactions = await getUserTransactions(address, assetType, begin + 1, end);
 
     for (transaction of userTransactions) {
         if (transaction.from != transaction.to) {
-            pinaPoints = pinaPoints.plus(assetBalance.multipliedBy(rewardRate).multipliedBy(transaction.blockTimestamp - refTimestamp));
+            pinaPoints = pinaPoints.plus(BigNumber.minimum(assetBalance, limit).multipliedBy(rewardRate).multipliedBy(transaction.blockTimestamp - refTimestamp));
             refTimestamp = transaction.blockTimestamp;
             if (transaction.from === address) {
                 assetBalance = assetBalance.minus(BigNumber(transaction.value));
@@ -183,7 +183,7 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end) {
             }
         }
     }
-    pinaPoints = pinaPoints.plus(assetBalance.multipliedBy(rewardRate).multipliedBy(end - refTimestamp));
+    pinaPoints = pinaPoints.plus(BigNumber.minimum(assetBalance, limit).multipliedBy(rewardRate).multipliedBy(end - refTimestamp));
     return pinaPoints.dp(0, 1);
 }
 
@@ -358,6 +358,7 @@ async function getRewardRates() {
             startingBlock: true,
             chainId: true,
             type: true,
+            positionSizeLimit: true,
         },
     });
 }
