@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require('keccak256')
+const BigNumber = require('bignumber.js');
 
 describe("Rewards Contract", function () {
     beforeEach(async () => {
@@ -18,6 +19,18 @@ describe("Rewards Contract", function () {
 
     it("Should throw if burn points not called by lottery contract", async function () {
         await expect(rewards.connect(addr1).burnUserPoints(addr1.address, 1500000000)).to.be.revertedWith("Smart contract role required");
+    });
+
+    it("Should set and update reward rates", async function () {
+        await rewards.setRewardRate(addr2.address, 1, 100000000, ethers.BigNumber.from("100000000000000000000000"), ethers.BigNumber.from("100000000000000000000000"));
+        let reward = await rewards.rewardInfo(addr2.address);
+        expect(reward.pinaRewardPerDay).to.equal(100000000);
+        expect(reward.chainId).to.equal(1);
+        expect(reward.positionSize).to.equal(ethers.BigNumber.from("100000000000000000000000"));
+        expect(reward.positionSizeLimit).to.equal(ethers.BigNumber.from("100000000000000000000000"));
+        await rewards.setRewardRate(addr2.address, 1, 200000000, ethers.BigNumber.from("100000000000000000000000"), ethers.BigNumber.from("100000000000000000000000"));
+        reward = await rewards.rewardInfo(addr2.address);
+        expect(reward.pinaRewardPerDay).to.equal(200000000);
     });
 
     describe("Merkle tree", () => {
