@@ -30,7 +30,7 @@ module.exports = {
       chainId: 0xfa2
     },
     fantom: {
-      url: `https://apis.ankr.com/${process.env.ANKR_KEY}/fantom/full/main`,
+      url: `https://apis-sj.ankr.com/${process.env.ANKR_KEY}/fantom/full/main`,
       accounts: [process.env.DEPLOYER_PK],
       chainId: 0xfa
     },
