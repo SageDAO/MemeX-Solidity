@@ -105,6 +105,14 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         return collectionCount;
     }
 
+    function collectionExists(uint256 _collectionId)
+        public
+        view
+        returns (bool)
+    {
+        return _collectionId != 0 && _collectionId < collectionCount;
+    }
+
     /**
      * @dev Mints some amount of tokens to an address
      * @param _to          Address of the future owner of the token

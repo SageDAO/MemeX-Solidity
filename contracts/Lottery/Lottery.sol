@@ -268,6 +268,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
 
     /**
      * @notice Creates a new lottery.
+     * @param _lotteryId 0 if new lottery, otherwise the lottery id to reuse
      * @param _costPerTicketPinas cost in wei per ticket in points/tokens (token only when using ERC20 on the rewards contract)
      * @param _costPerTicketCoins cost in wei per ticket in FTM
      * @param _startTime timestamp to begin lottery entries
@@ -280,6 +281,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
      * @return lotteryId
      */
     function createNewLottery(
+        uint256 _lotteryId,
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
         uint32 _startTime,
@@ -297,11 +299,16 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
         } else {
             lotteryStatus = Status.Planned;
         }
-        lotteryId = _nftContract.createCollection(
-            _artistAddress,
-            _royaltyPercentage,
-            _dropMetadataURI
-        );
+        if (!_nftContract.collectionExists(_lotteryId)) {
+            lotteryId = _nftContract.createCollection(
+                _artistAddress,
+                _royaltyPercentage,
+                _dropMetadataURI
+            );
+            lotteries.push(lotteryId);
+        } else {
+            lotteryId = _lotteryId;
+        }
         LotteryInfo memory newLottery = LotteryInfo(
             _startTime,
             _closeTime,
@@ -317,7 +324,6 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
             _defaultPrizeId
         );
         lotteryHistory[lotteryId] = newLottery;
-        lotteries.push(lotteryId);
         emit LotteryStatusChanged(lotteryId, lotteryStatus);
         return lotteryId;
     }
