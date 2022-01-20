@@ -13,10 +13,10 @@ CONTRACTS = {
         "rewardsAddress": "0x78f6E042131EE4aA861b1B83D5f9460da4aB6169",
     },
     "fantom": {
-        "lotteryAddress": "",
-        "nftAddress": "",
-        "randomnessAddress": "",
-        "rewardsAddress": "",
+        "lotteryAddress": "0x62F3ec0de5053D88744C91Db11a4b659F8FbbF71",
+        "nftAddress": "0x3Ccf4eaC07E4186E7a2BF3Ab0B2C744ADB87939A",
+        "randomnessAddress": "0x858Ed9AD6056E1B6466C3B5EeBb52d621415E127",
+        "rewardsAddress": "0x6B6d43406C700582a91dAB59d8195608F0b136e9",
     }
 }
 
