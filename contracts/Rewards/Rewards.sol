@@ -14,6 +14,8 @@ contract Rewards is MemeXAccessControls, IRewards {
 
     mapping(address => RewardInfo) public rewardInfo;
 
+    address[] public rewardTokenAddresses;
+
     struct RewardInfo {
         uint16 chainId;
         // points rewarded per day per position size considering 8 decimals
@@ -24,6 +26,12 @@ contract Rewards is MemeXAccessControls, IRewards {
         uint256 positionSizeLimit;
     }
 
+    event RewardChanged(
+        address indexed token,
+        uint256 pinaRewardPerDay,
+        uint256 positionSize,
+        uint256 positionSizeLimit
+    );
     event PointsUsed(address indexed user, uint256 amount, uint256 remaining);
     event PointsEarned(address indexed user, uint256 amount);
 
@@ -45,6 +53,28 @@ contract Rewards is MemeXAccessControls, IRewards {
             _positionSize,
             _positionSizeLimit
         );
+        emit RewardChanged(
+            _token,
+            _pinaRewardPerDay,
+            _positionSize,
+            _positionSizeLimit
+        );
+        for (uint16 i = 0; i < rewardTokenAddresses.length; i++) {
+            if (rewardTokenAddresses[i] == _token) {
+                return;
+            }
+        }
+        // push token address to the list, if not already present
+        rewardTokenAddresses.push(_token);
+    }
+
+    function removeReward(uint16 _index) public {
+        require(hasAdminRole(msg.sender), "Only admin calls");
+        require(_index < rewardTokenAddresses.length, "Index out of bounds");
+        rewardTokenAddresses[_index] = rewardTokenAddresses[
+            rewardTokenAddresses.length - 1
+        ];
+        rewardTokenAddresses.pop();
     }
 
     function availablePoints(address user) public view returns (uint256) {
