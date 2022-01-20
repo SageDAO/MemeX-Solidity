@@ -21,4 +21,6 @@ interface IMemeXNFT {
         uint256 _collectionId,
         string memory _newBaseMetadataURI
     ) external;
+
+    function collectionExists(uint256 _collectionId) external returns (bool);
 }

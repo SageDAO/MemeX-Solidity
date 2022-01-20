@@ -19,10 +19,12 @@ async function main() {
         parseInt(Date.now() / 1000 + 86400 * 30), // end
         nftAddress, // nft contract
         0, // max participants
-        owner.address, // artist address
+        owner.address, // artist address,
+        0,
+        200,
         'ipfs://bafybeib4cmjiwsekisto2mqivril4du5prsetasd7izormse4rovnqxsze/',
         {
-            gasLimit: 4000000
+            gasLimit: 4000000,
         });
     // get the receipt from tx
     const receipt = await tx.wait();

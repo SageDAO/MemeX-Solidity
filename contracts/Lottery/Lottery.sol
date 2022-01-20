@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "../Access/MemeXAccessControls.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../../interfaces/IRewards.sol";
@@ -9,7 +9,7 @@ import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 import "../../interfaces/ILottery.sol";
 
-contract MemeXLottery is Ownable, ILottery {
+contract MemeXLottery is MemeXAccessControls, ILottery {
     uint8 public maxTicketsPerParticipant;
 
     bytes32 internal requestId_;
@@ -35,13 +35,14 @@ contract MemeXLottery is Ownable, ILottery {
         uint16 maxSupply;
     }
 
+    mapping(address => mapping(uint256 => bool)) public claimedPrizes;
+
     //lotteryid => address => participantInfo
     mapping(uint256 => mapping(address => ParticipantInfo)) public participants;
 
     struct ParticipantInfo {
         uint8 ticketsFromCoins;
         uint8 ticketsFromPoints;
-        bool prizeClaimed;
     }
 
     //loteryId => randomNumber received from RNG
@@ -66,8 +67,10 @@ contract MemeXLottery is Ownable, ILottery {
         uint32 maxParticipants; // max number of participants
         uint256 lotteryID; // ID for lotto
         Status status; // Status for lotto
-        uint256 ticketCostPinas; // Cost per ticket in points/tokens
+        uint256 ticketCostPoints; // Cost per ticket in points
         uint256 ticketCostCoins; // Cost per ticket in FTM
+        uint16 numTicketsWithPoints; // amount of tickets sold with points
+        uint16 numTicketsWithCoins; // amount of tickets sold with coins
         IMemeXNFT nftContract; // reference to the NFT Contract
         uint256 defaultPrizeId; // prize all participants win if no other prizes are given
     }
@@ -97,33 +100,29 @@ contract MemeXLottery is Ownable, ILottery {
         uint256 indexed prizeId
     );
 
-    constructor(address _rewardsContract) {
+    constructor(address _rewardsContract, address _admin) {
+        initAccessControls(_admin);
         rewardsContract = IRewards(_rewardsContract);
     }
 
-    function setTicketCostPinas(uint256 _price, uint256 _lotteryId)
-        public
-        onlyOwner
-    {
-        require(
-            lotteryHistory[_lotteryId].status == Status.Planned,
-            "Lottery must be planned to change ticket cost"
-        );
-        lotteryHistory[_lotteryId].ticketCostPinas = _price;
-
-        emit TicketCostChanged(msg.sender, _lotteryId, _price);
+    /**
+     * @dev Throws if not called by an admin account.
+     */
+    modifier onlyAdmin() {
+        require(hasAdminRole(msg.sender), "Admin calls only");
+        _;
     }
 
     function setPrizeMerkleRoot(uint256 _lotteryId, bytes32 _root)
         public
-        onlyOwner
+        onlyAdmin
     {
         prizeMerkleRoots[_lotteryId] = _root;
     }
 
     function setMaxTicketsPerParticipant(uint8 _maxTicketsPerParticipant)
         public
-        onlyOwner
+        onlyAdmin
     {
         maxTicketsPerParticipant = _maxTicketsPerParticipant;
     }
@@ -135,13 +134,13 @@ contract MemeXLottery is Ownable, ILottery {
         return rewardsContract.burnUserPoints(_user, _amount);
     }
 
-    function setRewardsContract(address _rewardsContract) public onlyOwner {
+    function setRewardsContract(address _rewardsContract) public onlyAdmin {
         rewardsContract = IRewards(_rewardsContract);
     }
 
     function changeCloseTime(uint256 _lotteryId, uint32 _time)
         public
-        onlyOwner
+        onlyAdmin
     {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(lottery.startTime > 0, "Lottery id not found");
@@ -154,7 +153,7 @@ contract MemeXLottery is Ownable, ILottery {
 
     function setRandomGenerator(address _IRandomNumberGenerator)
         external
-        onlyOwner
+        onlyAdmin
     {
         require(
             _IRandomNumberGenerator != address(0),
@@ -171,12 +170,12 @@ contract MemeXLottery is Ownable, ILottery {
         return prizes[_lotteryId];
     }
 
-    function prizeClaimed(uint256 _lotteryId, address _participant)
+    function prizeClaimed(uint256 _prizeId, address _participant)
         public
         view
         returns (bool)
     {
-        return participants[_lotteryId][_participant].prizeClaimed;
+        return claimedPrizes[_participant][_prizeId];
     }
 
     /**
@@ -228,7 +227,7 @@ contract MemeXLottery is Ownable, ILottery {
         uint256 _lotteryId,
         uint256[] calldata _prizeIds,
         uint16[] calldata _prizeAmounts
-    ) public onlyOwner {
+    ) public onlyAdmin {
         LotteryInfo memory lottery = lotteryHistory[_lotteryId];
         require(lottery.startTime > 0, "Lottery does not exist");
         require(_prizeIds.length > 0, "Number of prizes can't be 0");
@@ -243,8 +242,33 @@ contract MemeXLottery is Ownable, ILottery {
         emit PrizesChanged(_lotteryId, _prizeIds.length);
     }
 
+    function updateLottery(
+        uint256 lotteryId,
+        uint256 _costPerTicketPoints,
+        uint256 _costPerTicketCoins,
+        uint32 _startTime,
+        uint32 _closeTime,
+        IMemeXNFT _nftContract,
+        uint16 _maxParticipants,
+        uint256 _defaultPrizeId,
+        Status _status
+    ) public onlyAdmin {
+        LotteryInfo storage lottery = lotteryHistory[lotteryId];
+        require(lottery.startTime > 0, "Lottery does not exist");
+        lottery.startTime = _startTime;
+        lottery.closingTime = _closeTime;
+        lottery.ticketCostPoints = _costPerTicketPoints;
+        lottery.ticketCostCoins = _costPerTicketCoins;
+        lottery.nftContract = _nftContract;
+        lottery.maxParticipants = _maxParticipants;
+        lottery.defaultPrizeId = _defaultPrizeId;
+        lottery.status = _status;
+        emit LotteryStatusChanged(lotteryId, _status);
+    }
+
     /**
      * @notice Creates a new lottery.
+     * @param _lotteryId 0 if new lottery, otherwise the lottery id to reuse
      * @param _costPerTicketPinas cost in wei per ticket in points/tokens (token only when using ERC20 on the rewards contract)
      * @param _costPerTicketCoins cost in wei per ticket in FTM
      * @param _startTime timestamp to begin lottery entries
@@ -257,6 +281,7 @@ contract MemeXLottery is Ownable, ILottery {
      * @return lotteryId
      */
     function createNewLottery(
+        uint256 _lotteryId,
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
         uint32 _startTime,
@@ -267,18 +292,23 @@ contract MemeXLottery is Ownable, ILottery {
         uint256 _defaultPrizeId,
         uint16 _royaltyPercentage,
         string calldata _dropMetadataURI
-    ) public onlyOwner returns (uint256 lotteryId) {
+    ) public onlyAdmin returns (uint256 lotteryId) {
         Status lotteryStatus;
         if (_startTime <= block.timestamp) {
             lotteryStatus = Status.Open;
         } else {
             lotteryStatus = Status.Planned;
         }
-        lotteryId = _nftContract.createCollection(
-            _artistAddress,
-            _royaltyPercentage,
-            _dropMetadataURI
-        );
+        if (!_nftContract.collectionExists(_lotteryId)) {
+            lotteryId = _nftContract.createCollection(
+                _artistAddress,
+                _royaltyPercentage,
+                _dropMetadataURI
+            );
+            lotteries.push(lotteryId);
+        } else {
+            lotteryId = _lotteryId;
+        }
         LotteryInfo memory newLottery = LotteryInfo(
             _startTime,
             _closeTime,
@@ -288,11 +318,12 @@ contract MemeXLottery is Ownable, ILottery {
             lotteryStatus,
             _costPerTicketPinas,
             _costPerTicketCoins,
+            0,
+            0,
             _nftContract,
             _defaultPrizeId
         );
         lotteryHistory[lotteryId] = newLottery;
-        lotteries.push(lotteryId);
         emit LotteryStatusChanged(lotteryId, lotteryStatus);
         return lotteryId;
     }
@@ -301,9 +332,8 @@ contract MemeXLottery is Ownable, ILottery {
      * @notice Called by the Memex team to request a random number to a particular lottery.
      * @param _lotteryId ID of the lottery the random number is for
      */
-    function requestRandomNumber(uint256 _lotteryId) external onlyOwner {
+    function requestRandomNumber(uint256 _lotteryId) external onlyAdmin {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-        require(prizes[_lotteryId].length != 0, "No prizes for this lottery");
         require(lottery.closingTime < block.timestamp, "Lottery is not closed");
         if (lottery.status == Status.Open) {
             lottery.status = Status.Closed;
@@ -366,7 +396,7 @@ contract MemeXLottery is Ownable, ILottery {
      * @notice Change the lottery state to canceled.
      * @param _lotteryId ID of the lottery to canccel
      */
-    function cancelLottery(uint256 _lotteryId) public onlyOwner {
+    function cancelLottery(uint256 _lotteryId) public onlyAdmin {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(
             lottery.status != Status.Completed,
@@ -375,7 +405,7 @@ contract MemeXLottery is Ownable, ILottery {
         lottery.status = Status.Canceled;
         address[] memory tickets = lotteryTickets[_lotteryId];
         for (uint16 i = 0; i < tickets.length; i++) {
-            rewardsContract.refundPoints(tickets[i], lottery.ticketCostPinas);
+            rewardsContract.refundPoints(tickets[i], lottery.ticketCostPoints);
         }
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
@@ -445,7 +475,7 @@ contract MemeXLottery is Ownable, ILottery {
         require(lottery.status == Status.Open, "Lottery is not open");
         if (_usePoints) {
             uint256 totalCostInPoints = numberOfTickets *
-                lottery.ticketCostPinas;
+                lottery.ticketCostPoints;
             require(totalCostInPoints > 0, "Can't buy tickets with points");
             remainingPoints = rewardsContract.availablePoints(msg.sender);
             require(
@@ -454,6 +484,7 @@ contract MemeXLottery is Ownable, ILottery {
             );
             remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
             participantInfo.ticketsFromPoints += numberOfTickets;
+            lottery.numTicketsWithPoints += numberOfTickets;
         } else {
             uint256 totalCostInCoins = numberOfTickets *
                 lottery.ticketCostCoins;
@@ -462,13 +493,14 @@ contract MemeXLottery is Ownable, ILottery {
                 msg.value >= totalCostInCoins,
                 "Didn't transfer enough funds to buy tickets"
             );
-            if (lottery.ticketCostPinas != 0) {
+            if (lottery.ticketCostPoints != 0) {
                 require(
                     participantInfo.ticketsFromPoints > 0,
                     "Participant not found"
                 );
             }
             participantInfo.ticketsFromCoins += numberOfTickets;
+            lottery.numTicketsWithCoins += numberOfTickets;
         }
         if (numTicketsBought == 0) {
             participantHistory[msg.sender].push(_lotteryId);
@@ -514,15 +546,14 @@ contract MemeXLottery is Ownable, ILottery {
             ),
             "Invalid merkle proof"
         );
-        ParticipantInfo storage participant = participants[_lotteryId][_winner];
         require(
-            participant.prizeClaimed == false,
+            claimedPrizes[_winner][_prizeId] == false,
             "Participant already claimed prize"
         );
 
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
-        participant.prizeClaimed = true;
+        claimedPrizes[_winner][_prizeId] = true;
         nftContract.mint(_winner, _prizeId, 1, _lotteryId, "");
         emit PrizeClaimed(_lotteryId, _winner, _prizeId);
     }
@@ -548,7 +579,7 @@ contract MemeXLottery is Ownable, ILottery {
      * @param _to Recipient of the funds
      * @param _amount Amount to withdraw
      */
-    function withdraw(address payable _to, uint256 _amount) external onlyOwner {
+    function withdraw(address payable _to, uint256 _amount) external onlyAdmin {
         require(_amount <= address(this).balance);
         _to.transfer(_amount);
     }

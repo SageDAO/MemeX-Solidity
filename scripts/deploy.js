@@ -10,24 +10,6 @@ const CONTRACTS = require('../contracts.js')
 
 const timer = ms => new Promise(res => setTimeout(res, ms));
 
-deployMemeXToken = async (deployer) => {
-  token_address = CONTRACTS[hre.network.name]["tokenAddress"]
-  const MemeToken = await hre.ethers.getContractFactory("MemeXToken");
-  if (token_address == "") {
-    token = await MemeToken.deploy("MEMEX", "MemeX", 1000000, deployer.address);
-    await token.deployed();
-    console.log("Token deployed to:", token.address);
-    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
-    await hre.run("verify:verify", {
-      address: token.address,
-      contract: "contracts/Token/TokenMemeX.sol:MemeXToken",
-      constructorArguments: ["MEMEX", "MemeX", 1000000, deployer.address],
-    });
-  } else {
-    token = await MemeToken.attach(token_address);
-  }
-  return token
-}
 
 deployRewards = async (deployer) => {
   rewards_address = CONTRACTS[hre.network.name]["rewardsAddress"]
@@ -41,46 +23,46 @@ deployRewards = async (deployer) => {
       address: rewards.address,
       constructorArguments: [deployer.address],
     });
+    return [rewards, true]
   } else {
     rewards = await Rewards.attach(rewards_address);
   }
-  return rewards
+  return [rewards, false]
 }
 
 deployNFT = async (deployer, lottery) => {
   nft_address = CONTRACTS[hre.network.name]["nftAddress"]
   const Nft = await hre.ethers.getContractFactory("MemeXNFT");
   if (nft_address == "") {
-    console.log("deploying NFT token")
-    nft = await Nft.deploy("MemeX", "MMXNFT", deployer.address);
+    console.log("deploying NFT contract")
+    nft = await Nft.deploy("MemeX NFTs", "MemeXNFT", deployer.address);
     await nft.deployed();
     console.log("NFT deployed to:", nft.address);
-    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
     await hre.run("verify:verify", {
       address: nft.address,
-      constructorArguments: ["MemeX", "MMXNFT", deployer.address],
+      constructorArguments: ["MemeX NFTs", "MemeXNFT", deployer.address],
     });
-    await nft.addSmartContractRole(lottery.address, { gasLimit: 4000000 })
+    return [nft, true]
   } else {
     nft = await Nft.attach(nft_address);
   }
-  return nft
+  return [nft, false]
 }
 
-deployLottery = async (rewards, randomness) => {
+deployLottery = async (rewards, randomness, deployer) => {
   lottery_address = CONTRACTS[hre.network.name]["lotteryAddress"]
   const Lottery = await hre.ethers.getContractFactory("MemeXLottery");
   if (lottery_address == "") {
-    lottery = await Lottery.deploy(rewards.address);
+    lottery = await Lottery.deploy(rewards.address, deployer.address);
     await lottery.deployed();
     console.log("Lottery deployed to:", lottery.address);
     await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
     await hre.run("verify:verify", {
       address: lottery.address,
-      constructorArguments: [rewards.address],
+      constructorArguments: [rewards.address, deployer.address],
     });
-    await rewards.addSmartContractRole(lottery.address);
-    await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
+    
     return [lottery, true]
   } else {
     lottery = await Lottery.attach(lottery_address);
@@ -121,6 +103,31 @@ deployRandomness = async () => {
   return [randomness, false]
 }
 
+deployRNGTemp = async () => {
+  rand_address = CONTRACTS[hre.network.name]["randomnessAddress"]
+  const Randomness = await hre.ethers.getContractFactory("RNGTemp");
+  if (rand_address == "") {
+    _lotteryAddr = CONTRACTS[hre.network.name]["lotteryAddress"]
+    randomness = await Randomness.deploy(
+      _lotteryAddr)
+    console.log("Randomness deployed to:", randomness.address);
+    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    await hre.run("verify:verify", {
+      address: randomness.address,
+      constructorArguments: [
+        _lotteryAddr
+      ],
+    });
+    return [randomness, true]
+  }
+  else {
+    randomness = await Randomness.attach(rand_address)
+  }
+
+  return [randomness, false]
+}
+
+
 setRandomGenerator = async (lottery, rng) => {
   console.log(`Setting RNG ${rng} on lottery ${lottery.address}`);
   await lottery.setRandomGenerator(rng, { gasLimit: 4000000 });
@@ -137,23 +144,43 @@ async function main() {
   const deployer = await ethers.getSigner();
   const accounts = await ethers.getSigners();
 
-  token = await deployMemeXToken(deployer);
-  rewards = await deployRewards(deployer);
-  values = await deployRandomness();
+  result = await deployRewards(deployer);
+  rewards = result[0]
+  newRewards = result[1]
+  values = await deployRNGTemp();
   randomness = values[0];
   newRandomness = values[1];
 
-  result = await deployLottery(rewards, randomness);
+  result = await deployLottery(rewards, randomness, deployer);
   lottery = result[0];
   newLottery = result[1];
 
+  result =  await deployNFT(deployer, lottery);
+  nft = result[0];
+  newNft = result[1];
+
   if (newRandomness) {
-    await setRandomGenerator(lottery, randomness.address);
+    if (lottery && lottery.address != "") {
+      await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
+      await lottery.setRandomGenerator(randomness.address, { gasLimit: 4000000 });
+    }
   }
-  nft = await deployNFT(deployer, lottery);
+  
+  if (newNft) {
+    if (lottery && lottery.address != "") {
+      await nft.addSmartContractRole(lottery.address)
+    }
+  }
+
   if (newLottery) {
     await nft.addSmartContractRole(lottery.address);
-    await setRandomGenerator(lottery, randomness.address);
+    await rewards.addSmartContractRole(lottery.address);
+    await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 })
+  }
+  if (newRewards) {
+    if (lottery && lottery.address != "") {
+      await rewards.addSmartContractRole(lottery.address);
+    }
   }
 }
 

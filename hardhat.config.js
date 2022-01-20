@@ -22,16 +22,16 @@ module.exports = {
   networks: {
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
-      accounts: [`${process.env.DEPLOYER_PK}`],
+      accounts: [process.env.DEPLOYER_PK],
     },
     fantomtestnet: {
       url: `https://apis.ankr.com/${process.env.ANKR_KEY_TESTNET}/fantom/full/test`,
-      accounts: [`${process.env.DEPLOYER_PK}`],
+      accounts: [process.env.DEPLOYER_PK],
       chainId: 0xfa2
     },
     fantom: {
-      url: `https://apis.ankr.com/${process.env.ANKR_KEY}/fantom/full/main`,
-      accounts: [`${process.env.DEPLOYER_PK}`],
+      url: `https://apis-sj.ankr.com/${process.env.ANKR_KEY}/fantom/full/main`,
+      accounts: [process.env.DEPLOYER_PK],
       chainId: 0xfa
     },
     hardhat: {
@@ -45,7 +45,11 @@ module.exports = {
 
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_KEY
+    apiKey: {
+      opera: process.env.FTMSCAN_KEY,
+      ftmTestnet: process.env.FTMSCAN_KEY,
+      rinkeby: process.env.ETHERSCAN_KEY,
+    }
   },
 
   solidity: {

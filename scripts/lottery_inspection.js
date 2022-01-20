@@ -18,7 +18,7 @@ let lottery;
 
 async function main() {
     await hre.run('compile');
-    logger = createLogger('memex_scripts', `prize_distribution_${hre.network.name}`);
+    logger = createLogger('memex_scripts', `lottery_inspection_${hre.network.name}`);
     logger.info(`Starting the lottery inspection script on ${hre.network.name}`);
 
     const Lottery = await ethers.getContractFactory("MemeXLottery");
@@ -226,9 +226,10 @@ function getEncodedLeaf(lotteryId, leaf) {
 
 async function createLottery(drop, lottery, nftContractAddress) {
     logger.info("Drop #id: " + drop.id);
-    // percentage in base points (200 = 2%)
+    // percentage in base points (200 = 2.00%)
     let royaltyPercentageBasePoints = parseInt(drop.royaltyPercentage * 100);
     const tx = await lottery.createNewLottery(
+        drop.lotteryId,
         drop.costPerTicketPoints,
         drop.costPerTicketCoins,
         drop.startTime,
@@ -242,7 +243,6 @@ async function createLottery(drop, lottery, nftContractAddress) {
     );
     const receipt = await tx.wait();
     drop.lotteryId = receipt.events[0].args[0];
-    logger.info(`Lottery created with lotteryId: ${drop.lotteryId}`);
     drop.blockchainCreatedAt = new Date();
     await prisma.drop.update({
         where: {
@@ -250,12 +250,14 @@ async function createLottery(drop, lottery, nftContractAddress) {
         },
         data: {
             lotteryId: drop.lotteryId.toNumber(),
-            blockchainCreatedAt: drop.blockchainCreatedAt
+            blockchainCreatedAt: drop.blockchainCreatedAt,
+            isLive: true
         }
     });
     await addPrizes(drop, lottery);
 
-    logger.info("Created new lottery with #lotteryId: " + drop.lotteryId);
+    logger.info(`Lottery created with lotteryId: ${drop.lotteryId} | costPoints: ${drop.costPerTicketPoints} | costCoins: ${drop.costPerTicketCoins} | startTime: ${drop.startTime} | endTime: ${drop.endTime} | maxParticipants: ${drop.maxParticipants} | 
+    CreatedBy: ${drop.CreatedBy.walletAddress} | defaultPrizeId: ${drop.defaultPrizeId} | royaltyPercentageBasePoints: ${royaltyPercentageBasePoints} | metadataIpfsPath: ${drop.metadataIpfsPath}`);
 }
 
 const buf2hex = x => '0x' + x.toString('hex');

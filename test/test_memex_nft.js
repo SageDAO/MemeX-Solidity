@@ -28,6 +28,12 @@ describe('MemeXNFT Contract', () => {
         expect(await nft.uri(_id)).to.equal(basePath + _id);
     });
 
+    it("Should be able to burn", async function () {
+        expect(await nft.balanceOf(addr2.address, _id)).to.equal(1);
+        await nft.connect(addr2).burn(addr2.address, _id, 1);
+        expect(await nft.balanceOf(addr2.address, _id)).to.equal(0);
+    });
+
     it("Should not mint without minter role", async function () {
         await expect(nft.connect(addr3).mint(addr2.address, 1, 1, 1, [])
         ).to.be.revertedWith("MemeXNFT: Only Lottery or Minter role can mint");

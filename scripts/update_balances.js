@@ -44,7 +44,7 @@ async function getLastBlockHeightInDatabase(assetType) {
     });
     let blockHeight = aggregations._max.blockNumber || 0;
     logger.info(`Last block on db for asset ${assetType.type} is ${blockHeight}`);
-    return blockHeight + 1;
+    return blockHeight;
 }
 
 /**
@@ -73,7 +73,7 @@ async function getLatestTransactionsFromAllBlockchains(rewardRateTypes) {
     for (var rewardRate of rewardRateTypes) {
         let startingBlock = await getLastBlockInspected(rewardRate);
         if (startingBlock == 0) {
-            startingBlock = await getLastBlockHeightInDatabase(rewardRate);
+            startingBlock = await getLastBlockHeightInDatabase(rewardRate) + 1;
         }
         if (startingBlock < rewardRate.startingBlock) {
             startingBlock = rewardRate.startingBlock;
@@ -101,9 +101,9 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
     }
     let chainId = asset.chainId;
     let contractAddress = asset.contract;
-    const CHUNK_SIZE = BigNumber(100000);
+    const CHUNK_SIZE = 100000;
     for (let iStart = startingBlock; iStart < endingBlock; iStart += CHUNK_SIZE) {
-        let iEnd = iStart + CHUNK_SIZE - BigNumber(1);
+        let iEnd = iStart + CHUNK_SIZE - 1;
         if (iEnd > endingBlock) {
             iEnd = endingBlock;
         }
@@ -167,14 +167,14 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end) {
     let assetBalance = await getUserBalanceAtTimestamp(address, assetType, begin);
     let refTimestamp = begin;
     let pinaPoints = BigNumber(0);
-
+    let limit = BigNumber(assetType.positionSizeLimit);
     let rewardRate = BigNumber(assetType.rewardRate);
 
     let userTransactions = await getUserTransactions(address, assetType, begin + 1, end);
 
     for (transaction of userTransactions) {
         if (transaction.from != transaction.to) {
-            pinaPoints = pinaPoints.plus(assetBalance.multipliedBy(rewardRate).multipliedBy(transaction.blockTimestamp - refTimestamp));
+            pinaPoints = pinaPoints.plus(BigNumber.minimum(assetBalance, limit).multipliedBy(rewardRate).multipliedBy(transaction.blockTimestamp - refTimestamp));
             refTimestamp = transaction.blockTimestamp;
             if (transaction.from === address) {
                 assetBalance = assetBalance.minus(BigNumber(transaction.value));
@@ -183,7 +183,7 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end) {
             }
         }
     }
-    pinaPoints = pinaPoints.plus(assetBalance.multipliedBy(rewardRate).multipliedBy(end - refTimestamp));
+    pinaPoints = pinaPoints.plus(BigNumber.minimum(assetBalance, limit).multipliedBy(rewardRate).multipliedBy(end - refTimestamp));
     return pinaPoints.dp(0, 1);
 }
 
@@ -199,11 +199,11 @@ async function getUserTransactions(address, assetType, begin, end) {
         where: {
             OR: [{
                 from: {
-                    equals: address
+                    equals: address.toLowerCase()
                 }
             }, {
                 to: {
-                    equals: address
+                    equals: address.toLowerCase()
                 }
             },],
             assetType: {
@@ -290,7 +290,13 @@ async function main() {
 
         const root = tree.getHexRoot().toString('hex');
         logger.info(`Storing Merkle tree root in the contract: ${root}`);
-        await rewardsContract.setPointsMerkleRoot(root);
+        const wallet = await ethers.getSigner();
+        const nonce = await ethers.provider.getTransactionCount(wallet.address);
+        const tx = await rewardsContract.setPointsMerkleRoot(root, {
+            nonce: nonce
+        });
+
+        //await rewardsContract.setPointsMerkleRoot(root, { nonce: getNonce() });
 
         // generate proofs for each reward
         // store each proof in the DB so it can be easily queried when users claim points
@@ -335,9 +341,9 @@ async function getUserEarnedPoints(rewardRateTypes, user) {
     for (let rewardRateType of rewardRateTypes) {
         earnedPoints = earnedPoints.plus(await getUserPointsAtTimestamp(user.walletAddress, rewardRateType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000)));
     }
-    if (earnedPoints == 0 && hre.network.name == "rinkeby") {
-        logger.info(`This is rinkeby and ${user.walletAddress} has 0 points. Adding some test points`);
-        earnedPoints = BigNumber(15000000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 5000000000));
+    if (earnedPoints == 0 && (hre.network.name == "rinkeby" || hre.network.name == "fantomtestnet")) {
+        logger.info(`This is a testnet and ${user.walletAddress} has 0 points. Adding some test points`);
+        earnedPoints = BigNumber(15 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400));
 
     }
     return earnedPoints;
@@ -352,6 +358,7 @@ async function getRewardRates() {
             startingBlock: true,
             chainId: true,
             type: true,
+            positionSizeLimit: true,
         },
     });
 }

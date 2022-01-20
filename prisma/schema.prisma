@@ -19,40 +19,44 @@ model Nft {
   s3Path        String
   tags          String
   numberOfMints Int          @default(0)
-  drop          Drop         @relation(name: "nftOnDrop", fields: [dropId], references: [id])
-  prizeProof    PrizeProof[]
+  isVideo       Boolean      @default(false)
+  drop          Drop         @relation("nftOnDrop", fields: [dropId], references: [id])
   defaultPrizes Drop[]
+  prizeProof    PrizeProof[]
 }
 
 model Drop {
-  id                  Int       @id @default(autoincrement())
-  bannerImageName     String
-  costPerTicketPoints BigInt    @default(0)
-  costPerTicketCoins  Float     @default(0.0)
-  dropDescription     String
-  dropName            String
-  endTime             String
-  lotteryId           Int
-  prizeMetadataCid    String
-  startTime           String
-  bannerImageIpfsPath String
-  bannerImageS3Path   String
-  metadataIpfsPath    String
-  metadataS3Path      String
-  tags                String
-  royaltyPercentage   Float     @default(0.0)
-  defaultPrizeId      Int?
-  defaultPrize        Nft?      @relation(fields: [defaultPrizeId], references: [id])
-  maxParticipants     Int       @default(0)
-  blockchainCreatedAt DateTime?
-  approvedAt          DateTime?
-  approvedBy          String?   @db.Char(42)
-  ApprovedBy          User?     @relation(name: "approvals", fields: [approvedBy], references: [walletAddress])
-  createdAt           DateTime  @default(now())
-  Nft                 Nft[]     @relation(name: "nftOnDrop")
-  createdBy           String    @db.Char(42)
-  CreatedBy           User      @relation(name: "artists", fields: [createdBy], references: [walletAddress])
-  User                User[]    @relation(name: "userFavoriteDrops")
+  id                     Int       @id @default(autoincrement())
+  bannerImageName        String
+  dropDescription        String
+  dropName               String
+  endTime                String
+  lotteryId              Int
+  prizeMetadataCid       String
+  startTime              String
+  bannerImageIpfsPath    String
+  bannerImageS3Path      String
+  metadataIpfsPath       String
+  metadataS3Path         String
+  tags                   String
+  approvedAt             DateTime?
+  approvedBy             String?   @db.Char(42)
+  blockchainCreatedAt    DateTime?
+  costPerTicketCoins     Float     @default(0.0)
+  costPerTicketPoints    BigInt    @default(0)
+  createdAt              DateTime  @default(now())
+  createdBy              String    @db.Char(42)
+  defaultPrizeId         Int?
+  isLive                 Boolean   @default(false)
+  maxParticipants        Int       @default(0)
+  royaltyPercentage      Float     @default(0.0)
+  dropTileContentIpfsUrl String
+  dropTileContentS3Url   String
+  ApprovedBy             User?     @relation("approvals", fields: [approvedBy], references: [walletAddress])
+  CreatedBy              User      @relation("artists", fields: [createdBy], references: [walletAddress])
+  defaultPrize           Nft?      @relation(fields: [defaultPrizeId], references: [id])
+  Nft                    Nft[]     @relation("nftOnDrop")
+  User                   User[]    @relation("userFavoriteDrops")
 }
 
 model PrizeProof {
@@ -64,7 +68,7 @@ model PrizeProof {
   nftId         Int
   nft           Nft       @relation(fields: [nftId], references: [id])
 
-  @@id([lotteryId, winnerAddress])
+  @@id([lotteryId, winnerAddress, nftId])
 }
 
 model MemeTransactions {
@@ -90,22 +94,24 @@ model RewardPublished {
 model RewardType {
   type               AssetType @id
   rewardRate         Float
-  lastBlockInspected BigInt
-  contract           String    @db.Char(42)
+  lastBlockInspected Int
   chainId            Int
-  startingBlock      BigInt
+  contract           String    @db.Char(42)
+  startingBlock      Int
+  positionSizeLimit  String    @default("0")
 }
 
 model User {
-  walletAddress String   @id @db.Char(42)
-  userName      String?
-  email         String?  @unique
-  createdAt     DateTime @default(now())
-  role          Role     @default(USER)
-  bio           String?  @db.VarChar(200)
-  Approval      Drop[]   @relation(name: "approvals")
-  Artist        Drop[]   @relation("artists")
-  FavoriteDrop  Drop[]   @relation(name: "userFavoriteDrops")
+  walletAddress  String   @id @db.Char(42)
+  userName       String?
+  email          String?  @unique
+  createdAt      DateTime @default(now())
+  role           Role     @default(USER)
+  bio            String?  @db.VarChar(200)
+  profilePicture String?
+  Approval       Drop[]   @relation("approvals")
+  Artist         Drop[]   @relation("artists")
+  FavoriteDrop   Drop[]   @relation("userFavoriteDrops")
 
   @@index([walletAddress])
 }
