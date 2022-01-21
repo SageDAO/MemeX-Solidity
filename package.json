@@ -26,6 +26,7 @@
     "bignumber": "^1.1.0",
     "dotenv": "^10.0.0",
     "keccak256": "^1.0.3",
+    "logdna-winston": "^4.0.1",
     "merkletreejs": "^0.2.24",
     "winston": "^3.3.3",
     "winston-cloudwatch": "^3.1.1"
