@@ -21,16 +21,16 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
 module.exports = {
   networks: {
     rinkeby: {
-      url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
+      url: process.env.PROVIDER_URL,
       accounts: [process.env.DEPLOYER_PK],
     },
     fantomtestnet: {
-      url: `https://apis.ankr.com/${process.env.ANKR_KEY_TESTNET}/fantom/full/test`,
+      url: process.env.PROVIDER_URL,
       accounts: [process.env.DEPLOYER_PK],
       chainId: 0xfa2
     },
     fantom: {
-      url: `https://apis-sj.ankr.com/${process.env.ANKR_KEY}/fantom/full/main`,
+      url: process.env.PROVIDER_URL,
       accounts: [process.env.DEPLOYER_PK],
       chainId: 0xfa
     },
@@ -53,7 +53,7 @@ module.exports = {
   },
 
   solidity: {
-    version: "0.8.9",
+    version: "0.8.11",
     settings: {
       optimizer: {
         enabled: true,
