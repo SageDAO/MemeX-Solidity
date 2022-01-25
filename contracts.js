@@ -8,7 +8,7 @@ CONTRACTS = {
     },
     "fantomtestnet": {
         "lotteryAddress": "0x9935C818C29ab7068Ac1bd8Aa5e878fE09cf412e",
-        "nftAddress": "0xe168a9697808F865F47f200CbBEF085c492e598f",
+        "nftAddress": "0xd003A139D8Ac0F81D0CE5a1C5D43E310D565EE58",
         "randomnessAddress": "0x0704e09cec2727De730Fd74B8Cf39459587ab39B",
         "rewardsAddress": "0x78f6E042131EE4aA861b1B83D5f9460da4aB6169",
     },
