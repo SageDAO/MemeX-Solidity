@@ -4,12 +4,14 @@ pragma solidity ^0.8.0;
 import "../Access/MemeXAccessControls.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 import "../../interfaces/ILottery.sol";
 
-contract MemeXLottery is MemeXAccessControls, ILottery {
+contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
+
     uint8 public maxTicketsPerParticipant;
 
     bytes32 internal requestId_;
@@ -93,17 +95,11 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
         address indexed participantAddress,
         bool withPoints
     );
-
     event PrizeClaimed(
         uint256 indexed lotteryId,
         address indexed participantAddress,
         uint256 indexed prizeId
     );
-
-    constructor(address _rewardsContract, address _admin) {
-        initAccessControls(_admin);
-        rewardsContract = IRewards(_rewardsContract);
-    }
 
     /**
      * @dev Throws if not called by an admin account.
@@ -111,6 +107,14 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
     modifier onlyAdmin() {
         require(hasAdminRole(msg.sender), "Admin calls only");
         _;
+    }
+
+    /**
+     * @dev Constructor for an upgradable contract
+     */
+    function initialize(address _rewardsContract, address _admin) public initializer {
+        initAccessControls(_admin);
+        rewardsContract = IRewards(_rewardsContract);
     }
 
     function setPrizeMerkleRoot(uint256 _lotteryId, bytes32 _root)
