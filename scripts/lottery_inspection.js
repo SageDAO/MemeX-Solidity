@@ -53,7 +53,8 @@ async function main() {
             await inspectLotteryState(drop.lotteryId, lottery, block, drop);
         }
     }
-    logger.info('Finished successfully');
+    await prisma.$disconnect();
+    logger.info('Lottery inspection finished successfully');
 }
 
 async function inspectLotteryState(lotteryId, lottery, block, drop) {
@@ -207,13 +208,13 @@ async function hardhatTests(Lottery, block) {
 }
 
 function exit(code) {
-    prisma.$disconnect;
     process.exit(code);
 }
 
 main()
     .then(() => setTimeout(exit, 2000, 0))
     .catch((error) => {
+        prisma.$disconnect();
         logger.error(error.stack);
         setTimeout(exit, 2000, 1);
     });
