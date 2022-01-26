@@ -343,7 +343,7 @@ async function getUserEarnedPoints(rewardRateTypes, user) {
     }
     if (earnedPoints == 0 && (hre.network.name == "rinkeby" || hre.network.name == "fantomtestnet")) {
         logger.info(`This is a testnet and ${user.walletAddress} has 0 points. Adding some test points`);
-        earnedPoints = BigNumber(15 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400));
+        earnedPoints = BigNumber(150);
 
     }
     return earnedPoints;
