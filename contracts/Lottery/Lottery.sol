@@ -11,7 +11,6 @@ import "../../interfaces/IMemeXNFT.sol";
 import "../../interfaces/ILottery.sol";
 
 contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
-
     uint8 public maxTicketsPerParticipant;
 
     bytes32 internal requestId_;
@@ -112,7 +111,10 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     /**
      * @dev Constructor for an upgradable contract
      */
-    function initialize(address _rewardsContract, address _admin) public initializer {
+    function initialize(address _rewardsContract, address _admin)
+        public
+        initializer
+    {
         initAccessControls(_admin);
         rewardsContract = IRewards(_rewardsContract);
     }
