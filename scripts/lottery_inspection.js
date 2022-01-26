@@ -59,9 +59,9 @@ async function main() {
 
 async function inspectLotteryState(lotteryId, lottery, block, drop) {
     lotteryInfo = await lottery.getLotteryInfo(lotteryId);
-
+    participants = lotteryInfo.participantsCount;
+    
     if (lotteryInfo.status == 2 && lotteryInfo.closingTime < block.timestamp) {
-        participants = await lottery.getParticipantsCount(lotteryId);
         if (participants > 0) {
             logger.info(`Drop #${drop.id} is closed, requesting random number.`);
             await lottery.requestRandomNumber(lotteryId);
@@ -72,8 +72,8 @@ async function inspectLotteryState(lotteryId, lottery, block, drop) {
             return;
         }
     }
+
     if (lotteryInfo.status == 4) {
-        participants = await lottery.getParticipantsCount(lotteryId);
         if (participants > 0) {
             // check if there are prizeProofs stored in the DB for that lottery
             hasProof = await prisma.prizeProof.findFirst({
