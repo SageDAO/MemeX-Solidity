@@ -25,7 +25,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
     mapping(uint256 => bytes32) public prizeMerkleRoots;
 
     // participant address => lottery ids he entered
-    mapping(address => uint256[]) public participantHistory;
+    mapping(address => uint256[]) internal participantHistory;
 
     //lotteryid => prizeIds
     mapping(uint256 => PrizeInfo[]) public prizes;
@@ -49,7 +49,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
     mapping(uint256 => uint256) public randomSeeds;
 
     //lotteryId => address array
-    mapping(uint256 => address[]) internal lotteryTickets;
+    mapping(uint256 => address[]) public lotteryTickets;
 
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
@@ -125,6 +125,14 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
         onlyAdmin
     {
         maxTicketsPerParticipant = _maxTicketsPerParticipant;
+    }
+
+    function getParticipantHistory(address _participant)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return participantHistory[_participant];
     }
 
     function _burnUserPoints(address _user, uint256 _amount)
