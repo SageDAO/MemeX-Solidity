@@ -246,7 +246,7 @@ const buf2hex = x => '0x' + x.toString('hex');
 
 async function main() {
     await hre.run('compile');
-    logger = createLogger('memex_scripts', `update_balances_${hre.network.name}`);
+    logger = createLogger(`memex_scripts_${hre.network.name}`, `update_balances_${hre.network.name}`);
     logger.info(`Started update_balances job on ${hre.network.name}`);
 
     const publishResults = process.argv.slice(2)[0];
@@ -343,7 +343,7 @@ async function getUserEarnedPoints(rewardRateTypes, user) {
     }
     if (earnedPoints == 0 && (hre.network.name == "rinkeby" || hre.network.name == "fantomtestnet")) {
         logger.info(`This is a testnet and ${user.walletAddress} has 0 points. Adding some test points`);
-        earnedPoints = BigNumber(15 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400));
+        earnedPoints = BigNumber(150);
 
     }
     return earnedPoints;

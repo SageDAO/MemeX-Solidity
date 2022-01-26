@@ -18,7 +18,7 @@ let lottery;
 
 async function main() {
     await hre.run('compile');
-    logger = createLogger('memex_scripts', `lottery_inspection_${hre.network.name}`);
+    logger = createLogger(`memex_scripts_${hre.network.name}`, `lottery_inspection_${hre.network.name}`);
     logger.info(`Starting the lottery inspection script on ${hre.network.name}`);
 
     const Lottery = await ethers.getContractFactory("MemeXLottery");
@@ -50,23 +50,23 @@ async function main() {
         if (drop.blockchainCreatedAt == null) {
             await createLottery(drop, lottery, CONTRACTS[hre.network.name]["nftAddress"]);
         } else {
-            await inspectLotteryState(drop.lotteryId, lottery, block);
+            await inspectLotteryState(drop.lotteryId, lottery, block, drop);
         }
     }
     logger.info('Finished successfully');
 }
 
-async function inspectLotteryState(lotteryId, lottery, block) {
+async function inspectLotteryState(lotteryId, lottery, block, drop) {
     lotteryInfo = await lottery.getLotteryInfo(lotteryId);
 
     if (lotteryInfo.status == 2 && lotteryInfo.closingTime < block.timestamp) {
         participants = await lottery.getParticipantsCount(lotteryId);
         if (participants > 0) {
-            logger.info(`Lottery ${lotteryId} is closed, requesting random number`);
+            logger.info(`Drop #${drop.id} is closed, requesting random number.`);
             await lottery.requestRandomNumber(lotteryId);
             return;
         } else {
-            logger.info(`Lottery ${lotteryId} is closed and had no participants, canceling`);
+            logger.info(`Drop #${drop.id} was canceled. Closed without participants.`);
             await lottery.cancelLottery(lotteryId);
             return;
         }
@@ -83,10 +83,9 @@ async function inspectLotteryState(lotteryId, lottery, block) {
 
             // if there aren't any, create the proofs
             if (!hasProof) {
-                logger.info(`Lottery ${lotteryId} is closed but has no PrizeProof`);
+                logger.info(`Drop #${drop.id} is closed but has no PrizeProof`);
                 entries = await lottery.getLotteryTickets(lotteryId, { gasLimit: 500000000 });
                 totalEntries = entries.length;
-                logger.info(entries);
                 logger.info(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
 
                 lotteryInfo = await lottery.getLotteryInfo(lotteryId);
@@ -113,7 +112,7 @@ async function inspectLotteryState(lotteryId, lottery, block) {
 
                 logger.info(`Total prizes: ${totalPrizes}`);
                 var prizesAwarded = 0;
-                logger.info(`Starting prize distribution`);
+                logger.info(`Drop #${drop.id} starting prize distribution`);
                 const winners = new Set();
                 var leaves = new Array();
                 for (prizeIndex in prizes) {
@@ -141,7 +140,7 @@ async function inspectLotteryState(lotteryId, lottery, block) {
                         leaves.push(leaf);
                     }
                 }
-                // if lottery has defaultPrize, distribute it to all participants that did not win a prize above
+                // if lottery has defaultPrize, distribute it to all participants who did not win a prize above
                 if (defaultPrizeId != 0) {
                     for (i = 0; i < entries.length; i++) {
                         if (!winners.has(entries[i])) {
@@ -167,11 +166,12 @@ async function inspectLotteryState(lotteryId, lottery, block) {
                     leaf.proof = tree.getProof(getEncodedLeaf(lotteryId, leaf)).map(x => buf2hex(x.data)).toString();
                     logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`)
                 }
-                // store proofs on the DB so it can be easily queried
+                // store proofs on the DB so they can be easily queried
                 if (hre.network.name != "hardhat") {
                     created = await prisma.prizeProof.createMany({ data: leaves });
                     logger.info(`${created.count} Proofs created in the DB.`);
                 }
+                logger.info(`Drop #${drop.id} had ${leaf.length} prizes distributed.`);
             }
         }
     }
@@ -274,9 +274,13 @@ async function addPrizes(drop, lottery) {
     let prizeIds = Array();
     let prizeAmounts = Array();
     for (prize of prizes) {
-        prizeIds.push(prize.id);
-        prizeAmounts.push(prize.numberOfMints);
+        if (prize.numberOfMints > 0 ) {
+            prizeIds.push(prize.id);
+            prizeAmounts.push(prize.numberOfMints);
+        }
     }
-    await lottery.addPrizes(drop.lotteryId.toNumber(), prizeIds, prizeAmounts);
+    if (prizeIds.length > 0) {
+        await lottery.addPrizes(drop.lotteryId.toNumber(), prizeIds, prizeAmounts);
+    }
 }
 
