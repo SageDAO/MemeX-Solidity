@@ -256,7 +256,7 @@ async function main() {
 
     let rewardRateTypes = await getRewardRates();
 
-    let transactions = await getLatestTransactionsFromAllBlockchains(rewardRateTypes);
+    await getLatestTransactionsFromAllBlockchains(rewardRateTypes);
 
     if (publishResults) {
         const Rewards = await ethers.getContractFactory("Rewards");

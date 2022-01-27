@@ -172,7 +172,7 @@ async function inspectLotteryState(lotteryId, lottery, block, drop) {
                     created = await prisma.prizeProof.createMany({ data: leaves });
                     logger.info(`${created.count} Proofs created in the DB.`);
                 }
-                logger.info(`Drop #${drop.id} had ${leaf.length} prizes distributed.`);
+                logger.info(`Drop #${drop.id} had ${leaves.length} prizes distributed.`);
             }
         }
     }
