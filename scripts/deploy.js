@@ -158,6 +158,7 @@ async function main() {
   }
 
   if (newLottery) {
+    await lottery.setRandomGenerator(randomness.address);
     await nft.addSmartContractRole(lottery.address);
     await rewards.addSmartContractRole(lottery.address);
     await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 });

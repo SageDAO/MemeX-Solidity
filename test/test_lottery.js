@@ -8,8 +8,6 @@ describe("Lottery Contract", function () {
     beforeEach(async () => {
         [owner, addr1, addr2, addr3, addr4, ...addrs] = await ethers.getSigners();
         artist = addr1;
-        Token = await ethers.getContractFactory("MemeXToken");
-        token = await Token.deploy("MEMEX", "MemeX", 1, owner.address);
         Rewards = await ethers.getContractFactory('Rewards');
         rewards = await Rewards.deploy(owner.address);
         Lottery = await ethers.getContractFactory("MemeXLottery");
