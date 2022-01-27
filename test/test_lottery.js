@@ -13,7 +13,8 @@ describe("Lottery Contract", function () {
         Rewards = await ethers.getContractFactory('Rewards');
         rewards = await Rewards.deploy(owner.address);
         Lottery = await ethers.getContractFactory("MemeXLottery");
-        lottery = await Lottery.deploy(rewards.address, owner.address);
+        lottery = await upgrades.deployProxy(Lottery, [rewards.address, owner.address]);
+        await lottery.deployed();
         await rewards.addSmartContractRole(lottery.address);
         Nft = await ethers.getContractFactory("MemeXNFT");
         nft = await Nft.deploy("Memex", "MEMEX", owner.address);

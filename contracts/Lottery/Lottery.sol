@@ -4,12 +4,13 @@ pragma solidity ^0.8.0;
 import "../Access/MemeXAccessControls.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 import "../../interfaces/ILottery.sol";
 
-contract MemeXLottery is MemeXAccessControls, ILottery {
+contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     uint8 public maxTicketsPerParticipant;
 
     bytes32 internal requestId_;
@@ -25,7 +26,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
     mapping(uint256 => bytes32) public prizeMerkleRoots;
 
     // participant address => lottery ids he entered
-    mapping(address => uint256[]) public participantHistory;
+    mapping(address => uint256[]) internal participantHistory;
 
     //lotteryid => prizeIds
     mapping(uint256 => PrizeInfo[]) public prizes;
@@ -49,7 +50,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
     mapping(uint256 => uint256) public randomSeeds;
 
     //lotteryId => address array
-    mapping(uint256 => address[]) internal lotteryTickets;
+    mapping(uint256 => address[]) public lotteryTickets;
 
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
@@ -93,17 +94,11 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
         address indexed participantAddress,
         bool withPoints
     );
-
     event PrizeClaimed(
         uint256 indexed lotteryId,
         address indexed participantAddress,
         uint256 indexed prizeId
     );
-
-    constructor(address _rewardsContract, address _admin) {
-        initAccessControls(_admin);
-        rewardsContract = IRewards(_rewardsContract);
-    }
 
     /**
      * @dev Throws if not called by an admin account.
@@ -111,6 +106,17 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
     modifier onlyAdmin() {
         require(hasAdminRole(msg.sender), "Admin calls only");
         _;
+    }
+
+    /**
+     * @dev Constructor for an upgradable contract
+     */
+    function initialize(address _rewardsContract, address _admin)
+        public
+        initializer
+    {
+        initAccessControls(_admin);
+        rewardsContract = IRewards(_rewardsContract);
     }
 
     function setPrizeMerkleRoot(uint256 _lotteryId, bytes32 _root)
@@ -125,6 +131,14 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
         onlyAdmin
     {
         maxTicketsPerParticipant = _maxTicketsPerParticipant;
+    }
+
+    function getParticipantHistory(address _participant)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return participantHistory[_participant];
     }
 
     function _burnUserPoints(address _user, uint256 _amount)
