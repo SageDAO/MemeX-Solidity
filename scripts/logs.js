@@ -1,34 +1,24 @@
-const AWS = require('aws-sdk');
-var winston = require('winston');
-var WinstonCloudWatch = require('winston-cloudwatch');
+require("dotenv").config();
 
-AWS.config.update({
-    region: 'us-east-2',
-
-});
+const logdnaWinston = require('logdna-winston');
+const winston = require('winston');
 
 // function to create a logger
 function createLogger(logGroupName, logStreamName) {
-    return new winston.createLogger({
-        format:
-            winston.format.combine(
-                winston.format.timestamp({
-                    format: 'YYYY-MM-DD HH:mm:ss'
-                }),
-                winston.format.json(),
-            ),
-        transports: [
-            new (winston.transports.Console)({
-                timestamp: true,
-                colorize: true,
-            }),
-            new WinstonCloudWatch({
-                logGroupName: logGroupName,
-                logStreamName: logStreamName,
-            }),
-        ]
-    });
+    const logger = winston.createLogger({});
+    const options = {
+        key: process.env.LOGDNA_KEY,
+        app: logGroupName,
+        env: logStreamName,
+        indexMeta: true 
+    }
+    if (process.env.LOGDNA_KEY != "") {
+        logger.add(new logdnaWinston(options));
+    }
+      logger.add(new winston.transports.Console({
+        timestamp: true,
+      }));
+    return logger;
 }
-
 
 module.exports = createLogger;

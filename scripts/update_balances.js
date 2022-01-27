@@ -246,7 +246,7 @@ const buf2hex = x => '0x' + x.toString('hex');
 
 async function main() {
     await hre.run('compile');
-    logger = createLogger('memex_scripts', `update_balances_${hre.network.name}`);
+    logger = createLogger(`memex_scripts_${hre.network.name}`, `update_balances_${hre.network.name}`);
     logger.info(`Started update_balances job on ${hre.network.name}`);
 
     const publishResults = process.argv.slice(2)[0];
@@ -325,7 +325,8 @@ async function main() {
         }
         await prisma.$transaction(updates);
     }
-    logger.info('Finished successfully');
+    await prisma.$disconnect();
+    logger.info('Update points finished successfully');
 }
 
 function isValidAddress(address) {
@@ -343,7 +344,7 @@ async function getUserEarnedPoints(rewardRateTypes, user) {
     }
     if (earnedPoints == 0 && (hre.network.name == "rinkeby" || hre.network.name == "fantomtestnet")) {
         logger.info(`This is a testnet and ${user.walletAddress} has 0 points. Adding some test points`);
-        earnedPoints = BigNumber(15000000000 + parseInt((Date.now() - Date.parse(user.createdAt)) / 1000 / 86400 * 5000000000));
+        earnedPoints = BigNumber(150);
 
     }
     return earnedPoints;
@@ -370,13 +371,13 @@ function getEncodedLeaf(leaf) {
 }
 
 function exit(code) {
-    prisma.$disconnect;
     process.exit(code);
 }
 
 main()
     .then(() => setTimeout(exit, 2000, 0))
     .catch((error) => {
+        prisma.$disconnect();
         logger.error(error.stack);
         setTimeout(exit, 2000, 1);
     });

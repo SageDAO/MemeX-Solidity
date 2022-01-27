@@ -9,6 +9,8 @@ import "../../interfaces/IMemeXNFT.sol";
 contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
     uint256 public collectionCount;
 
+    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
+
     string public name;
     // Contract symbol
     string public symbol;
@@ -41,7 +43,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
     {
         return
             interfaceId == type(IERC1155).interfaceId ||
-            interfaceId == type(IERC1155MetadataURI).interfaceId ||
+            interfaceId == _INTERFACE_ID_ERC2981 ||
             interfaceId == type(IAccessControl).interfaceId ||
             super.supportsInterface(interfaceId);
     }
@@ -103,6 +105,14 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         incrementCollectionCount();
         collections[collectionCount] = collection;
         return collectionCount;
+    }
+
+    function collectionExists(uint256 _collectionId)
+        public
+        view
+        returns (bool)
+    {
+        return _collectionId != 0 && _collectionId < collectionCount;
     }
 
     /**

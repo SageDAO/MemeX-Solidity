@@ -13,7 +13,8 @@ describe("Lottery Contract", function () {
         Rewards = await ethers.getContractFactory('Rewards');
         rewards = await Rewards.deploy(owner.address);
         Lottery = await ethers.getContractFactory("MemeXLottery");
-        lottery = await Lottery.deploy(rewards.address, owner.address);
+        lottery = await upgrades.deployProxy(Lottery, [rewards.address, owner.address]);
+        await lottery.deployed();
         await rewards.addSmartContractRole(lottery.address);
         Nft = await ethers.getContractFactory("MemeXNFT");
         nft = await Nft.deploy("Memex", "MEMEX", owner.address);
@@ -28,7 +29,7 @@ describe("Lottery Contract", function () {
         // create a new lottery
         blockNum = await ethers.provider.getBlockNumber();
         block = await ethers.provider.getBlock(blockNum);
-        await lottery.createNewLottery(1500000000, 0, block.timestamp, block.timestamp + 86400 * 3,
+        await lottery.createNewLottery(0, 1500000000, 0, block.timestamp, block.timestamp + 86400 * 3,
             nft.address,
             0, artist.address, 0, 200, "ipfs://path/");
         lottery.addPrizes(1, [1, 2], [1, 100]);
@@ -76,7 +77,7 @@ describe("Lottery Contract", function () {
     });
 
     it("Should allow user to buy tickets with coins", async function () {
-        await lottery.createNewLottery(0, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
+        await lottery.createNewLottery(0, 0, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
             nft.address, 0, artist.address, 0, 200, "ipfs://path/");
         await lottery.connect(addr2).buyTickets(2, 1, false,
             { value: ethers.utils.parseEther("1") });
@@ -84,7 +85,7 @@ describe("Lottery Contract", function () {
     });
 
     it("Should add 100 prizes", async function () {
-        await lottery.createNewLottery(0, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
+        await lottery.createNewLottery(0, 0, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
             nft.address, 0, artist.address, 0, 200, "ipfs://path/");
         prizes = Array(100).fill().map((_, idx) => 10 + idx);
         amounts = Array(100).fill(1);
@@ -135,7 +136,7 @@ describe("Lottery Contract", function () {
     });
 
     it("Should not let users join when Lottery is full", async function () {
-        await lottery.createNewLottery(1500000000, 0, block.timestamp, block.timestamp + 86400 * 3,
+        await lottery.createNewLottery(0, 1500000000, 0, block.timestamp, block.timestamp + 86400 * 3,
             nft.address,
             1, // just one participant allowed
             artist.address, 0, 200, "ipfs://path/"
@@ -146,7 +147,7 @@ describe("Lottery Contract", function () {
     });
 
     it("Should allow user to boost", async function () {
-        await lottery.createNewLottery(1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
+        await lottery.createNewLottery(0, 1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
             nft.address, 0, artist.address, 0, 200, "ipfs://path/"
         );
         await lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 15000000000, hexproofB);
@@ -162,7 +163,7 @@ describe("Lottery Contract", function () {
     });
 
     it("Should not allow to boost without sending funds", async function () {
-        await lottery.createNewLottery(1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
+        await lottery.createNewLottery(0, 1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
             nft.address, 0, artist.address, 0, 200, "ipfs://path/");
         await lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 15000000000, hexproofB);
         await expect(lottery.connect(addr2).buyTickets(2, 1, false,
@@ -170,7 +171,7 @@ describe("Lottery Contract", function () {
     });
 
     it("Should not allow to boost without buying ticket", async function () {
-        await lottery.createNewLottery(1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
+        await lottery.createNewLottery(0, 1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
             nft.address, 0, artist.address, 0, 200, "ipfs://path/");
         await expect(lottery.buyTickets(2, 1, false,
             { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Participant not found");
@@ -190,7 +191,7 @@ describe("Lottery Contract", function () {
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
         // create a second lottery
-        await lottery.createNewLottery(1500000000, 0, block.timestamp, block.timestamp + 86400 * 3,
+        await lottery.createNewLottery(0, 1500000000, 0, block.timestamp, block.timestamp + 86400 * 3,
             nft.address, 0, artist.address, 0, 200, "ipfs://path/");
         lottery.addPrizes(2, [3, 4], [1, 1]);
         await lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 15000000000, hexproofB);
@@ -250,13 +251,13 @@ describe("Lottery Contract", function () {
     });
 
     it("Should not call createNewLottery if not admin", async function () {
-        await expect(lottery.connect(addr1).createNewLottery(1, 1, 1, 1, nft.address, 1, lottery.address, 0, 200, "ipfs string")).to.be.revertedWith("Admin calls only");
+        await expect(lottery.connect(addr1).createNewLottery(0, 1, 1, 1, 1, nft.address, 1, lottery.address, 0, 200, "ipfs string")).to.be.revertedWith("Admin calls only");
     });
 
     it("Should not allow to boost if boostCost = 0", async function () {
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
-        await lottery.createNewLottery(1500000000, 0, block.timestamp, block.timestamp + 86400 * 3,
+        await lottery.createNewLottery(0, 1500000000, 0, block.timestamp, block.timestamp + 86400 * 3,
             nft.address,
             0, artist.address, 0, 200, "ipfs://path/");
         await lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 15000000000, hexproofB);
