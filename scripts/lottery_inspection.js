@@ -232,7 +232,7 @@ async function createLottery(drop, lottery, nftContractAddress) {
     const tx = await lottery.createNewLottery(
         drop.lotteryId,
         drop.costPerTicketPoints,
-        drop.costPerTicketCoins,
+        ethers.utils.parseEther(drop.costPerTicketCoins.toString()),
         drop.startTime,
         drop.endTime,
         nftContractAddress,
