@@ -35,6 +35,8 @@ contract MemeXAuction is MemeXAccessControls {
         uint64 endTime
     );
 
+    event AuctionCancelled(uint256 auctionId);
+
     event BidPlaced(uint256 auctionId, address bidder, uint256 bidAmount);
 
     constructor(address _nftContract, address _admin) {
@@ -88,6 +90,15 @@ contract MemeXAuction is MemeXAccessControls {
         return auctionId;
     }
 
+    function cancelAuction(uint256 _auctionId) public returns (bool success) {
+        require(hasAdminRole(msg.sender), "Only admins can cancel auctions");
+        require(!auctions[_auctionId].finished, "Auction is already finished");
+        reverseLastBid(_auctionId);
+        auctions[_auctionId].finished = true;
+        emit AuctionCancelled(_auctionId);
+        return true;
+    }
+
     function bid(uint256 _auctionId, uint256 _amount) public payable {
         Auction storage auction = auctions[_auctionId];
         require(
@@ -95,24 +106,12 @@ contract MemeXAuction is MemeXAccessControls {
             "Auction has not started yet"
         );
         require(auction.endTime > block.timestamp, "Auction has ended");
-        require(
-            auction.minimumPrice <= _amount,
-            StringUtils.strConcat(
-                "Bid is too low. Minimum bid is ",
-                StringUtils.uint2str(auction.minimumPrice)
-            )
-        );
+        require(auction.minimumPrice <= _amount, "Bid is lower than minimum");
         require(
             auction.buyNowPrice != 0 && _amount <= auction.buyNowPrice,
             "Bid higher than buy now price"
         );
-        require(
-            _amount > auction.highestBid,
-            StringUtils.strConcat(
-                "Bid is too low. Highest bid is ",
-                StringUtils.uint2str(auction.highestBid)
-            )
-        );
+        require(_amount > auction.highestBid, "Bid is lower than highest bid");
 
         if (acceptsERC20(_auctionId)) {
             require(msg.value == 0, "Auction is receiving ERC20 tokens");
@@ -122,7 +121,7 @@ contract MemeXAuction is MemeXAccessControls {
                 _amount
             );
         } else {
-            require(msg.value == _amount, "Not enough FTM to pay the bid");
+            require(msg.value == _amount, "Value != bid amount");
         }
         reverseLastBid(_auctionId);
         auction.highestBidder = msg.sender;
@@ -139,13 +138,10 @@ contract MemeXAuction is MemeXAccessControls {
 
         if (highestBidder != address(0)) {
             if (acceptsERC20(_auctionId)) {
-                IERC20(auction.erc20Token).transferFrom(
-                    address(this),
-                    highestBidder,
-                    highestBid
-                );
+                IERC20(auction.erc20Token).transfer(highestBidder, highestBid);
             } else {
-                payable(auction.highestBidder).transfer(auction.highestBid);
+                (bool sent, ) = highestBidder.call{value: highestBid}("");
+                require(sent, "Failed to send Ether");
             }
         }
     }
