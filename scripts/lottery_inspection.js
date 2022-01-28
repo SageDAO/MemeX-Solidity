@@ -230,7 +230,6 @@ async function createLottery(drop, lottery, nftContractAddress) {
     // percentage in base points (200 = 2.00%)
     let royaltyPercentageBasePoints = parseInt(drop.royaltyPercentage * 100);
     const tx = await lottery.createNewLottery(
-        drop.lotteryId,
         drop.costPerTicketPoints,
         ethers.utils.parseEther(drop.costPerTicketCoins.toString()),
         drop.startTime,
