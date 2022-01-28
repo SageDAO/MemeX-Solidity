@@ -15,7 +15,6 @@ interface ILottery {
     ) external;
 
     function createNewLottery(
-        uint256 _lotteryId,
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
         uint32 _startTime,

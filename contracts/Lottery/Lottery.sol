@@ -42,8 +42,8 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     mapping(uint256 => mapping(address => ParticipantInfo)) public participants;
 
     struct ParticipantInfo {
-        uint8 ticketsFromCoins;
-        uint8 ticketsFromPoints;
+        uint16 ticketsFromCoins;
+        uint16 ticketsFromPoints;
     }
 
     //loteryId => randomNumber received from RNG
@@ -282,7 +282,6 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
 
     /**
      * @notice Creates a new lottery.
-     * @param _lotteryId 0 if new lottery, otherwise the lottery id to reuse
      * @param _costPerTicketPinas cost in wei per ticket in points/tokens (token only when using ERC20 on the rewards contract)
      * @param _costPerTicketCoins cost in wei per ticket in FTM
      * @param _startTime timestamp to begin lottery entries
@@ -295,7 +294,6 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
      * @return lotteryId
      */
     function createNewLottery(
-        uint256 _lotteryId,
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
         uint32 _startTime,
@@ -313,16 +311,12 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         } else {
             lotteryStatus = Status.Planned;
         }
-        if (!_nftContract.collectionExists(_lotteryId)) {
-            lotteryId = _nftContract.createCollection(
-                _artistAddress,
-                _royaltyPercentage,
-                _dropMetadataURI
-            );
-            lotteries.push(lotteryId);
-        } else {
-            lotteryId = _lotteryId;
-        }
+        lotteryId = _nftContract.createCollection(
+            _artistAddress,
+            _royaltyPercentage,
+            _dropMetadataURI
+        );
+        lotteries.push(lotteryId);
         LotteryInfo memory newLottery = LotteryInfo(
             _startTime,
             _closeTime,
@@ -433,7 +427,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
      */
     function claimPointsAndBuyTickets(
         uint256 _lotteryId,
-        uint8 numberOfTickets,
+        uint16 numberOfTickets,
         uint256 _points,
         bytes32[] calldata _proof
     ) public payable returns (uint256) {
@@ -450,7 +444,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
      */
     function buyTickets(
         uint256 _lotteryId,
-        uint8 numberOfTickets,
+        uint16 numberOfTickets,
         bool _usePoints
     ) public payable returns (uint256) {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];

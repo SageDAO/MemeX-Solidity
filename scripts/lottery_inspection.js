@@ -172,7 +172,7 @@ async function inspectLotteryState(lotteryId, lottery, block, drop) {
                     created = await prisma.prizeProof.createMany({ data: leaves });
                     logger.info(`${created.count} Proofs created in the DB.`);
                 }
-                logger.info(`Drop #${drop.id} had ${leaf.length} prizes distributed.`);
+                logger.info(`Drop #${drop.id} had ${leaves.length} prizes distributed.`);
             }
         }
     }
@@ -230,9 +230,8 @@ async function createLottery(drop, lottery, nftContractAddress) {
     // percentage in base points (200 = 2.00%)
     let royaltyPercentageBasePoints = parseInt(drop.royaltyPercentage * 100);
     const tx = await lottery.createNewLottery(
-        drop.lotteryId,
         drop.costPerTicketPoints,
-        drop.costPerTicketCoins,
+        ethers.utils.parseEther(drop.costPerTicketCoins.toString()),
         drop.startTime,
         drop.endTime,
         nftContractAddress,
