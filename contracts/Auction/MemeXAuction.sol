@@ -13,9 +13,10 @@ contract MemeXAuction is MemeXAccessControls {
 
     address public feeBeneficiary;
 
+    uint16 public defaultTimeExtension = 3600;
+
     struct Auction {
-        uint128 startTime;
-        uint128 endTime;
+        uint256 endTime;
         uint256 collectionId;
         uint256 nftId;
         // seller can define an ERC20 token to be used for the auction.
@@ -30,7 +31,11 @@ contract MemeXAuction is MemeXAccessControls {
         bool finished;
     }
 
-    event AuctionCreated(uint256 collectionId, uint256 nftId);
+    event AuctionCreated(
+        uint256 collectionId,
+        uint256 nftId,
+        address erc20Token
+    );
 
     event AuctionCancelled(uint256 auctionId);
 
@@ -70,16 +75,12 @@ contract MemeXAuction is MemeXAccessControls {
         uint256 _buyNowPrice,
         uint256 _minimumPrice,
         address _token,
-        uint128 _startTime,
-        uint128 _endTime,
+        uint32 _duration,
         IMemeXNFT _nftContract,
         uint16 _fee
     ) public returns (uint256 auctionId) {
         require(hasAdminRole(msg.sender), "Only admins can create auctions");
-        require(
-            _startTime > 0 && _startTime < _endTime,
-            "Invalid auction time"
-        );
+        require(_duration > 0, "Invalid auction time");
         require(
             _buyNowPrice == 0 || _buyNowPrice >= _minimumPrice,
             "Invalid buy now price"
@@ -89,8 +90,7 @@ contract MemeXAuction is MemeXAccessControls {
         auctionId = incrementAuctionCount();
 
         Auction memory auction = Auction(
-            _startTime,
-            _endTime,
+            block.timestamp + _duration,
             _collectionId,
             _nftId,
             _token,
@@ -105,7 +105,7 @@ contract MemeXAuction is MemeXAccessControls {
 
         auctions[auctionId] = auction;
 
-        emit AuctionCreated(_collectionId, _nftId);
+        emit AuctionCreated(_collectionId, _nftId, _token);
 
         return auctionId;
     }
@@ -113,7 +113,11 @@ contract MemeXAuction is MemeXAccessControls {
     function settleAuction(uint256 _auctionId) public {
         Auction storage auction = auctions[_auctionId];
         require(!auction.finished, "Auction is already finished");
-        require(block.timestamp > auction.endTime, "Auction is still running");
+        require(
+            block.timestamp > auction.endTime ||
+                auction.highestBid == auction.buyNowPrice,
+            "Auction is still running"
+        );
 
         auction.finished = true;
         if (auction.highestBidder != address(0)) {
@@ -163,17 +167,15 @@ contract MemeXAuction is MemeXAccessControls {
         uint256 _buyNowPrice,
         uint256 _minimumPrice,
         address _token,
-        uint64 _startTime,
         uint64 _endTime
     ) public {
-        require(hasAdminRole(msg.sender), "Only admins can cancel auctions");
+        require(hasAdminRole(msg.sender), "Only admins can update auctions");
         require(!auctions[_auctionId].finished, "Auction is already finished");
-        require(auctions[_auctionId].startTime > 0, "Auction not found");
+        require(auctions[_auctionId].endTime > 0, "Auction not found");
         Auction storage auction = auctions[_auctionId];
         auction.buyNowPrice = _buyNowPrice;
         auction.minimumPrice = _minimumPrice;
         auction.erc20Token = _token;
-        auction.startTime = _startTime;
         auction.endTime = _endTime;
     }
 
@@ -188,12 +190,8 @@ contract MemeXAuction is MemeXAccessControls {
     function bid(uint256 _auctionId, uint256 _amount) public payable {
         Auction storage auction = auctions[_auctionId];
         require(!auction.finished, "Auction is already finished");
-        require(
-            auction.startTime <= block.timestamp,
-            "Auction has not started yet"
-        );
         require(auction.endTime > block.timestamp, "Auction has ended");
-        require(auction.minimumPrice <= _amount, "Bid is lower than minimum");
+        require(_amount >= auction.minimumPrice, "Bid is lower than minimum");
         require(
             auction.buyNowPrice != 0 && _amount <= auction.buyNowPrice,
             "Bid higher than buy now price"
@@ -213,6 +211,16 @@ contract MemeXAuction is MemeXAccessControls {
         reverseLastBid(_auctionId);
         auction.highestBidder = msg.sender;
         auction.highestBid = _amount;
+
+        uint16 timeExtension = defaultTimeExtension;
+
+        if (auction.endTime - block.timestamp < timeExtension) {
+            auction.endTime = block.timestamp + timeExtension;
+        }
+
+        if (auction.buyNowPrice != 0 && _amount == auction.buyNowPrice) {
+            settleAuction(_auctionId);
+        }
         emit BidPlaced(_auctionId, msg.sender, _amount);
     }
 
