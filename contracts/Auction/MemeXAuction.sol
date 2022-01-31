@@ -7,14 +7,17 @@ import "../Access/MemeXAccessControls.sol";
 import "../Utils/StringUtils.sol";
 
 contract MemeXAuction is MemeXAccessControls {
+    uint256 public auctionCount;
+
     mapping(uint256 => Auction) public auctions;
 
-    IMemeXNFT nftContract;
-
-    address feeBeneficiary;
+    address public feeBeneficiary;
 
     struct Auction {
-        address artist;
+        uint128 startTime;
+        uint128 endTime;
+        uint256 collectionId;
+        uint256 nftId;
         // seller can define an ERC20 token to be used for the auction.
         // If not defined, the native token is used (FTM).
         address erc20Token;
@@ -22,85 +25,169 @@ contract MemeXAuction is MemeXAccessControls {
         uint256 minimumPrice;
         uint256 highestBid;
         address highestBidder;
-        uint64 startTime;
-        uint64 endTime;
+        IMemeXNFT nftContract;
+        uint16 fee;
         bool finished;
     }
 
-    event AuctionCreated(
-        address artist,
-        uint256 buyNowPrice,
-        uint256 minimumPrice,
-        uint64 startTime,
-        uint64 endTime
-    );
+    event AuctionCreated(uint256 collectionId, uint256 nftId);
 
     event AuctionCancelled(uint256 auctionId);
 
+    event AuctionSettled(uint256 auctionId);
+
     event BidPlaced(uint256 auctionId, address bidder, uint256 bidAmount);
 
-    constructor(address _nftContract, address _admin) {
+    constructor(address _admin) {
         initAccessControls(_admin);
-        nftContract = IMemeXNFT(_nftContract);
     }
 
-    function create(
+    function incrementAuctionCount() internal returns (uint256) {
+        auctionCount++;
+        return auctionCount;
+    }
+
+    function createCollection(
+        IMemeXNFT _nftContract,
         address _artistAddress,
-        uint256 _buyNowPrice,
-        uint256 _minimumPrice,
-        address _token,
-        uint64 _startTime,
-        uint64 _endTime,
         uint16 _royaltyPercentage,
         string calldata _metadataURI
-    ) public returns (uint256 auctionId) {
-        require(hasAdminRole(msg.sender), "Only admins can create auctions");
-        require(_buyNowPrice >= _minimumPrice);
-        require(_startTime < _endTime);
+    ) public returns (uint256 collectionId) {
+        require(hasAdminRole(msg.sender), "Only admin can create collections");
 
-        auctionId = nftContract.createCollection(
+        collectionId = _nftContract.createCollection(
             _artistAddress,
             _royaltyPercentage,
             _metadataURI
         );
-        require(auctionId > 0, "Failed to create a collection");
+        require(collectionId > 0, "Collection creation failed");
+        return collectionId;
+    }
+
+    function create(
+        uint256 _collectionId,
+        uint256 _nftId,
+        uint256 _buyNowPrice,
+        uint256 _minimumPrice,
+        address _token,
+        uint128 _startTime,
+        uint128 _endTime,
+        IMemeXNFT _nftContract,
+        uint16 _fee
+    ) public returns (uint256 auctionId) {
+        require(hasAdminRole(msg.sender), "Only admins can create auctions");
+        require(
+            _startTime > 0 && _startTime < _endTime,
+            "Invalid auction time"
+        );
+        require(
+            _buyNowPrice == 0 || _buyNowPrice >= _minimumPrice,
+            "Invalid buy now price"
+        );
+        require(_collectionId > 0, "Collection id must be greater than 0");
+
+        auctionId = incrementAuctionCount();
 
         Auction memory auction = Auction(
-            _artistAddress,
+            _startTime,
+            _endTime,
+            _collectionId,
+            _nftId,
             _token,
             _buyNowPrice,
             _minimumPrice,
             0,
             address(0),
-            _startTime,
-            _endTime,
+            _nftContract,
+            _fee,
             false
         );
 
         auctions[auctionId] = auction;
 
-        emit AuctionCreated(
-            _artistAddress,
-            _buyNowPrice,
-            _minimumPrice,
-            _startTime,
-            _endTime
-        );
+        emit AuctionCreated(_collectionId, _nftId);
 
         return auctionId;
     }
 
-    function cancelAuction(uint256 _auctionId) public returns (bool success) {
+    function settleAuction(uint256 _auctionId) public {
+        Auction storage auction = auctions[_auctionId];
+        require(!auction.finished, "Auction is already finished");
+        require(block.timestamp > auction.endTime, "Auction is still running");
+
+        auction.finished = true;
+        if (auction.highestBidder != address(0)) {
+            auction.nftContract.mint(
+                auction.highestBidder,
+                auction.nftId,
+                1,
+                auction.collectionId,
+                ""
+            );
+        }
+
+        (address artistAddress, , ) = auction.nftContract.getCollectionInfo(
+            auction.collectionId
+        );
+
+        if (acceptsERC20(_auctionId)) {
+            uint256 feePaid = getPercentageOfBid(
+                auction.highestBid,
+                auction.fee
+            );
+            if (feePaid != 0) {
+                IERC20(auction.erc20Token).transfer(feeBeneficiary, feePaid);
+            }
+            IERC20(auction.erc20Token).transfer(
+                artistAddress,
+                auction.highestBid - feePaid
+            );
+        } else {
+            (bool sent, ) = artistAddress.call{value: auction.highestBid}("");
+            require(sent, "Failed to send FTM to artist");
+        }
+
+        emit AuctionSettled(_auctionId);
+    }
+
+    function getPercentageOfBid(uint256 _bid, uint256 _percentage)
+        internal
+        pure
+        returns (uint256)
+    {
+        return (_bid * (_percentage)) / 10000;
+    }
+
+    function updateAuction(
+        uint256 _auctionId,
+        uint256 _buyNowPrice,
+        uint256 _minimumPrice,
+        address _token,
+        uint64 _startTime,
+        uint64 _endTime
+    ) public {
+        require(hasAdminRole(msg.sender), "Only admins can cancel auctions");
+        require(!auctions[_auctionId].finished, "Auction is already finished");
+        require(auctions[_auctionId].startTime > 0, "Auction not found");
+        Auction storage auction = auctions[_auctionId];
+        auction.buyNowPrice = _buyNowPrice;
+        auction.minimumPrice = _minimumPrice;
+        auction.erc20Token = _token;
+        auction.startTime = _startTime;
+        auction.endTime = _endTime;
+    }
+
+    function cancelAuction(uint256 _auctionId) public {
         require(hasAdminRole(msg.sender), "Only admins can cancel auctions");
         require(!auctions[_auctionId].finished, "Auction is already finished");
         reverseLastBid(_auctionId);
         auctions[_auctionId].finished = true;
         emit AuctionCancelled(_auctionId);
-        return true;
     }
 
     function bid(uint256 _auctionId, uint256 _amount) public payable {
         Auction storage auction = auctions[_auctionId];
+        require(!auction.finished, "Auction is already finished");
         require(
             auction.startTime <= block.timestamp,
             "Auction has not started yet"

@@ -14,28 +14,30 @@ describe("Auction Contract", function () {
         mockERC20.transfer(addr3.address, 100);
 
         Auction = await ethers.getContractFactory('MemeXAuction');
-        auction = await Auction.deploy(nft.address, owner.address);
+        auction = await Auction.deploy(owner.address);
         
         await nft.addSmartContractRole(auction.address);
         blockNum = await ethers.provider.getBlockNumber();
         block = await ethers.provider.getBlock(blockNum);
-        await auction.create(addr1.address, 10, 2, '0x0000000000000000000000000000000000000000', block.timestamp, block.timestamp + 120, 200, "ipfs://");
-        await auction.create(addr1.address, 10, 2, mockERC20.address, block.timestamp, block.timestamp + 120, 200, "ipfs://");
+        await auction.createCollection(nft.address, addr1.address, 200, "ipfs://collection1");
+        await auction.createCollection(nft.address, addr2.address, 500, "ipfs://collection2");
+        await auction.create(1, 1, 10, 2, '0x0000000000000000000000000000000000000000', block.timestamp, block.timestamp + 120, nft.address, 200);
+        await auction.create(1, 2, 10, 2, mockERC20.address, block.timestamp, block.timestamp + 120, nft.address, 200);
     });
 
     it("Should emit event on auction creation", async function () {
-        await expect(auction.create(addr1.address, 10, 2, '0x0000000000000000000000000000000000000000',
-         block.timestamp, block.timestamp + 120, 200, "ipfs://")).to.emit(auction, 'AuctionCreated');
+        await expect(auction.create(1, 1, 10, 2, '0x0000000000000000000000000000000000000000',
+         block.timestamp, block.timestamp + 120, nft.address, 200)).to.emit(auction, 'AuctionCreated');
     });
 
     it("Should create ERC20 auction", async function () {
         let resp = await auction.getAuction(2);
-        expect(resp.artist).to.equal(addr1.address);
+        expect(resp.startTime).to.equal(block.timestamp);
     });
 
     it("Should cancel auction", async function () {
-        await auction.create(addr1.address, 10, 2, '0x0000000000000000000000000000000000000000',
-         block.timestamp, block.timestamp + 120, 200, "ipfs://");
+        await auction.create(1, 1,  10, 2, '0x0000000000000000000000000000000000000000',
+         block.timestamp, block.timestamp + 120, nft.address, 200);
         await expect(auction.cancelAuction(3)).to.emit(auction, 'AuctionCancelled');
     });
 
@@ -94,6 +96,11 @@ describe("Auction Contract", function () {
         await expect(auction.connect(addr1).bid(2, 2)).to.be.revertedWith("Bid is lower than highest bid");
     });
 
+    it("Should revert if trying to bid on a finished auction", async function () {
+        await auction.cancelAuction(1);
+        await expect(auction.connect(addr2).bid(1, 2, {value: 2})).to.be.revertedWith("Auction is already finished");
+    });
+
     it("Should reverse last bid - FTM", async function () {
         await auction.connect(addr2).bid(1, 2, {value: 2});
         let balanceAfterTX = ethers.BigNumber.from(await ethers.provider.getBalance(addr2.address));
@@ -115,5 +122,30 @@ describe("Auction Contract", function () {
         expect (await mockERC20.balanceOf(addr2.address)).to.equal(97);
     });
 
+    it("Should revert if trying to settle auction before the end", async function () {
+        await expect(auction.settleAuction(1)).to.be.revertedWith("Auction is still running");
+    });
+
+    it("Should revert if trying to settle auction already finished", async function () {
+        await auction.cancelAuction(1);
+        await expect(auction.settleAuction(1)).to.be.revertedWith("Auction is already finished");
+    });
+
+    it("Should settle auction - FTM", async function () {
+        await auction.connect(addr2).bid(1, 2, {value: 2});
+        await ethers.provider.send("evm_increaseTime", [150]);
+        await auction.settleAuction(1);
+        balance = await nft.balanceOf(addr2.address, 1);
+        expect(balance).to.equal(1);
+    });
+
+    it("Should settle auction - ERC20", async function () {
+        await mockERC20.connect(addr2).approve(auction.address, 2);
+        await auction.connect(addr2).bid(2, 2);
+        await ethers.provider.send("evm_increaseTime", [150]);
+        await auction.settleAuction(2);
+        balance = await nft.balanceOf(addr2.address, 2);
+        expect(balance).to.equal(1);
+    });
 });
 
