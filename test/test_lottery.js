@@ -93,7 +93,6 @@ describe("Lottery Contract", function () {
     it("Should remove prize", async function () {
         await lottery.removePrize(1, 0);
         prizes = await lottery.getPrizes(1);
-        console.log(prizes);
         expect(prizes.length).to.equal(1);
     });
 
