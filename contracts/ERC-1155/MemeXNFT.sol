@@ -58,6 +58,22 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         initAccessControls(_admin);
     }
 
+    function getCollectionInfo(uint256 _collectionId)
+        public
+        view
+        returns (
+            address,
+            uint16,
+            string memory
+        )
+    {
+        return (
+            collections[_collectionId].artistAddress,
+            collections[_collectionId].royalty,
+            collections[_collectionId].dropMetadataURI
+        );
+    }
+
     /**
      * @notice Changes information about a collection (drop).
      * @param _collectionId the collectionId
