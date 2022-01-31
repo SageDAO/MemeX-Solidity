@@ -63,12 +63,28 @@ describe("Auction Contract", function () {
         expect(resp.highestBidder).to.equal(addr1.address);
     });
 
-    it("Should finalize auction on buy now", async function () {
+    it("Should finalize auction on buy now - FTM", async function () {
         await auction.connect(addr2).bid(1, 10, {value: 10});
         let resp = await auction.getAuction(1);
         expect(resp.finished).to.equal(true);
         balance = await nft.balanceOf(addr2.address, 1);
         expect(balance).to.equal(1);
+    });
+
+    it("Should finalize auction on buy now - ERC20", async function () {
+        await mockERC20.connect(addr2).approve(auction.address, 10);
+        await auction.connect(addr2).bid(2, 10);
+        let resp = await auction.getAuction(2);
+        expect(resp.finished).to.equal(true);
+        balance = await nft.balanceOf(addr2.address, 2);
+        expect(balance).to.equal(1);
+    });
+
+    it("Should revert if bid lower than higest bid increment", async function () {
+        await auction.create(1, 1, 0, 0, '0x0000000000000000000000000000000000000000', 120, nft.address, 200);
+        await auction.connect(addr2).bid(3, 1000, {value: 1000});
+        await expect(auction.connect(addr2).bid(3, 1001, {value: 1001})).to.be.revertedWith("Bid is lower than highest bid increment");
+        await expect(auction.connect(addr2).bid(3, 1010, {value: 1010})).to.emit(auction, 'BidPlaced');
     });
 
     it("Should revert if bid lower than mininum - FTM", async function () { 
@@ -82,7 +98,7 @@ describe("Auction Contract", function () {
 
     it("Should revert if bid = 0", async function () {
         await auction.create(1, 1, 10, 0, '0x0000000000000000000000000000000000000000', 120, nft.address, 200);
-        await expect(auction.connect(addr2).bid(3, 0, {value: 0})).to.be.revertedWith("Bid is lower than highest bid");
+        await expect(auction.connect(addr2).bid(3, 0, {value: 0})).to.be.revertedWith("Bid is lower than minimum");
     });
 
     it("Should revert if bid higher than buy now price - FTM", async function () { 
@@ -108,7 +124,7 @@ describe("Auction Contract", function () {
 
     it("Should revert if bid lower than highest bid - FTM", async function () {
         await auction.connect(addr2).bid(1, 3, {value: 3});
-        await expect(auction.connect(addr3).bid(1, 2, {value: 2})).to.be.revertedWith("Bid is lower than highest bid");
+        await expect(auction.connect(addr3).bid(1, 2, {value: 2})).to.be.revertedWith("Bid is lower than highest bid increment");
     });
 
     it("Should revert if bid lower than highest bid - ERC20", async function () {

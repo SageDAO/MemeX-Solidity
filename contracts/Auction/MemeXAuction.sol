@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IMemeXNFT.sol";
 import "../Access/MemeXAccessControls.sol";
-import "../Utils/StringUtils.sol";
 
 contract MemeXAuction is MemeXAccessControls {
     uint256 public auctionCount;
@@ -14,6 +13,7 @@ contract MemeXAuction is MemeXAccessControls {
     address public feeBeneficiary;
 
     uint16 public defaultTimeExtension = 3600;
+    uint16 public bidIncrementPercent = 100;
 
     struct Auction {
         uint256 endTime;
@@ -191,12 +191,20 @@ contract MemeXAuction is MemeXAccessControls {
         Auction storage auction = auctions[_auctionId];
         require(!auction.finished, "Auction is already finished");
         require(auction.endTime > block.timestamp, "Auction has ended");
-        require(_amount >= auction.minimumPrice, "Bid is lower than minimum");
         require(
-            auction.buyNowPrice != 0 && _amount <= auction.buyNowPrice,
+            _amount > 0 && _amount >= auction.minimumPrice,
+            "Bid is lower than minimum"
+        );
+        require(
+            auction.buyNowPrice == 0 || _amount <= auction.buyNowPrice,
             "Bid higher than buy now price"
         );
-        require(_amount > auction.highestBid, "Bid is lower than highest bid");
+        require(
+            _amount == auction.buyNowPrice ||
+                _amount >=
+                (auction.highestBid * (10000 + bidIncrementPercent)) / 10000,
+            "Bid is lower than highest bid increment"
+        );
 
         if (acceptsERC20(_auctionId)) {
             require(msg.value == 0, "Auction is receiving ERC20 tokens");
