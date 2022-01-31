@@ -231,6 +231,15 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         _;
     }
 
+    function removePrize(uint256 _lotteryId, uint32 _index) public onlyAdmin {
+        require(_index < prizes[_lotteryId].length, "Index out of bounds");
+
+        prizes[_lotteryId][_index] = prizes[_lotteryId][
+            prizes[_lotteryId].length - 1
+        ];
+        prizes[_lotteryId].pop();
+    }
+
     /**
      * @notice Defines prizes for a lottery.
      * @param _lotteryId The lottery ID
