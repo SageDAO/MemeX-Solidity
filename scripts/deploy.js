@@ -127,7 +127,6 @@ async function main() {
   //await hre.run('compile');
 
   const deployer = await ethers.getSigner();
-  const accounts = await ethers.getSigners();
 
   result = await deployRewards(deployer);
   rewards = result[0];
@@ -144,34 +143,44 @@ async function main() {
   nft = result[0];
   newNft = result[1];
 
-  if (newRandomness) {
-    if (lottery && lottery.address != "") {
-      await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 });
-      await lottery.setRandomGenerator(randomness.address, { gasLimit: 4000000 });
-    }
-  }
-
-  if (newNft) {
-    if (lottery && lottery.address != "") {
-      await nft.addSmartContractRole(lottery.address);
-    }
-  }
-
-  if (newLottery) {
+  // if launching from scratch, update all contract references and roles just once
+  if (newRandomness && newNft && newLottery && newRewards) {
+    await randomness.setLotteryAddress(lottery.address);
     await lottery.setRandomGenerator(randomness.address);
+    await lottery.setRewardsContract(rewards.address);
     await nft.addSmartContractRole(lottery.address);
     await rewards.addSmartContractRole(lottery.address);
-    await randomness.setLotteryAddress(lottery.address, { gasLimit: 4000000 });
-  }
-  if (newRewards) {
-    if (lottery && lottery.address != "") {
+  } else { // else, update only the new contract references
+    
+    if (newRandomness) {
+      if (lottery && lottery.address != "") {
+        await randomness.setLotteryAddress(lottery.address);
+        await lottery.setRandomGenerator(randomness.address);
+      }
+    }
+  
+    if (newNft) {
+      if (lottery && lottery.address != "") {
+        await nft.addSmartContractRole(lottery.address);
+      }
+    }
+  
+    if (newLottery) {
+      await lottery.setRandomGenerator(randomness.address);
+      await lottery.setRewardsContract(rewards.address);
+      await nft.addSmartContractRole(lottery.address);
       await rewards.addSmartContractRole(lottery.address);
+      await randomness.setLotteryAddress(lottery.address);
+    }
+    if (newRewards) {
+      if (lottery && lottery.address != "") {
+        await rewards.addSmartContractRole(lottery.address);
+        await lottery.setRewardsContract(rewards.address);
+      }
     }
   }
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
 main()
   .then(() => process.exit(0))
   .catch((error) => {
