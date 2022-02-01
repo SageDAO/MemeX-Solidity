@@ -32,21 +32,26 @@ contract MemeXAuction is MemeXAccessControls {
     }
 
     event AuctionCreated(
-        uint256 auctionId,
-        uint256 collectionId,
+        uint256 indexed auctionId,
+        uint256 indexed collectionId,
         uint256 nftId,
         address erc20Token
     );
 
-    event AuctionCancelled(uint256 auctionId);
+    event AuctionCancelled(uint256 indexed auctionId);
 
     event AuctionSettled(
-        uint256 auctionId,
-        address highestBidder,
+        uint256 indexed auctionId,
+        address indexed highestBidder,
         uint256 highestBid
     );
 
-    event BidPlaced(uint256 auctionId, address bidder, uint256 bidAmount);
+    event BidPlaced(
+        uint256 indexed auctionId,
+        address indexed bidder,
+        uint256 bidAmount,
+        uint256 newEndTime
+    );
 
     /**
      * @dev Throws if not called by an admin account.
@@ -212,7 +217,8 @@ contract MemeXAuction is MemeXAccessControls {
     function bid(uint256 _auctionId, uint256 _amount) public payable {
         Auction storage auction = auctions[_auctionId];
         require(!auction.finished, "Auction is already finished");
-        require(auction.endTime > block.timestamp, "Auction has ended");
+        uint256 endTime = auction.endTime;
+        require(endTime > block.timestamp, "Auction has ended");
         require(
             _amount > 0 && _amount >= auction.minimumPrice,
             "Bid is lower than minimum"
@@ -244,14 +250,15 @@ contract MemeXAuction is MemeXAccessControls {
 
         uint16 timeExtension = defaultTimeExtension;
 
-        if (auction.endTime - block.timestamp < timeExtension) {
-            auction.endTime = block.timestamp + timeExtension;
+        if (endTime - block.timestamp < timeExtension) {
+            endTime = block.timestamp + timeExtension;
+            auction.endTime = endTime;
         }
 
         if (auction.buyNowPrice != 0 && _amount == auction.buyNowPrice) {
             settleAuction(_auctionId);
         }
-        emit BidPlaced(_auctionId, msg.sender, _amount);
+        emit BidPlaced(_auctionId, msg.sender, _amount, endTime);
     }
 
     function reverseLastBid(uint256 _auctionId) private {
