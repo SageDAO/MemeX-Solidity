@@ -24,6 +24,12 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
     // collectionId => array of NFT ids
     mapping(uint256 => uint256[]) public nftsInCollection;
 
+    event CollectionCreated(
+        uint256 collectionId,
+        address artistAddress,
+        uint16 royaltyPercentage,
+        string baseMetadataURI
+    );
     struct CollectionInfo {
         address artistAddress;
         uint16 royalty;
@@ -120,6 +126,13 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         );
         incrementCollectionCount();
         collections[collectionCount] = collection;
+
+        emit CollectionCreated(
+            collectionCount,
+            _artistAddress,
+            _royaltyPercentage,
+            _dropMetadataURI
+        );
         return collectionCount;
     }
 
