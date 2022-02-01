@@ -32,6 +32,7 @@ contract MemeXAuction is MemeXAccessControls {
     }
 
     event AuctionCreated(
+        uint256 auctionId,
         uint256 collectionId,
         uint256 nftId,
         address erc20Token
@@ -39,7 +40,11 @@ contract MemeXAuction is MemeXAccessControls {
 
     event AuctionCancelled(uint256 auctionId);
 
-    event AuctionSettled(uint256 auctionId);
+    event AuctionSettled(
+        uint256 auctionId,
+        address highestBidder,
+        uint256 highestBid
+    );
 
     event BidPlaced(uint256 auctionId, address bidder, uint256 bidAmount);
 
@@ -71,19 +76,8 @@ contract MemeXAuction is MemeXAccessControls {
         bidIncrementPercentage = _bidIncrementPercentage;
     }
 
-    function createCollection(
-        IMemeXNFT _nftContract,
-        address _artistAddress,
-        uint16 _royaltyPercentage,
-        string calldata _metadataURI
-    ) public onlyAdmin returns (uint256 collectionId) {
-        collectionId = _nftContract.createCollection(
-            _artistAddress,
-            _royaltyPercentage,
-            _metadataURI
-        );
-        require(collectionId > 0, "Collection creation failed");
-        return collectionId;
+    function setFeeBeneficiary(address _feeBeneficiary) public onlyAdmin {
+        feeBeneficiary = _feeBeneficiary;
     }
 
     function create(
@@ -94,14 +88,24 @@ contract MemeXAuction is MemeXAccessControls {
         address _token,
         uint32 _duration,
         IMemeXNFT _nftContract,
-        uint16 _fee
+        uint16 _fee,
+        address _artistAddress,
+        uint16 _royaltyPercentage,
+        string calldata _metadataURI
     ) public onlyAdmin returns (uint256 auctionId) {
         require(_duration > 0, "Invalid auction time");
         require(
             _buyNowPrice == 0 || _buyNowPrice >= _minimumPrice,
             "Invalid buy now price"
         );
-        require(_collectionId > 0, "Collection id must be greater than 0");
+        if (_collectionId == 0) {
+            _collectionId = _nftContract.createCollection(
+                _artistAddress,
+                _royaltyPercentage,
+                _metadataURI
+            );
+        }
+        require(_collectionId > 0, "Collection creation failed");
 
         auctionId = incrementAuctionCount();
 
@@ -121,7 +125,7 @@ contract MemeXAuction is MemeXAccessControls {
 
         auctions[auctionId] = auction;
 
-        emit AuctionCreated(_collectionId, _nftId, _token);
+        emit AuctionCreated(auctionId, _collectionId, _nftId, _token);
 
         return auctionId;
     }
@@ -167,7 +171,11 @@ contract MemeXAuction is MemeXAccessControls {
             require(sent, "Failed to send FTM to artist");
         }
 
-        emit AuctionSettled(_auctionId);
+        emit AuctionSettled(
+            _auctionId,
+            auction.highestBidder,
+            auction.highestBid
+        );
     }
 
     function getPercentageOfBid(uint256 _bid, uint256 _percentage)

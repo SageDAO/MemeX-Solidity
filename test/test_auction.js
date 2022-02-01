@@ -126,6 +126,10 @@ describe("Auction Contract", function () {
         await expect(auction.connect(addr1).cancelAuction(1)).to.be.revertedWith("Admin calls only");
     });
 
+    it("Should revert if calling setFeeBeneficiary not being admin", async function () {
+        await expect(auction.connect(addr1).setFeeBeneficiary(owner.address)).to.be.revertedWith("Admin calls only");
+    });
+
     it("Should revert if calling update not being admin", async function () {
         await expect(auction.connect(addr1).updateAuction(1, 20, 3, '0x0000000000000000000000000000000000000000', block.timestamp)).to.be.revertedWith("Admin calls only");
     });
