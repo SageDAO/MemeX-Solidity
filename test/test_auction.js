@@ -25,14 +25,14 @@ describe("Auction Contract", function () {
         await auction.create(1, 2, 10, 2, mockERC20.address, 120, nft.address, 200);
     });
 
-    it("Should emit event on auction creation", async function () {
+    it("Should create auction - FTM", async function () {
         await expect(auction.create(1, 1, 10, 2, '0x0000000000000000000000000000000000000000',
          120, nft.address, 200)).to.emit(auction, 'AuctionCreated');
     });
 
-    it("Should create ERC20 auction", async function () {
-        let resp = await auction.getAuction(2);
-        expect(resp.erc20Token).to.equal(mockERC20.address);
+    it("Should create auction - ERC20", async function () {
+        await expect(auction.create(1, 1, 10, 2, mockERC20.address,
+         120, nft.address, 200)).to.emit(auction, 'AuctionCreated');
     });
 
     it("Should cancel auction", async function () {
@@ -116,6 +116,36 @@ describe("Auction Contract", function () {
 
     it("Should revert if bidding lower than value sent - FTM", async function () { 
         await expect(auction.connect(addr2).bid(1, 2, {value: 3})).to.be.revertedWith("Value != bid amount");
+    });
+
+    it("Should revert if calling create not being admin", async function () {
+        await expect(auction.connect(addr1).create(1, 1, 10, 2, '0x0000000000000000000000000000000000000000', 120, nft.address, 200)).to.be.revertedWith("Admin calls only");
+    });
+
+    it("Should revert if calling cancel not being admin", async function () {
+        await expect(auction.connect(addr1).cancelAuction(1)).to.be.revertedWith("Admin calls only");
+    });
+
+    it("Should revert if calling update not being admin", async function () {
+        await expect(auction.connect(addr1).updateAuction(1, 20, 3, '0x0000000000000000000000000000000000000000', block.timestamp)).to.be.revertedWith("Admin calls only");
+    });
+
+    it("Should revert if calling setDefaultTimeExtension not being admin", async function () {
+        await expect(auction.connect(addr1).setDefaultTimeExtension(1)).to.be.revertedWith("Admin calls only");
+    });
+
+    it("Should revert if calling setBidIncrement not being admin", async function () {
+        await expect(auction.connect(addr1).setBidIncrementPercentage(1)).to.be.revertedWith("Admin calls only");
+    });
+
+    it("Should set a new default time extension", async function () {
+        await auction.setDefaultTimeExtension(60);
+        expect (await auction.defaultTimeExtension()).to.equal(60);
+    });
+
+    it("Should set a new bidIncrementPercentage", async function () {
+        await auction.setBidIncrementPercentage(200);
+        expect (await auction.bidIncrementPercentage()).to.equal(200);
     });
 
     it("Should NOT allow FTM bids on ERC20 auction", async function () { 

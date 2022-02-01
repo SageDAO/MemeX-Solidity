@@ -13,7 +13,7 @@ contract MemeXAuction is MemeXAccessControls {
     address public feeBeneficiary;
 
     uint16 public defaultTimeExtension = 3600;
-    uint16 public bidIncrementPercent = 100;
+    uint16 public bidIncrementPercentage = 100;
 
     struct Auction {
         uint256 endTime;
@@ -27,7 +27,7 @@ contract MemeXAuction is MemeXAccessControls {
         uint256 highestBid;
         address highestBidder;
         IMemeXNFT nftContract;
-        uint16 fee;
+        uint16 feePercentage;
         bool finished;
     }
 
@@ -43,6 +43,14 @@ contract MemeXAuction is MemeXAccessControls {
 
     event BidPlaced(uint256 auctionId, address bidder, uint256 bidAmount);
 
+    /**
+     * @dev Throws if not called by an admin account.
+     */
+    modifier onlyAdmin() {
+        require(hasAdminRole(msg.sender), "Admin calls only");
+        _;
+    }
+
     constructor(address _admin) {
         initAccessControls(_admin);
     }
@@ -52,14 +60,23 @@ contract MemeXAuction is MemeXAccessControls {
         return auctionCount;
     }
 
+    function setDefaultTimeExtension(uint16 _timeExtension) public onlyAdmin {
+        defaultTimeExtension = _timeExtension;
+    }
+
+    function setBidIncrementPercentage(uint16 _bidIncrementPercentage)
+        public
+        onlyAdmin
+    {
+        bidIncrementPercentage = _bidIncrementPercentage;
+    }
+
     function createCollection(
         IMemeXNFT _nftContract,
         address _artistAddress,
         uint16 _royaltyPercentage,
         string calldata _metadataURI
-    ) public returns (uint256 collectionId) {
-        require(hasAdminRole(msg.sender), "Only admin can create collections");
-
+    ) public onlyAdmin returns (uint256 collectionId) {
         collectionId = _nftContract.createCollection(
             _artistAddress,
             _royaltyPercentage,
@@ -78,8 +95,7 @@ contract MemeXAuction is MemeXAccessControls {
         uint32 _duration,
         IMemeXNFT _nftContract,
         uint16 _fee
-    ) public returns (uint256 auctionId) {
-        require(hasAdminRole(msg.sender), "Only admins can create auctions");
+    ) public onlyAdmin returns (uint256 auctionId) {
         require(_duration > 0, "Invalid auction time");
         require(
             _buyNowPrice == 0 || _buyNowPrice >= _minimumPrice,
@@ -137,7 +153,7 @@ contract MemeXAuction is MemeXAccessControls {
         if (acceptsERC20(_auctionId)) {
             uint256 feePaid = getPercentageOfBid(
                 auction.highestBid,
-                auction.fee
+                auction.feePercentage
             );
             if (feePaid != 0) {
                 IERC20(auction.erc20Token).transfer(feeBeneficiary, feePaid);
@@ -168,8 +184,7 @@ contract MemeXAuction is MemeXAccessControls {
         uint256 _minimumPrice,
         address _token,
         uint64 _endTime
-    ) public {
-        require(hasAdminRole(msg.sender), "Only admins can update auctions");
+    ) public onlyAdmin {
         require(!auctions[_auctionId].finished, "Auction is already finished");
         require(auctions[_auctionId].endTime > 0, "Auction not found");
         Auction storage auction = auctions[_auctionId];
@@ -179,8 +194,7 @@ contract MemeXAuction is MemeXAccessControls {
         auction.endTime = _endTime;
     }
 
-    function cancelAuction(uint256 _auctionId) public {
-        require(hasAdminRole(msg.sender), "Only admins can cancel auctions");
+    function cancelAuction(uint256 _auctionId) public onlyAdmin {
         require(!auctions[_auctionId].finished, "Auction is already finished");
         reverseLastBid(_auctionId);
         auctions[_auctionId].finished = true;
@@ -202,7 +216,7 @@ contract MemeXAuction is MemeXAccessControls {
         require(
             _amount == auction.buyNowPrice ||
                 _amount >=
-                (auction.highestBid * (10000 + bidIncrementPercent)) / 10000,
+                (auction.highestBid * (10000 + bidIncrementPercentage)) / 10000,
             "Bid is lower than highest bid increment"
         );
 
