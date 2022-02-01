@@ -37,11 +37,11 @@ deployNFT = async (deployer, lottery) => {
     nft = await Nft.deploy("MemeX NFTs", "MemeXNFT", deployer.address);
     await nft.deployed();
     console.log("NFT deployed to:", nft.address);
-    await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
-    await hre.run("verify:verify", {
-      address: nft.address,
-      constructorArguments: ["MemeX NFTs", "MemeXNFT", deployer.address],
-    });
+    // await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
+    // await hre.run("verify:verify", {
+    //   address: nft.address,
+    //   constructorArguments: ["MemeX NFTs", "MemeXNFT", deployer.address],
+    // });
     return [nft, true];
   } else {
     nft = Nft.attach(nft_address);
@@ -93,6 +93,26 @@ deployRandomness = async () => {
   return [randomness, false];
 };
 
+deployAuction = async (deployer) => {
+  auction_address = CONTRACTS[hre.network.name]["auctionAddress"];
+  const Auction = await hre.ethers.getContractFactory("MemeXAuction");
+  if (auction_address == "") {
+    const auction = await Auction.deploy(deployer.address);
+    await auction.deployed();
+    console.log("Auction deployed to:", auction.address);
+    // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    // await hre.run("verify:verify", {
+    //   address: auction.address,
+    //   constructorArguments: [deployer.address],
+    // });
+    return [auction, true];
+  } else {
+    auction = Auction.attach(auction_address);
+
+  }
+  return [auction, false];
+}
+
 deployRNGTemp = async () => {
   rand_address = CONTRACTS[hre.network.name]["randomnessAddress"];
   const Randomness = await hre.ethers.getContractFactory("RNGTemp");
@@ -143,6 +163,10 @@ async function main() {
   nft = result[0];
   newNft = result[1];
 
+  result = await deployAuction(deployer);
+  auction = result[0];
+  newAuction = result[1];
+
   // if launching from scratch, update all contract references and roles just once
   if (newRandomness && newNft && newLottery && newRewards) {
     await randomness.setLotteryAddress(lottery.address);
@@ -177,6 +201,10 @@ async function main() {
         await rewards.addSmartContractRole(lottery.address);
         await lottery.setRewardsContract(rewards.address);
       }
+    }
+
+    if (newAuction) {
+      await nft.addSmartContractRole(auction.address);
     }
   }
 }
