@@ -242,7 +242,7 @@ async function createLottery(drop, lottery, nftContractAddress) {
         drop.metadataIpfsPath
     );
     const receipt = await tx.wait();
-    drop.lotteryId = receipt.events[0].args[0];
+    drop.lotteryId = receipt.events[1].args[0];
     drop.blockchainCreatedAt = new Date();
     await prisma.drop.update({
         where: {
