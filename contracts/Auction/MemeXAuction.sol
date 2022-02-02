@@ -63,6 +63,7 @@ contract MemeXAuction is MemeXAccessControls {
 
     constructor(address _admin) {
         initAccessControls(_admin);
+        setFeeBeneficiary(_admin);
     }
 
     function incrementAuctionCount() internal returns (uint256) {
@@ -108,6 +109,11 @@ contract MemeXAuction is MemeXAccessControls {
                 _artistAddress,
                 _royaltyPercentage,
                 _metadataURI
+            );
+        } else {
+            require(
+                _nftContract.collectionExists(_collectionId),
+                "Collection does not exist"
             );
         }
         require(_collectionId > 0, "Collection creation failed");
