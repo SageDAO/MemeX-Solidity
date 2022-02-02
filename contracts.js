@@ -7,11 +7,11 @@ CONTRACTS = {
         "rewardsAddress": "0x5ea6D0aDf94D315B6E1160d2E9D3fb6A2E1Bc0bF",
     },
     "fantomtestnet": {
-        "lotteryAddress": "0xED98FB4792D0dFDb0B8EA22De77d368C51c01Ab6",
+        "lotteryAddress": "0xE655cD5241ae45ba2020FcF5159AC3aD98eE6Feb",
         "nftAddress": "0xd293eE4677284d542a7a59f3006FA68899dC40Ef",
         "randomnessAddress": "0x6442D7Eb2e83dcFF36C0117D3184B4ABD14a4e96",
         "rewardsAddress": "0x2fb37Be90035E8341C593FF6e827155C2aDB737A",
-        "auctionAddress": "0x217f493EddDB393a5d4B1516a621928b055d418b",
+        "auctionAddress": "0x83a220De7127004FFb396256A6C374Bc8f59Bb6b",
     },
     "fantom": {
         "lotteryAddress": "0x62F3ec0de5053D88744C91Db11a4b659F8FbbF71",

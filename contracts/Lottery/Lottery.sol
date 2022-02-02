@@ -91,13 +91,16 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     event NewEntry(
         uint256 indexed lotteryId,
         uint256 number,
-        address indexed participantAddress,
+        address indexed participantAddressIdx,
+        address participantAddress,
         bool withPoints
     );
     event PrizeClaimed(
         uint256 indexed lotteryId,
-        address indexed participantAddress,
-        uint256 indexed prizeId
+        address indexed participantAddressIdx,
+        uint256 indexed prizeIdIdx,
+        address participantAddress,
+        uint256 prizeId
     );
 
     /**
@@ -545,6 +548,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
             _lotteryId,
             lotteryTickets[_lotteryId].length,
             _participantAddress,
+            _participantAddress,
             _withPoints
         );
     }
@@ -572,7 +576,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
 
         claimedPrizes[_winner][_prizeId] = true;
         nftContract.mint(_winner, _prizeId, 1, _lotteryId, "");
-        emit PrizeClaimed(_lotteryId, _winner, _prizeId);
+        emit PrizeClaimed(_lotteryId, _winner, _prizeId, _winner, _prizeId);
     }
 
     function _leaf(

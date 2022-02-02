@@ -38,17 +38,20 @@ contract MemeXAuction is MemeXAccessControls {
         address erc20Token
     );
 
-    event AuctionCancelled(uint256 indexed auctionId);
+    event AuctionCancelled(uint256 auctionId);
 
     event AuctionSettled(
         uint256 indexed auctionId,
-        address indexed highestBidder,
+        address indexed highestBidderIdx,
+        address highestBidder,
         uint256 highestBid
     );
 
     event BidPlaced(
-        uint256 indexed auctionId,
-        address indexed bidder,
+        uint256 indexed auctionIdIdx,
+        uint256 auctionId,
+        address indexed bidderIdx,
+        address bidder,
         uint256 bidAmount,
         uint256 newEndTime
     );
@@ -144,6 +147,8 @@ contract MemeXAuction is MemeXAccessControls {
     function settleAuction(uint256 _auctionId) public {
         Auction storage auction = auctions[_auctionId];
         require(!auction.finished, "Auction is already finished");
+        uint256 highestBid = auction.highestBid;
+        address highestBidder = auction.highestBidder;
         require(
             block.timestamp > auction.endTime ||
                 auction.highestBid == auction.buyNowPrice,
@@ -151,9 +156,9 @@ contract MemeXAuction is MemeXAccessControls {
         );
 
         auction.finished = true;
-        if (auction.highestBidder != address(0)) {
+        if (highestBidder != address(0)) {
             auction.nftContract.mint(
-                auction.highestBidder,
+                highestBidder,
                 auction.nftId,
                 1,
                 auction.collectionId,
@@ -165,25 +170,27 @@ contract MemeXAuction is MemeXAccessControls {
             auction.collectionId
         );
 
+        uint256 feePaid = getPercentageOfBid(highestBid, auction.feePercentage);
         if (acceptsERC20(_auctionId)) {
-            uint256 feePaid = getPercentageOfBid(
-                auction.highestBid,
-                auction.feePercentage
-            );
             if (feePaid != 0) {
                 IERC20(auction.erc20Token).transfer(feeBeneficiary, feePaid);
             }
             IERC20(auction.erc20Token).transfer(
                 artistAddress,
-                auction.highestBid - feePaid
+                highestBid - feePaid
             );
         } else {
-            (bool sent, ) = artistAddress.call{value: auction.highestBid}("");
+            if (feePaid != 0) {
+                (bool feeSent, ) = feeBeneficiary.call{value: feePaid}("");
+                require(feeSent, "Failed to send FTM to fee beneficiary");
+            }
+            (bool sent, ) = artistAddress.call{value: highestBid - feePaid}("");
             require(sent, "Failed to send FTM to artist");
         }
 
         emit AuctionSettled(
             _auctionId,
+            auction.highestBidder,
             auction.highestBidder,
             auction.highestBid
         );
@@ -264,7 +271,14 @@ contract MemeXAuction is MemeXAccessControls {
         if (auction.buyNowPrice != 0 && _amount == auction.buyNowPrice) {
             settleAuction(_auctionId);
         }
-        emit BidPlaced(_auctionId, msg.sender, _amount, endTime);
+        emit BidPlaced(
+            _auctionId,
+            _auctionId,
+            msg.sender,
+            msg.sender,
+            _amount,
+            endTime
+        );
     }
 
     function reverseLastBid(uint256 _auctionId) private {
