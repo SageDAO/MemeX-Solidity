@@ -15,29 +15,28 @@ describe("Auction Contract", function () {
 
         Auction = await ethers.getContractFactory('MemeXAuction');
         auction = await Auction.deploy(owner.address);
-        
+        await auction.setFeeBeneficiary(owner.address);
+
         await nft.addSmartContractRole(auction.address);
         blockNum = await ethers.provider.getBlockNumber();
         block = await ethers.provider.getBlock(blockNum);
-        await auction.createCollection(nft.address, addr1.address, 200, "ipfs://collection1");
-        await auction.createCollection(nft.address, addr2.address, 500, "ipfs://collection2");
-        await auction.create(1, 1, 10, 2, '0x0000000000000000000000000000000000000000', 120, nft.address, 200);
-        await auction.create(1, 2, 10, 2, mockERC20.address, 120, nft.address, 200);
+        await auction.create(0, 1, 10, 2, '0x0000000000000000000000000000000000000000', 120, nft.address, 200, addr1.address, 200, "ipfs://collection");
+        await auction.create(1, 2, 10, 2, mockERC20.address, 120, nft.address, 200, addr1.address, 200, "ipfs://collection");
     });
 
     it("Should create auction - FTM", async function () {
         await expect(auction.create(1, 1, 10, 2, '0x0000000000000000000000000000000000000000',
-         120, nft.address, 200)).to.emit(auction, 'AuctionCreated');
+         120, nft.address, 200, addr1.address, 200, "ipfs://collection")).to.emit(auction, 'AuctionCreated');
     });
 
     it("Should create auction - ERC20", async function () {
         await expect(auction.create(1, 1, 10, 2, mockERC20.address,
-         120, nft.address, 200)).to.emit(auction, 'AuctionCreated');
+         120, nft.address, 200, addr1.address, 200, "ipfs://collection")).to.emit(auction, 'AuctionCreated');
     });
 
     it("Should cancel auction", async function () {
         await auction.create(1, 1,  10, 2, '0x0000000000000000000000000000000000000000',
-         120, nft.address, 200);
+         120, nft.address, 200, addr1.address, 200, "ipfs://collection");
         await expect(auction.cancelAuction(3)).to.emit(auction, 'AuctionCancelled');
     });
 
@@ -81,7 +80,7 @@ describe("Auction Contract", function () {
     });
 
     it("Should revert if bid lower than higest bid increment", async function () {
-        await auction.create(1, 1, 0, 0, '0x0000000000000000000000000000000000000000', 120, nft.address, 200);
+        await auction.create(1, 1, 0, 0, '0x0000000000000000000000000000000000000000', 120, nft.address, 200, addr1.address, 200, "ipfs://collection");
         await auction.connect(addr2).bid(3, 1000, {value: 1000});
         await expect(auction.connect(addr2).bid(3, 1001, {value: 1001})).to.be.revertedWith("Bid is lower than highest bid increment");
         await expect(auction.connect(addr2).bid(3, 1010, {value: 1010})).to.emit(auction, 'BidPlaced');
@@ -97,7 +96,7 @@ describe("Auction Contract", function () {
     });
 
     it("Should revert if bid = 0", async function () {
-        await auction.create(1, 1, 10, 0, '0x0000000000000000000000000000000000000000', 120, nft.address, 200);
+        await auction.create(1, 1, 10, 0, '0x0000000000000000000000000000000000000000', 120, nft.address, 200, addr1.address, 200, "ipfs://collection");
         await expect(auction.connect(addr2).bid(3, 0, {value: 0})).to.be.revertedWith("Bid is lower than minimum");
     });
 
@@ -119,7 +118,7 @@ describe("Auction Contract", function () {
     });
 
     it("Should revert if calling create not being admin", async function () {
-        await expect(auction.connect(addr1).create(1, 1, 10, 2, '0x0000000000000000000000000000000000000000', 120, nft.address, 200)).to.be.revertedWith("Admin calls only");
+        await expect(auction.connect(addr1).create(1, 1, 10, 2, '0x0000000000000000000000000000000000000000', 120, nft.address, 200, addr1.address, 200, "ipfs://collection")).to.be.revertedWith("Admin calls only");
     });
 
     it("Should revert if calling cancel not being admin", async function () {
