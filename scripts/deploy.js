@@ -17,11 +17,11 @@ deployRewards = async (deployer) => {
     rewards = await Rewards.deploy(deployer.address);
     await rewards.deployed();
     console.log("Rewards contract deployed to:", rewards.address);
-    await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
-    await hre.run("verify:verify", {
-      address: rewards.address,
-      constructorArguments: [deployer.address],
-    });
+    // await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
+    // await hre.run("verify:verify", {
+    //   address: rewards.address,
+    //   constructorArguments: [deployer.address],
+    // });
     return [rewards, true];
   } else {
     rewards = Rewards.attach(rewards_address);
@@ -49,7 +49,7 @@ deployNFT = async (deployer, lottery) => {
   return [nft, false];
 };
 
-deployLottery = async (rewards, randomness, deployer) => {
+deployLottery = async (rewards, deployer) => {
   lottery_address = CONTRACTS[hre.network.name]["lotteryAddress"];
   const Lottery = await hre.ethers.getContractFactory("MemeXLottery");
   if (lottery_address == "") {
@@ -57,7 +57,7 @@ deployLottery = async (rewards, randomness, deployer) => {
     const lottery = await upgrades.deployProxy(Lottery, [rewards.address, deployer.address]);
     await lottery.deployed();
     console.log("Lottery deployed to:", lottery.address);
-    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
     // await hre.run("verify:verify", {
     //   address: lottery.address,
     //   constructorArguments: [rewards.address, deployer.address],
@@ -80,11 +80,11 @@ deployRandomness = async () => {
     _fee = ethers.utils.parseEther("0.1"); // 0.1 LINK
     randomness = await Randomness.deploy(_vrfCoordinator, _linkToken, _lotteryAddr, _keyHash, _fee);
     console.log("Randomness deployed to:", randomness.address);
-    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
-    await hre.run("verify:verify", {
-      address: randomness.address,
-      constructorArguments: [_vrfCoordinator, _linkToken, _lotteryAddr, _keyHash, _fee],
-    });
+    // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    // await hre.run("verify:verify", {
+    //   address: randomness.address,
+    //   constructorArguments: [_vrfCoordinator, _linkToken, _lotteryAddr, _keyHash, _fee],
+    // });
     return [randomness, true];
   } else {
     randomness = await Randomness.attach(rand_address);
@@ -113,18 +113,17 @@ deployAuction = async (deployer) => {
   return [auction, false];
 }
 
-deployRNGTemp = async () => {
+deployRNGTemp = async (_lotteryAddr) => {
   rand_address = CONTRACTS[hre.network.name]["randomnessAddress"];
   const Randomness = await hre.ethers.getContractFactory("RNGTemp");
   if (rand_address == "") {
-    _lotteryAddr = CONTRACTS[hre.network.name]["lotteryAddress"];
     randomness = await Randomness.deploy(_lotteryAddr);
     console.log("Randomness deployed to:", randomness.address);
-    await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
-    await hre.run("verify:verify", {
-      address: randomness.address,
-      constructorArguments: [_lotteryAddr],
-    });
+    // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+    // await hre.run("verify:verify", {
+    //   address: randomness.address,
+    //   constructorArguments: [_lotteryAddr],
+    // });
     return [randomness, true];
   } else {
     randomness = await Randomness.attach(rand_address);
@@ -151,13 +150,14 @@ async function main() {
   result = await deployRewards(deployer);
   rewards = result[0];
   newRewards = result[1];
-  values = await deployRNGTemp();
-  randomness = values[0];
-  newRandomness = values[1];
 
-  result = await deployLottery(rewards, randomness, deployer);
+  result = await deployLottery(rewards, deployer);
   lottery = result[0];
   newLottery = result[1];
+
+  values = await deployRNGTemp(lottery.address);
+  randomness = values[0];
+  newRandomness = values[1];
 
   result = await deployNFT(deployer, lottery);
   nft = result[0];
@@ -169,6 +169,7 @@ async function main() {
 
   // if launching from scratch, update all contract references and roles just once
   if (newRandomness && newNft && newLottery && newRewards) {
+    console.log("Updating all references and roles");
     await randomness.setLotteryAddress(lottery.address);
     await lottery.setRandomGenerator(randomness.address);
     await lottery.setRewardsContract(rewards.address);

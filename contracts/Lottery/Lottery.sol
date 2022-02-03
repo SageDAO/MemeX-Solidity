@@ -76,11 +76,11 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         uint256 defaultPrizeId; // prize all participants win if no other prizes are given
     }
 
-    event ResponseReceived(bytes32 indexed _requestId);
-    event PrizesChanged(uint256 indexed _lotteryId, uint256 numberOfPrizes);
+    event ResponseReceived(bytes32 indexed requestId);
+    event PrizesChanged(uint256 indexed lotteryId, uint256 numberOfPrizes);
     event LotteryStatusChanged(
-        uint256 indexed _lotteryId,
-        Status indexed _status
+        uint256 indexed lotteryId,
+        Status indexed status
     );
     event RequestNumbers(uint256 indexed lotteryId, bytes32 indexed requestId);
     event TicketCostChanged(
@@ -91,16 +91,13 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     event NewEntry(
         uint256 indexed lotteryId,
         uint256 number,
-        address indexed participantAddressIdx,
-        address participantAddress,
+        address indexed participantAddress,
         bool withPoints
     );
     event PrizeClaimed(
         uint256 indexed lotteryId,
-        address indexed participantAddressIdx,
-        uint256 indexed prizeIdIdx,
-        address participantAddress,
-        uint256 prizeId
+        address indexed participantAddress,
+        uint256 indexed prizeId
     );
 
     /**
@@ -548,7 +545,6 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
             _lotteryId,
             lotteryTickets[_lotteryId].length,
             _participantAddress,
-            _participantAddress,
             _withPoints
         );
     }
@@ -576,7 +572,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
 
         claimedPrizes[_winner][_prizeId] = true;
         nftContract.mint(_winner, _prizeId, 1, _lotteryId, "");
-        emit PrizeClaimed(_lotteryId, _winner, _prizeId, _winner, _prizeId);
+        emit PrizeClaimed(_lotteryId, _winner, _prizeId);
     }
 
     function _leaf(

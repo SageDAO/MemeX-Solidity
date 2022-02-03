@@ -42,16 +42,13 @@ contract MemeXAuction is MemeXAccessControls {
 
     event AuctionSettled(
         uint256 indexed auctionId,
-        address indexed highestBidderIdx,
-        address highestBidder,
+        address indexed highestBidder,
         uint256 highestBid
     );
 
     event BidPlaced(
-        uint256 indexed auctionIdIdx,
-        uint256 auctionId,
-        address indexed bidderIdx,
-        address bidder,
+        uint256 indexed auctionId,
+        address indexed bidder,
         uint256 bidAmount,
         uint256 newEndTime
     );
@@ -170,7 +167,7 @@ contract MemeXAuction is MemeXAccessControls {
         address highestBidder = auction.highestBidder;
         require(
             block.timestamp > auction.endTime ||
-                auction.highestBid == auction.buyNowPrice,
+                highestBid == auction.buyNowPrice,
             "Auction is still running"
         );
 
@@ -207,12 +204,7 @@ contract MemeXAuction is MemeXAccessControls {
             require(sent, "Failed to send FTM to artist");
         }
 
-        emit AuctionSettled(
-            _auctionId,
-            auction.highestBidder,
-            auction.highestBidder,
-            auction.highestBid
-        );
+        emit AuctionSettled(_auctionId, highestBidder, highestBid);
     }
 
     function getPercentageOfBid(uint256 _bid, uint256 _percentage)
@@ -290,14 +282,7 @@ contract MemeXAuction is MemeXAccessControls {
         if (auction.buyNowPrice != 0 && _amount == auction.buyNowPrice) {
             settleAuction(_auctionId);
         }
-        emit BidPlaced(
-            _auctionId,
-            _auctionId,
-            msg.sender,
-            msg.sender,
-            _amount,
-            endTime
-        );
+        emit BidPlaced(_auctionId, msg.sender, _amount, endTime);
     }
 
     function reverseLastBid(uint256 _auctionId) private {
@@ -306,14 +291,18 @@ contract MemeXAuction is MemeXAccessControls {
         uint256 highestBid = auction.highestBid;
         auction.highestBidder = address(0);
         auction.highestBid = 0;
+        bool sent;
 
         if (highestBidder != address(0)) {
             if (acceptsERC20(_auctionId)) {
-                IERC20(auction.erc20Token).transfer(highestBidder, highestBid);
+                sent = IERC20(auction.erc20Token).transfer(
+                    highestBidder,
+                    highestBid
+                );
             } else {
-                (bool sent, ) = highestBidder.call{value: highestBid}("");
-                require(sent, "Failed to reverse bid");
+                (sent, ) = highestBidder.call{value: highestBid}("");
             }
+            require(sent, "Failed to reverse bid");
         }
     }
 

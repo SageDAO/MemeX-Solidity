@@ -43,6 +43,9 @@ module.exports = {
         count: 100,
       },
     },
+    localhost: {
+      url: "http://localhost:8545",
+    }
   },
   etherscan: {
     apiKey: {

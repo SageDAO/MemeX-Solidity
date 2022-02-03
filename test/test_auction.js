@@ -3,25 +3,26 @@ const { ethers } = require("hardhat");
 
 describe("Auction Contract", function () {
     beforeEach(async () => {
-        [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
+        [owner, addr1, addr2, addr3, feeBeneficiary, artist, ...addrs] = await ethers.getSigners();
+       
         Nft = await ethers.getContractFactory("MemeXNFT");
         nft = await Nft.deploy("Memex", "MEMEX", owner.address);
 
         MockERC20 = await ethers.getContractFactory("MockERC20");
         mockERC20 = await MockERC20.deploy();
-        mockERC20.transfer(addr1.address, 100);
-        mockERC20.transfer(addr2.address, 100);
-        mockERC20.transfer(addr3.address, 100);
+        mockERC20.transfer(addr1.address, 1000);
+        mockERC20.transfer(addr2.address, 1000);
+        mockERC20.transfer(addr3.address, 1000);
 
         Auction = await ethers.getContractFactory('MemeXAuction');
         auction = await Auction.deploy(owner.address);
-        await auction.setFeeBeneficiary(owner.address);
+        await auction.setFeeBeneficiary(feeBeneficiary.address);
 
         await nft.addSmartContractRole(auction.address);
         blockNum = await ethers.provider.getBlockNumber();
         block = await ethers.provider.getBlock(blockNum);
-        await auction.createCollectionAndAuction(1, 10, 2, '0x0000000000000000000000000000000000000000', 120, nft.address, 200, addr1.address, 200, "ipfs://collection");
-        await auction.createAuction(1, 2, 10, 2, mockERC20.address, 120, nft.address, 200);
+        await auction.createCollectionAndAuction(1, 1000, 2, '0x0000000000000000000000000000000000000000', 120, nft.address, 200, artist.address, 200, "ipfs://collection");
+        await auction.createAuction(1, 2, 1000, 2, mockERC20.address, 120, nft.address, 200);
     });
 
     it("Should create auction - FTM", async function () {
@@ -56,14 +57,14 @@ describe("Auction Contract", function () {
         await mockERC20.connect(addr1).approve(auction.address, 2);
         await auction.connect(addr1).bid(2, 2);
         expect (await mockERC20.balanceOf(auction.address)).to.equal(2);
-        expect (await mockERC20.balanceOf(addr1.address)).to.equal(98);
+        expect (await mockERC20.balanceOf(addr1.address)).to.equal(998);
         let resp = await auction.getAuction(2);
         expect(resp.highestBid).to.equal(2);
         expect(resp.highestBidder).to.equal(addr1.address);
     });
 
     it("Should finalize auction on buy now - FTM", async function () {
-        await auction.connect(addr2).bid(1, 10, {value: 10});
+        await auction.connect(addr2).bid(1, 1000, {value: 1000});
         let resp = await auction.getAuction(1);
         expect(resp.finished).to.equal(true);
         balance = await nft.balanceOf(addr2.address, 1);
@@ -71,12 +72,37 @@ describe("Auction Contract", function () {
     });
 
     it("Should finalize auction on buy now - ERC20", async function () {
-        await mockERC20.connect(addr2).approve(auction.address, 10);
-        await auction.connect(addr2).bid(2, 10);
+        await mockERC20.connect(addr2).approve(auction.address, 1000);
+        await auction.connect(addr2).bid(2, 1000);
         let resp = await auction.getAuction(2);
         expect(resp.finished).to.equal(true);
         balance = await nft.balanceOf(addr2.address, 2);
         expect(balance).to.equal(1);
+    });
+
+    it("Should collect fee and transfer the remaining value to the artist - FTM", async function () {
+        beneficiaryBalance = await ethers.provider.getBalance(feeBeneficiary.address);
+        artistBalance = await ethers.provider.getBalance(artist.address);
+        await auction.connect(addr2).bid(1, 1000, {value: 1000});
+
+        beneficiaryBalanceAfterSettle = await ethers.provider.getBalance(feeBeneficiary.address);
+        artistBalanceAfterSettle = await ethers.provider.getBalance(artist.address);
+        
+        expect(beneficiaryBalanceAfterSettle).to.equal(beneficiaryBalance.add(20));
+        expect(artistBalanceAfterSettle).to.equal(artistBalance.add(980));
+    });
+
+    it("Should collect fee and transfer rest to artist - ERC20", async function () {
+        balance = await mockERC20.balanceOf(artist.address);
+        
+        await mockERC20.connect(addr2).approve(auction.address, 1000);
+        await auction.connect(addr2).bid(2, 1000);
+
+        expect(await mockERC20.balanceOf(artist.address)).to.equal(balance.add(980));
+
+        balance = await mockERC20.balanceOf(feeBeneficiary.address);
+        expect(balance).to.equal(20);
+    
     });
 
     it("Should revert if bid lower than higest bid increment", async function () {
@@ -101,12 +127,12 @@ describe("Auction Contract", function () {
     });
 
     it("Should revert if bid higher than buy now price - FTM", async function () { 
-        await expect(auction.connect(addr2).bid(1, 100, {value: 100})).to.be.revertedWith("Bid higher than buy now price");
+        await expect(auction.connect(addr2).bid(1, 10000, {value: 10000})).to.be.revertedWith("Bid higher than buy now price");
     });
 
     it("Should revert if bid higher than buy now price - ERC20", async function () { 
-        await mockERC20.approve(auction.address, 1);
-        await expect(auction.connect(addr2).bid(2, 100)).to.be.revertedWith("Bid higher than buy now price");
+        await mockERC20.approve(auction.address, 10000);
+        await expect(auction.connect(addr2).bid(2, 10000)).to.be.revertedWith("Bid higher than buy now price");
     });
 
     it("Should revert if bidding higher than value sent - FTM", async function () { 
@@ -189,8 +215,8 @@ describe("Auction Contract", function () {
         await auction.connect(addr1).bid(2, 2);
         await auction.connect(addr2).bid(2, 3);
         expect (await mockERC20.balanceOf(auction.address)).to.equal(3);
-        expect (await mockERC20.balanceOf(addr1.address)).to.equal(100);
-        expect (await mockERC20.balanceOf(addr2.address)).to.equal(97);
+        expect (await mockERC20.balanceOf(addr1.address)).to.equal(1000);
+        expect (await mockERC20.balanceOf(addr2.address)).to.equal(997);
     });
 
     it("Should revert if trying to settle auction before the end", async function () {
