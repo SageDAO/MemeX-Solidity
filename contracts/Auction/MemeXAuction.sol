@@ -13,7 +13,7 @@ contract MemeXAuction is MemeXAccessControls {
     address public feeBeneficiary;
 
     uint16 public defaultTimeExtension = 3600;
-    uint16 public bidIncrementPercentage = 100;
+    uint16 public bidIncrementPercentage = 100; // 1,00% higher than the previous bid
 
     struct Auction {
         uint256 endTime;
@@ -89,8 +89,7 @@ contract MemeXAuction is MemeXAccessControls {
         feeBeneficiary = _feeBeneficiary;
     }
 
-    function create(
-        uint256 _collectionId,
+    function createCollectionAndAuction(
         uint256 _nftId,
         uint256 _buyNowPrice,
         uint256 _minimumPrice,
@@ -102,24 +101,44 @@ contract MemeXAuction is MemeXAccessControls {
         uint16 _royaltyPercentage,
         string calldata _metadataURI
     ) public onlyAdmin returns (uint256 auctionId) {
+        uint256 collectionId = _nftContract.createCollection(
+            _artistAddress,
+            _royaltyPercentage,
+            _metadataURI
+        );
+        require(collectionId > 0, "Collection creation failed");
+        return
+            createAuction(
+                collectionId,
+                _nftId,
+                _buyNowPrice,
+                _minimumPrice,
+                _token,
+                _duration,
+                _nftContract,
+                _fee
+            );
+    }
+
+    function createAuction(
+        uint256 _collectionId,
+        uint256 _nftId,
+        uint256 _buyNowPrice,
+        uint256 _minimumPrice,
+        address _token,
+        uint32 _duration,
+        IMemeXNFT _nftContract,
+        uint16 _fee
+    ) public onlyAdmin returns (uint256 auctionId) {
         require(_duration > 0, "Invalid auction time");
         require(
             _buyNowPrice == 0 || _buyNowPrice >= _minimumPrice,
             "Invalid buy now price"
         );
-        if (_collectionId == 0) {
-            _collectionId = _nftContract.createCollection(
-                _artistAddress,
-                _royaltyPercentage,
-                _metadataURI
-            );
-        } else {
-            require(
-                _nftContract.collectionExists(_collectionId),
-                "Collection does not exist"
-            );
-        }
-        require(_collectionId > 0, "Collection creation failed");
+        require(
+            _nftContract.collectionExists(_collectionId),
+            "Collection does not exist"
+        );
 
         auctionId = incrementAuctionCount();
 
@@ -293,7 +312,7 @@ contract MemeXAuction is MemeXAccessControls {
                 IERC20(auction.erc20Token).transfer(highestBidder, highestBid);
             } else {
                 (bool sent, ) = highestBidder.call{value: highestBid}("");
-                require(sent, "Failed to send Ether");
+                require(sent, "Failed to reverse bid");
             }
         }
     }
