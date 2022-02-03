@@ -90,6 +90,12 @@ describe("Lottery Contract", function () {
         await lottery.addPrizes(2, prizes, amounts);
     });
 
+    it("Should remove prize", async function () {
+        await lottery.removePrize(1, 0);
+        prizes = await lottery.getPrizes(1);
+        expect(prizes.length).to.equal(1);
+    });
+
     it("Should allow to claim more points if new rewards are published", async function () {
         await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 1500000000, hexproof);
         abiCoder = ethers.utils.defaultAbiCoder;
