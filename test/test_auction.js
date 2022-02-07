@@ -18,6 +18,9 @@ describe("Auction Contract", function () {
         auction = await Auction.deploy(owner.address);
         await auction.setFeeBeneficiary(feeBeneficiary.address);
 
+        ContractBidder = await ethers.getContractFactory('MockAuctionBidder');
+        contractBidder = await ContractBidder.deploy(auction.address);
+
         await nft.addSmartContractRole(auction.address);
         blockNum = await ethers.provider.getBlockNumber();
         block = await ethers.provider.getBlock(blockNum);
@@ -244,5 +247,42 @@ describe("Auction Contract", function () {
         balance = await nft.balanceOf(addr2.address, 2);
         expect(balance).to.equal(1);
     });
+
+
+    it("Should receive a bid from a contract", async () => {
+        await owner.sendTransaction({to: contractBidder.address, value: 2});
+        expect(await ethers.provider.getBalance(contractBidder.address)).to.equal(2);
+        await contractBidder.makeBid(1, 2, false);
+        expect(await ethers.provider.getBalance(auction.address)).to.equal(2);
+    });
+
+    it("Should reverse a bid received from a contract - send succeeds", async () => {
+        await owner.sendTransaction({to: contractBidder.address, value: 2});
+        await contractBidder.makeBid(1, 2, false);
+        expect(await ethers.provider.getBalance(auction.address)).to.equal(2);
+        expect(await ethers.provider.getBalance(contractBidder.address)).to.equal(0);
+        await auction.connect(addr2).bid(1, 3, {value: 3}); 
+        let resp = await auction.getAuction(1);
+        
+        expect(resp.highestBid).to.equal(3);
+        expect(resp.highestBidder).to.equal(addr2.address);
+        expect(await ethers.provider.getBalance(contractBidder.address)).to.equal(2);
+    });
+
+    it("Should reverse a bid received from a contract - send fails", async () => {
+        await owner.sendTransaction({to: contractBidder.address, value: 2});
+        balanceBeforeBid = await ethers.provider.getBalance(contractBidder.address);        
+        await contractBidder.makeBid(1, 2, true);
+        expect(await ethers.provider.getBalance(auction.address)).to.equal(2);
+        
+        await auction.connect(addr2).bid(1, 3, {value: 3}); 
+        let resp = await auction.getAuction(1);
+        
+        expect(resp.highestBid).to.equal(3);
+        expect(resp.highestBidder).to.equal(addr2.address);
+        // contract refuses to receive eth back. We don't revert and assign the amount to a withdraw list
+        expect(await ethers.provider.getBalance(contractBidder.address)).to.equal(balanceBeforeBid);
+    });
+
 });
 

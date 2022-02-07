@@ -12,6 +12,8 @@ contract MemeXAuction is MemeXAccessControls {
 
     address public feeBeneficiary;
 
+    mapping(address => uint256) withdrawCredits;
+
     uint16 public defaultTimeExtension = 3600;
     uint16 public bidIncrementPercentage = 100; // 1,00% higher than the previous bid
 
@@ -160,6 +162,17 @@ contract MemeXAuction is MemeXAccessControls {
         return auctionId;
     }
 
+    function withdrawAllCredits() external {
+        uint256 amount = withdrawCredits[msg.sender];
+
+        require(amount != 0, "No credits to withdraw");
+
+        withdrawCredits[msg.sender] = 0;
+
+        (bool sent, ) = msg.sender.call{value: amount}("");
+        require(sent, "withdraw credits failed");
+    }
+
     function settleAuction(uint256 _auctionId) public {
         Auction storage auction = auctions[_auctionId];
         require(!auction.finished, "Auction is already finished");
@@ -291,18 +304,18 @@ contract MemeXAuction is MemeXAccessControls {
         uint256 highestBid = auction.highestBid;
         auction.highestBidder = address(0);
         auction.highestBid = 0;
-        bool sent;
 
         if (highestBidder != address(0)) {
             if (acceptsERC20(_auctionId)) {
-                sent = IERC20(auction.erc20Token).transfer(
-                    highestBidder,
-                    highestBid
-                );
+                IERC20(auction.erc20Token).transfer(highestBidder, highestBid);
             } else {
-                (sent, ) = highestBidder.call{value: highestBid}("");
+                (bool sent, ) = highestBidder.call{value: highestBid}("");
+                if (!sent) {
+                    withdrawCredits[highestBidder] =
+                        withdrawCredits[highestBidder] +
+                        highestBid;
+                }
             }
-            require(sent, "Failed to reverse bid");
         }
     }
 
