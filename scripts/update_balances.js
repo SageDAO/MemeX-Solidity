@@ -256,7 +256,7 @@ async function main() {
 
     let rewardRateTypes = await getRewardRates();
 
-    let transactions = await getLatestTransactionsFromAllBlockchains(rewardRateTypes);
+    await getLatestTransactionsFromAllBlockchains(rewardRateTypes);
 
     if (publishResults) {
         const Rewards = await ethers.getContractFactory("Rewards");
@@ -325,7 +325,8 @@ async function main() {
         }
         await prisma.$transaction(updates);
     }
-    logger.info('Finished successfully');
+    await prisma.$disconnect();
+    logger.info('Update points finished successfully');
 }
 
 function isValidAddress(address) {
@@ -370,13 +371,13 @@ function getEncodedLeaf(leaf) {
 }
 
 function exit(code) {
-    prisma.$disconnect;
     process.exit(code);
 }
 
 main()
     .then(() => setTimeout(exit, 2000, 0))
     .catch((error) => {
+        prisma.$disconnect();
         logger.error(error.stack);
         setTimeout(exit, 2000, 1);
     });

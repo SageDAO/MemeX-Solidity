@@ -53,14 +53,15 @@ async function main() {
             await inspectLotteryState(drop.lotteryId, lottery, block, drop);
         }
     }
-    logger.info('Finished successfully');
+    await prisma.$disconnect();
+    logger.info('Lottery inspection finished successfully');
 }
 
 async function inspectLotteryState(lotteryId, lottery, block, drop) {
     lotteryInfo = await lottery.getLotteryInfo(lotteryId);
-
+    participants = lotteryInfo.participantsCount;
+    
     if (lotteryInfo.status == 2 && lotteryInfo.closingTime < block.timestamp) {
-        participants = await lottery.getParticipantsCount(lotteryId);
         if (participants > 0) {
             logger.info(`Drop #${drop.id} is closed, requesting random number.`);
             await lottery.requestRandomNumber(lotteryId);
@@ -71,8 +72,8 @@ async function inspectLotteryState(lotteryId, lottery, block, drop) {
             return;
         }
     }
+
     if (lotteryInfo.status == 4) {
-        participants = await lottery.getParticipantsCount(lotteryId);
         if (participants > 0) {
             // check if there are prizeProofs stored in the DB for that lottery
             hasProof = await prisma.prizeProof.findFirst({
@@ -171,7 +172,7 @@ async function inspectLotteryState(lotteryId, lottery, block, drop) {
                     created = await prisma.prizeProof.createMany({ data: leaves });
                     logger.info(`${created.count} Proofs created in the DB.`);
                 }
-                logger.info(`Drop #${drop.id} had ${leaf.length} prizes distributed.`);
+                logger.info(`Drop #${drop.id} had ${leaves.length} prizes distributed.`);
             }
         }
     }
@@ -207,13 +208,13 @@ async function hardhatTests(Lottery, block) {
 }
 
 function exit(code) {
-    prisma.$disconnect;
     process.exit(code);
 }
 
 main()
     .then(() => setTimeout(exit, 2000, 0))
     .catch((error) => {
+        prisma.$disconnect();
         logger.error(error.stack);
         setTimeout(exit, 2000, 1);
     });
@@ -229,9 +230,8 @@ async function createLottery(drop, lottery, nftContractAddress) {
     // percentage in base points (200 = 2.00%)
     let royaltyPercentageBasePoints = parseInt(drop.royaltyPercentage * 100);
     const tx = await lottery.createNewLottery(
-        drop.lotteryId,
         drop.costPerTicketPoints,
-        drop.costPerTicketCoins,
+        ethers.utils.parseEther(drop.costPerTicketCoins.toString()),
         drop.startTime,
         drop.endTime,
         nftContractAddress,
@@ -242,7 +242,7 @@ async function createLottery(drop, lottery, nftContractAddress) {
         drop.metadataIpfsPath
     );
     const receipt = await tx.wait();
-    drop.lotteryId = receipt.events[0].args[0];
+    drop.lotteryId = receipt.events[1].args[0];
     drop.blockchainCreatedAt = new Date();
     await prisma.drop.update({
         where: {

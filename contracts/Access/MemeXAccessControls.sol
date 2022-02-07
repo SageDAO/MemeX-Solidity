@@ -7,7 +7,6 @@ contract MemeXAccessControls is MemeXAdminAccess {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant SMART_CONTRACT_ROLE =
         keccak256("SMART_CONTRACT_ROLE");
-    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
     /// @notice Events for adding and removing various roles
 
@@ -17,16 +16,6 @@ contract MemeXAccessControls is MemeXAdminAccess {
     );
 
     event MinterRoleRemoved(
-        address indexed beneficiary,
-        address indexed caller
-    );
-
-    event OperatorRoleGranted(
-        address indexed beneficiary,
-        address indexed caller
-    );
-
-    event OperatorRoleRemoved(
         address indexed beneficiary,
         address indexed caller
     );
@@ -66,15 +55,6 @@ contract MemeXAccessControls is MemeXAdminAccess {
      */
     function hasSmartContractRole(address _address) public view returns (bool) {
         return hasRole(SMART_CONTRACT_ROLE, _address);
-    }
-
-    /**
-     * @notice Used to check whether an address has the operator role
-     * @param _address EOA or contract being checked
-     * @return bool True if the account has the role or false if it does not
-     */
-    function hasOperatorRole(address _address) public view returns (bool) {
-        return hasRole(OPERATOR_ROLE, _address);
     }
 
     ///////////////
@@ -119,25 +99,5 @@ contract MemeXAccessControls is MemeXAdminAccess {
     function removeSmartContractRole(address _address) public {
         revokeRole(SMART_CONTRACT_ROLE, _address);
         emit SmartContractRoleRemoved(_address, _msgSender());
-    }
-
-    /**
-     * @notice Grants the operator role to an address
-     * @dev The sender must have the admin role
-     * @param _address EOA or contract receiving the new role
-     */
-    function addOperatorRole(address _address) public {
-        grantRole(OPERATOR_ROLE, _address);
-        emit OperatorRoleGranted(_address, _msgSender());
-    }
-
-    /**
-     * @notice Removes the operator role from an address
-     * @dev The sender must have the admin role
-     * @param _address EOA or contract affected
-     */
-    function removeOperatorRole(address _address) public {
-        revokeRole(OPERATOR_ROLE, _address);
-        emit OperatorRoleRemoved(_address, _msgSender());
     }
 }

@@ -51,4 +51,11 @@ describe('MemeXNFT Contract', () => {
         expect(await nft.balanceOf(addr3.address, _id)).to.equal(1);
     });
 
+    it("Should signal implementation of EIP-2981", async function () {
+        const _INTERFACE_ID_ERC2981 = 0x2a55205a;
+
+        expect(await nft.supportsInterface(_INTERFACE_ID_ERC2981)).to.equal(true);
+
+    });
+
 })

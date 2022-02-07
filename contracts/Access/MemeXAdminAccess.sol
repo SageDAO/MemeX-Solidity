@@ -21,16 +21,6 @@ contract MemeXAdminAccess is AccessControl {
         initAccess = true;
     }
 
-    // /**
-    //  * @notice Initializes access controls.
-    //  * @param _admin Admins address.
-    //  */
-    // function initAccessControls(address _admin) public {
-    //     require(!initAccess, "Already initialised");
-    //     _setupRole(DEFAULT_ADMIN_ROLE, _admin);
-    //     initAccess = true;
-    // }
-
     /////////////
     // Lookups //
     /////////////

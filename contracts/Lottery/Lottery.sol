@@ -4,12 +4,13 @@ pragma solidity ^0.8.0;
 import "../Access/MemeXAccessControls.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 import "../../interfaces/ILottery.sol";
 
-contract MemeXLottery is MemeXAccessControls, ILottery {
+contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     uint8 public maxTicketsPerParticipant;
 
     bytes32 internal requestId_;
@@ -25,7 +26,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
     mapping(uint256 => bytes32) public prizeMerkleRoots;
 
     // participant address => lottery ids he entered
-    mapping(address => uint256[]) public participantHistory;
+    mapping(address => uint256[]) internal participantHistory;
 
     //lotteryid => prizeIds
     mapping(uint256 => PrizeInfo[]) public prizes;
@@ -41,15 +42,15 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
     mapping(uint256 => mapping(address => ParticipantInfo)) public participants;
 
     struct ParticipantInfo {
-        uint8 ticketsFromCoins;
-        uint8 ticketsFromPoints;
+        uint16 ticketsFromCoins;
+        uint16 ticketsFromPoints;
     }
 
     //loteryId => randomNumber received from RNG
     mapping(uint256 => uint256) public randomSeeds;
 
     //lotteryId => address array
-    mapping(uint256 => address[]) internal lotteryTickets;
+    mapping(uint256 => address[]) public lotteryTickets;
 
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
@@ -75,11 +76,11 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
         uint256 defaultPrizeId; // prize all participants win if no other prizes are given
     }
 
-    event ResponseReceived(bytes32 indexed _requestId);
-    event PrizesChanged(uint256 indexed _lotteryId, uint256 numberOfPrizes);
+    event ResponseReceived(bytes32 indexed requestId);
+    event PrizesChanged(uint256 indexed lotteryId, uint256 numberOfPrizes);
     event LotteryStatusChanged(
-        uint256 indexed _lotteryId,
-        Status indexed _status
+        uint256 indexed lotteryId,
+        Status indexed status
     );
     event RequestNumbers(uint256 indexed lotteryId, bytes32 indexed requestId);
     event TicketCostChanged(
@@ -93,17 +94,11 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
         address indexed participantAddress,
         bool withPoints
     );
-
     event PrizeClaimed(
         uint256 indexed lotteryId,
         address indexed participantAddress,
         uint256 indexed prizeId
     );
-
-    constructor(address _rewardsContract, address _admin) {
-        initAccessControls(_admin);
-        rewardsContract = IRewards(_rewardsContract);
-    }
 
     /**
      * @dev Throws if not called by an admin account.
@@ -111,6 +106,17 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
     modifier onlyAdmin() {
         require(hasAdminRole(msg.sender), "Admin calls only");
         _;
+    }
+
+    /**
+     * @dev Constructor for an upgradable contract
+     */
+    function initialize(address _rewardsContract, address _admin)
+        public
+        initializer
+    {
+        initAccessControls(_admin);
+        rewardsContract = IRewards(_rewardsContract);
     }
 
     function setPrizeMerkleRoot(uint256 _lotteryId, bytes32 _root)
@@ -125,6 +131,14 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
         onlyAdmin
     {
         maxTicketsPerParticipant = _maxTicketsPerParticipant;
+    }
+
+    function getParticipantHistory(address _participant)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return participantHistory[_participant];
     }
 
     function _burnUserPoints(address _user, uint256 _amount)
@@ -217,6 +231,15 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
         _;
     }
 
+    function removePrize(uint256 _lotteryId, uint32 _index) public onlyAdmin {
+        require(_index < prizes[_lotteryId].length, "Index out of bounds");
+
+        prizes[_lotteryId][_index] = prizes[_lotteryId][
+            prizes[_lotteryId].length - 1
+        ];
+        prizes[_lotteryId].pop();
+    }
+
     /**
      * @notice Defines prizes for a lottery.
      * @param _lotteryId The lottery ID
@@ -268,7 +291,6 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
 
     /**
      * @notice Creates a new lottery.
-     * @param _lotteryId 0 if new lottery, otherwise the lottery id to reuse
      * @param _costPerTicketPinas cost in wei per ticket in points/tokens (token only when using ERC20 on the rewards contract)
      * @param _costPerTicketCoins cost in wei per ticket in FTM
      * @param _startTime timestamp to begin lottery entries
@@ -281,7 +303,6 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
      * @return lotteryId
      */
     function createNewLottery(
-        uint256 _lotteryId,
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
         uint32 _startTime,
@@ -299,16 +320,12 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
         } else {
             lotteryStatus = Status.Planned;
         }
-        if (!_nftContract.collectionExists(_lotteryId)) {
-            lotteryId = _nftContract.createCollection(
-                _artistAddress,
-                _royaltyPercentage,
-                _dropMetadataURI
-            );
-            lotteries.push(lotteryId);
-        } else {
-            lotteryId = _lotteryId;
-        }
+        lotteryId = _nftContract.createCollection(
+            _artistAddress,
+            _royaltyPercentage,
+            _dropMetadataURI
+        );
+        lotteries.push(lotteryId);
         LotteryInfo memory newLottery = LotteryInfo(
             _startTime,
             _closeTime,
@@ -419,7 +436,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
      */
     function claimPointsAndBuyTickets(
         uint256 _lotteryId,
-        uint8 numberOfTickets,
+        uint16 numberOfTickets,
         uint256 _points,
         bytes32[] calldata _proof
     ) public payable returns (uint256) {
@@ -436,7 +453,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery {
      */
     function buyTickets(
         uint256 _lotteryId,
-        uint8 numberOfTickets,
+        uint16 numberOfTickets,
         bool _usePoints
     ) public payable returns (uint256) {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
