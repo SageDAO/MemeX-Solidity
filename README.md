@@ -4,7 +4,6 @@
 
 MemeX is currently based on five contracts:
 
-* MemeX Token: ERC-20 compatible Token (only used during tests to have control over the supply);
 * MemeX NFT: ERC-1155 compatible Non Fungible Tokens;
 * Lottery: Manages all the lottery logic. Allows users to buy tickets and lets users claim their prizes.
 * Rewards: manages the MemeX rewards process. Awards users holding MEME or providing liquidity with PINAs, which on this iteration are points needed to enter lottery games. A future iteration will evolve PINA into an ERC-20 token. As we're not requesting users to stake their funds, there is an external job to monitor users balances and update the rewards contract accordingly;
@@ -45,17 +44,17 @@ will create a new lottery for each new drop, updating the json with the created 
 
 ## Creating Merkle Trees with lottery results
 
-The script to run prize distributions can be called with the following command:
+The prize distribution code is executed automatically from a script that monitors lotteries that ended. To run the script, execute: 
 
-`node scripts/prize_distribution.js`
+`export HARDHAT_NETWORK=fantomtestnet; node scripts/lottery_inspection.js`
 
 It will find prize winners, create the merkle tree and update the lottery contract with the root hash. It also saves proofs on our database. After that lottery results can be queried from the database fetching the proofs required when claiming a prize.
 
 ## Rewards
 
-Rewards are based on users holding the Meme Inu token on their wallet (either on Ethereum or Fantom). We don't require users to stake those tokens, instead, there is a script to check and update all balances on a certain interval:
+Rewards are based on users holding the Meme Inu token on their wallet (either on Ethereum or Fantom), LP tokens possibly situations. We don't require users to stake those tokens, instead, there is a script to check and update all balances on a certain interval. To run it manually, use:
 
-`export HARDHAT_NETWORK=rinkeby; node scripts/update_balances.js`
+`export HARDHAT_NETWORK=rinkeby; node scripts/update_balances.js 1`
 
 
 ## Unit tests

@@ -25,10 +25,6 @@ async function main() {
     const blockNum = await ethers.provider.getBlockNumber();
     const block = await ethers.provider.getBlock(blockNum);
 
-    owner = await ethers.getSigner();
-    Rewards = await ethers.getContractFactory('Rewards');
-    Nft = await ethers.getContractFactory("MemeXNFT");
-
     if (hre.network.name == "hardhat") {
         await hardhatTests(Lottery, block);
     } else {
@@ -36,7 +32,7 @@ async function main() {
         lottery = await Lottery.attach(lotteryAddress);
     }
     logger.info('Searching for lotteries that require action');
-    drops = await prisma.drop.findMany({
+    let drops = await prisma.drop.findMany({
         where: {
             approvedAt: {
                 not: null
@@ -55,6 +51,27 @@ async function main() {
     }
     await prisma.$disconnect();
     logger.info('Lottery inspection finished successfully');
+}
+
+async function lotteryHasPrizeProofs(id) {
+    return await prisma.prizeProof.findFirst({
+        where: {
+            lotteryId: id
+        }
+    });
+}
+
+async function getTotalAmountOfPrizes(lotteryId, totalParticipants) {
+    prizes = await lottery.getPrizes(lotteryId);
+    var totalPrizes = 0;
+    // iterate the prize array getting the number of prizes for each entry
+    for (let i = 0; i < prizes.length; i++) {
+        totalPrizes += prizes[i].maxSupply;
+    }
+    if (totalPrizes > totalParticipants) {
+        totalPrizes = totalParticipants;
+    }
+    return totalPrizes;
 }
 
 async function inspectLotteryState(lotteryId, lottery, block, drop) {
@@ -76,14 +93,8 @@ async function inspectLotteryState(lotteryId, lottery, block, drop) {
     if (lotteryInfo.status == 4) {
         if (participants > 0) {
             // check if there are prizeProofs stored in the DB for that lottery
-            hasProof = await prisma.prizeProof.findFirst({
-                where: {
-                    lotteryId: lotteryId
-                }
-            });
-
             // if there aren't any, create the proofs
-            if (!hasProof) {
+            if (!await lotteryHasPrizeProofs(lotteryId)) {
                 logger.info(`Drop #${drop.id} is closed but has no PrizeProof`);
                 entries = await lottery.getLotteryTickets(lotteryId, { gasLimit: 500000000 });
                 totalEntries = entries.length;
@@ -101,15 +112,7 @@ async function inspectLotteryState(lotteryId, lottery, block, drop) {
                 logger.info(`Total participants: ${totalParticipants}`);
 
                 logger.info(`Getting prize info`);
-                prizes = await lottery.getPrizes(lotteryId);
-                var totalPrizes = 0;
-                // iterate the prize array getting the number of prizes for each entry
-                for (let i = 0; i < prizes.length; i++) {
-                    totalPrizes += prizes[i].maxSupply;
-                }
-                if (totalPrizes > totalParticipants) {
-                    totalPrizes = totalParticipants;
-                }
+                let totalPrizes = await getTotalAmountOfPrizes(lotteryId, totalParticipants);
 
                 logger.info(`Total prizes: ${totalPrizes}`);
                 var prizesAwarded = 0;
@@ -180,10 +183,11 @@ async function inspectLotteryState(lotteryId, lottery, block, drop) {
 
 async function hardhatTests(Lottery, block) {
     // if running on the hardhat network, deploy the contracts and initialize 
-    Token = await ethers.getContractFactory("MemeXToken");
-    token = await Token.deploy("MEMEX", "MemeX", 1, owner.address);
-    rewards = await Rewards.deploy(owner.address);
-    lottery = await Lottery.deploy(rewards.address);
+    let owner = await ethers.getSigner();
+    const Rewards = await ethers.getContractFactory('Rewards');
+    const Nft = await ethers.getContractFactory("MemeXNFT");
+    const rewards = await Rewards.deploy(owner.address);
+    const lottery = await Lottery.deploy(rewards.address);
     await rewards.addSmartContractRole(lottery.address);
 
     nft = await Nft.deploy("Memex", "MEMEX", owner.address);
@@ -239,7 +243,7 @@ async function createLottery(drop, lottery, nftContractAddress) {
         drop.CreatedBy.walletAddress,
         drop.defaultPrizeId || 0,
         royaltyPercentageBasePoints,
-        drop.metadataIpfsPath
+        "https://" + drop.prizeMetadataCid + ".ipfs.dweb.link/"
     );
     const receipt = await tx.wait();
     drop.lotteryId = receipt.events[1].args[0];

@@ -1,4 +1,5 @@
 .history
+experiments/
 node_modules
 artifacts/
 cache/
