@@ -9,6 +9,7 @@ import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 import "../../interfaces/ILottery.sol";
+import "../../interfaces/IMemeXWhitelist.sol";
 
 contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     uint8 public maxTicketsPerParticipant;
@@ -22,6 +23,8 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     mapping(uint256 => LotteryInfo) internal lotteryHistory;
 
     uint256[] public lotteries;
+
+    mapping(uint256 => address) public whitelists;
 
     mapping(uint256 => bytes32) public prizeMerkleRoots;
 
@@ -124,6 +127,17 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         onlyAdmin
     {
         prizeMerkleRoots[_lotteryId] = _root;
+    }
+
+    function getWhitelist(uint256 _lotteryId) public view returns (address) {
+        return whitelists[_lotteryId];
+    }
+
+    function setWhitelist(uint256 _lotteryId, address _whitelist)
+        public
+        onlyAdmin
+    {
+        whitelists[_lotteryId] = _whitelist;
     }
 
     function setMaxTicketsPerParticipant(uint8 _maxTicketsPerParticipant)
@@ -462,6 +476,16 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
             require(
                 lottery.participantsCount < lottery.maxParticipants,
                 "Lottery is full"
+            );
+        }
+
+        if (whitelists[_lotteryId] != address(0)) {
+            require(
+                IMemeXWhitelist(whitelists[_lotteryId]).isWhitelisted(
+                    msg.sender,
+                    _lotteryId
+                ),
+                "Not whitelisted"
             );
         }
         ParticipantInfo storage participantInfo = participants[_lotteryId][
