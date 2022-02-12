@@ -35,8 +35,8 @@ describe("MemexSplitter Contract", function () {
         await owner.sendTransaction(tx);
         //await splitter.split(1000, "0x0000000000000000000000000000000000000000");
         expect(ethers.BigNumber.from(await ethers.provider.getBalance(addr2.address))).to.equal(addr2Balance.add(100));
-        expect(ethers.BigNumber.from(await ethers.provider.getBalance(addr3.address))).to.equal(addr2Balance.add(450));
-        expect(ethers.BigNumber.from(await ethers.provider.getBalance(addr4.address))).to.equal(addr2Balance.add(450));
+        expect(ethers.BigNumber.from(await ethers.provider.getBalance(addr3.address))).to.equal(addr3Balance.add(450));
+        expect(ethers.BigNumber.from(await ethers.provider.getBalance(addr4.address))).to.equal(addr4Balance.add(450));
     });
 
     it("Should revert if splitting more than own balance - ERC20", async function () {
