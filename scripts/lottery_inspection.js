@@ -34,9 +34,9 @@ async function main() {
     logger.info('Searching for lotteries that require action');
     let drops = await prisma.drop.findMany({
         where: {
-            // approvedAt: {
-            //     not: null
-            // },
+            approvedAt: {
+                not: null
+            },
             finished: {
                 equals: false,
             }
@@ -51,7 +51,8 @@ async function main() {
             splitterAddress = await deploySplitter(drop);           
         }
         if (drop.blockchainCreatedAt == null) {
-            await createLottery(drop, lottery, CONTRACTS[hre.network.name]["nftAddress"]);
+            let royaltyAddress = drop.splitterId != null ? splitterAddress : drop.CreatedBy.walletAddress; 
+            await createLottery(drop, lottery, CONTRACTS[hre.network.name]["nftAddress"], royaltyAddress);
         } else {
             if (now >= drop.endTime) {
                 await inspectLotteryState(drop.lotteryId, lottery, block, drop);
@@ -60,14 +61,6 @@ async function main() {
     }
     await prisma.$disconnect();
     logger.info('Lottery inspection finished successfully');
-}
-
-async function lotteryHasPrizeProofs(id) {
-    return await prisma.prizeProof.findFirst({
-        where: {
-            lotteryId: id
-        }
-    });
 }
 
 async function getTotalAmountOfPrizes(lotteryId, totalParticipants) {
@@ -259,7 +252,7 @@ async function deploySplitter(drop) {
     return splitter.address;
 }
 
-async function createLottery(drop, lottery, nftContractAddress) {
+async function createLottery(drop, lottery, nftContractAddress, royaltyAddress) {
     logger.info("Creating lottery for drop #id: " + drop.id);
     // percentage in base points (200 = 2.00%)
     let royaltyPercentageBasePoints = parseInt(drop.royaltyPercentage * 100);
@@ -270,7 +263,7 @@ async function createLottery(drop, lottery, nftContractAddress) {
         drop.endTime,
         nftContractAddress,
         drop.maxParticipants,
-        drop.CreatedBy.walletAddress,
+        royaltyAddress,
         drop.defaultPrizeId || 0,
         royaltyPercentageBasePoints,
         "https://" + drop.prizeMetadataCid + ".ipfs.dweb.link/"
