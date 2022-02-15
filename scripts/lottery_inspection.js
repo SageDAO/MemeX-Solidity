@@ -36,29 +36,31 @@ async function main() {
         where: {
             approvedAt: {
                 not: null
+            },
+            finished: {
+                equals: false,
             }
         },
         include: {
-            CreatedBy: true,
+            Splitter: true,
         }
     });
+    const now = Math.floor(Date.now() / 1000);
     for (const drop of drops) {
+        if (drop.Splitter?.splitterAddress == null) {
+            splitterAddress = await deploySplitter(drop);           
+        }
         if (drop.blockchainCreatedAt == null) {
-            await createLottery(drop, lottery, CONTRACTS[hre.network.name]["nftAddress"]);
+            let royaltyAddress = drop.splitterId != null ? splitterAddress : drop.CreatedBy.walletAddress; 
+            await createLottery(drop, lottery, CONTRACTS[hre.network.name]["nftAddress"], royaltyAddress);
         } else {
-            await inspectLotteryState(drop.lotteryId, lottery, block, drop);
+            if (now >= drop.endTime) {
+                await inspectLotteryState(drop.lotteryId, lottery, block, drop);
+            }
         }
     }
     await prisma.$disconnect();
     logger.info('Lottery inspection finished successfully');
-}
-
-async function lotteryHasPrizeProofs(id) {
-    return await prisma.prizeProof.findFirst({
-        where: {
-            lotteryId: id
-        }
-    });
 }
 
 async function getTotalAmountOfPrizes(lotteryId, totalParticipants) {
@@ -94,89 +96,83 @@ async function inspectLotteryState(lotteryId, lottery, block, drop) {
         if (participants > 0) {
             // check if there are prizeProofs stored in the DB for that lottery
             // if there aren't any, create the proofs
-            if (!await lotteryHasPrizeProofs(lotteryId)) {
-                logger.info(`Drop #${drop.id} is closed but has no PrizeProof`);
-                entries = await lottery.getLotteryTickets(lotteryId, { gasLimit: 500000000 });
-                totalEntries = entries.length;
-                logger.info(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
+            logger.info(`Drop #${drop.id} is closed but has no prizes yet`);
+            entries = await lottery.getLotteryTickets(lotteryId, { gasLimit: 500000000 });
+            totalEntries = entries.length;
+            logger.info(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
 
-                lotteryInfo = await lottery.getLotteryInfo(lotteryId);
-                assert(lotteryInfo.status == 4, "Lottery must be closed to distribute prizes");
+            defaultPrizeId = lotteryInfo.defaultPrizeId;
 
-                defaultPrizeId = lotteryInfo.defaultPrizeId;
+            randomSeed = await lottery.randomSeeds(lotteryId);
+            logger.info(`Random seed stored for this lottery: ${randomSeed}`);
 
-                randomSeed = await lottery.randomSeeds(lotteryId);
-                logger.info(`Random seed stored for this lottery: ${randomSeed}`);
+            logger.info(`Total participants: ${participants}`);
 
-                totalParticipants = await lottery.getParticipantsCount(lotteryId);
-                logger.info(`Total participants: ${totalParticipants}`);
+            logger.info(`Getting prize info`);
+            let totalPrizes = await getTotalAmountOfPrizes(lotteryId, participants);
 
-                logger.info(`Getting prize info`);
-                let totalPrizes = await getTotalAmountOfPrizes(lotteryId, totalParticipants);
+            logger.info(`Total prizes: ${totalPrizes}`);
+            var prizesAwarded = 0;
+            logger.info(`Drop #${drop.id} starting prize distribution`);
+            const winners = new Set();
+            var leaves = new Array();
+            for (prizeIndex in prizes) {
+                for (i = 0; i < prizes[prizeIndex].maxSupply; i++) {
+                    if (prizesAwarded == totalPrizes) {
+                        break;
+                    }
+                    hashOfSeed = keccak256(abiCoder.encode(['uint256', 'uint256'], [randomSeed, prizesAwarded]));
 
-                logger.info(`Total prizes: ${totalPrizes}`);
-                var prizesAwarded = 0;
-                logger.info(`Drop #${drop.id} starting prize distribution`);
-                const winners = new Set();
-                var leaves = new Array();
-                for (prizeIndex in prizes) {
-                    for (i = 0; i < prizes[prizeIndex].maxSupply; i++) {
-                        if (prizesAwarded == totalPrizes) {
-                            break;
-                        }
-                        hashOfSeed = keccak256(abiCoder.encode(['uint256', 'uint256'], [randomSeed, prizesAwarded]));
+                    // convert hash into a number
+                    randomPosition = ethers.BigNumber.from(hashOfSeed).mod(totalEntries);
+                    logger.info(`Generated random position ${randomPosition}`);
+                    while (winners.has(entries[randomPosition])) {
+                        logger.info(`${entries[randomPosition]} already won a prize, checking next position in array`);
+                        randomPosition++;
+                        randomPosition = randomPosition % totalEntries;
+                    }
+                    winners.add(entries[randomPosition]);
+                    prizesAwarded++;
+                    logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${entries[randomPosition]}`);
 
-                        // convert hash into a number
-                        randomPosition = ethers.BigNumber.from(hashOfSeed).mod(totalEntries);
-                        logger.info(`Generated random position ${randomPosition}`);
-                        while (winners.has(entries[randomPosition])) {
-                            logger.info(`${entries[randomPosition]} already won a prize, checking next position in array`);
-                            randomPosition++;
-                            randomPosition = randomPosition % totalEntries;
-                        }
-                        winners.add(entries[randomPosition]);
-                        prizesAwarded++;
-                        logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${entries[randomPosition]}`);
-
+                    var leaf = {
+                        lotteryId: Number(lotteryId), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), proof: "", createdAt: new Date()
+                    };
+                    leaves.push(leaf);
+                }
+            }
+            // if lottery has defaultPrize, distribute it to all participants who did not win a prize above
+            if (defaultPrizeId != 0) {
+                for (i = 0; i < entries.length; i++) {
+                    if (!winners.has(entries[i])) {
                         var leaf = {
-                            lotteryId: Number(lotteryId), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), proof: "", createdAt: new Date()
+                            lotteryId: Number(lotteryId), winnerAddress: entries[i], nftId: defaultPrizeId.toNumber(), proof: "", createdAt: new Date()
                         };
+                        winners.add(entries[i]);
                         leaves.push(leaf);
                     }
                 }
-                // if lottery has defaultPrize, distribute it to all participants who did not win a prize above
-                if (defaultPrizeId != 0) {
-                    for (i = 0; i < entries.length; i++) {
-                        if (!winners.has(entries[i])) {
-                            var leaf = {
-                                lotteryId: Number(lotteryId), winnerAddress: entries[i], nftId: defaultPrizeId.toNumber(), proof: "", createdAt: new Date()
-                            };
-                            winners.add(entries[i]);
-                            leaves.push(leaf);
-                        }
-                    }
-                }
-                logger.info(`All prizes awarded. Building the merkle tree`);
-                hashedLeaves = leaves.map(leaf => getEncodedLeaf(lotteryId, leaf));
-                const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
-
-                const root = tree.getHexRoot().toString('hex');
-                logger.info(`Storing the Merkle tree root in the contract: ${root}`);
-                await lottery.setPrizeMerkleRoot(lotteryId, root);
-
-                // generate proofs for each winner
-                for (index in leaves) {
-                    leaf = leaves[index];
-                    leaf.proof = tree.getProof(getEncodedLeaf(lotteryId, leaf)).map(x => buf2hex(x.data)).toString();
-                    logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`)
-                }
-                // store proofs on the DB so they can be easily queried
-                if (hre.network.name != "hardhat") {
-                    created = await prisma.prizeProof.createMany({ data: leaves });
-                    logger.info(`${created.count} Proofs created in the DB.`);
-                }
-                logger.info(`Drop #${drop.id} had ${leaves.length} prizes distributed.`);
             }
+            logger.info(`All prizes awarded. Building the merkle tree`);
+            hashedLeaves = leaves.map(leaf => getEncodedLeaf(lotteryId, leaf));
+            const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
+
+            const root = tree.getHexRoot().toString('hex');
+            logger.info(`Storing the Merkle tree root in the contract: ${root}`);
+            await lottery.setPrizeMerkleRoot(lotteryId, root);
+
+            // generate proofs for each winner
+            for (index in leaves) {
+                leaf = leaves[index];
+                leaf.proof = tree.getProof(getEncodedLeaf(lotteryId, leaf)).map(x => buf2hex(x.data)).toString();
+                logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`)
+            }
+            // store proofs on the DB so they can be easily queried
+            if (hre.network.name != "hardhat") {
+                created = await prisma.prizeProof.createMany({ data: leaves });
+                logger.info(`${created.count} Proofs created in the DB.`);
+            }
+            logger.info(`Drop #${drop.id} had ${leaves.length} prizes distributed.`);
         }
     }
 }
@@ -229,8 +225,35 @@ function getEncodedLeaf(lotteryId, leaf) {
         [lotteryId, leaf.winnerAddress, leaf.nftId]));
 }
 
-async function createLottery(drop, lottery, nftContractAddress) {
-    logger.info("Drop #id: " + drop.id);
+async function deploySplitter(drop) {
+    logger.info(`Deploying splitter for drop #${drop.id}`);
+    let owner = await ethers.getSigner();
+    let royaltySplits =  await prisma.royaltySplit.findMany({
+        where: {
+            splitterId: drop.splitterId
+        }
+    });
+    if (royaltySplits.length < 2) {
+        logger.error(`Drop #${drop.id} contain less than 2 royalty split addresses`);
+        return null;
+    }
+    let destinations = new Array();
+    let weights = new Array();
+    for (i = 0; i < royaltySplits.length; i++) {
+        destinations.push(royaltySplits[i].destinationAddress);
+        weights.push(parseInt(royaltySplits[i].percent * 100) );// royalty percentage using basis points. 1% = 100
+    }
+    const Splitter = await ethers.getContractFactory("MemeXSplitter");
+    const splitter = await Splitter.deploy(owner.address, destinations, weights);
+    await prisma.splitter.update({
+        where: { id: drop.splitterId },
+        data: { splitterAddress: splitter.address }
+    });
+    return splitter.address;
+}
+
+async function createLottery(drop, lottery, nftContractAddress, royaltyAddress) {
+    logger.info("Creating lottery for drop #id: " + drop.id);
     // percentage in base points (200 = 2.00%)
     let royaltyPercentageBasePoints = parseInt(drop.royaltyPercentage * 100);
     const tx = await lottery.createNewLottery(
@@ -240,7 +263,7 @@ async function createLottery(drop, lottery, nftContractAddress) {
         drop.endTime,
         nftContractAddress,
         drop.maxParticipants,
-        drop.CreatedBy.walletAddress,
+        royaltyAddress,
         drop.defaultPrizeId || 0,
         royaltyPercentageBasePoints,
         "https://" + drop.prizeMetadataCid + ".ipfs.dweb.link/"
