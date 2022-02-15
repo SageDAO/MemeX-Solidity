@@ -13,14 +13,14 @@ describe("MemexSplitter Contract", function () {
 
     });
 
-    it("Should split correctly - ERC20", async function () {
+    it("Should split - ERC20", async function () {
         await splitter.splitERC20(1000, mockERC20.address);
         expect(await mockERC20.balanceOf(addr2.address)).to.equal(100);
         expect(await mockERC20.balanceOf(addr3.address)).to.equal(450);
         expect(await mockERC20.balanceOf(addr4.address)).to.equal(450);
     });
 
-    it("Should split automatically if has enough gas - FTM", async function () {
+    it("Should split - FTM", async function () {
         addr2Balance = ethers.BigNumber.from(await ethers.provider.getBalance(addr2.address));
         addr3Balance = ethers.BigNumber.from(await ethers.provider.getBalance(addr3.address));
         addr4Balance = ethers.BigNumber.from(await ethers.provider.getBalance(addr4.address));
@@ -28,25 +28,6 @@ describe("MemexSplitter Contract", function () {
         // send some FTM to the splitter
         let tx = {
             to: splitter.address,
-            // Convert currency unit from ether to wei
-            value: 1000,
-            gasLimit: 70000
-        }
-        await owner.sendTransaction(tx);
-        expect(ethers.BigNumber.from(await ethers.provider.getBalance(addr2.address))).to.equal(addr2Balance.add(100));
-        expect(ethers.BigNumber.from(await ethers.provider.getBalance(addr3.address))).to.equal(addr3Balance.add(450));
-        expect(ethers.BigNumber.from(await ethers.provider.getBalance(addr4.address))).to.equal(addr4Balance.add(450));
-    });
-
-    it("Should split manually if not enough gas - FTM", async function () {
-        addr2Balance = ethers.BigNumber.from(await ethers.provider.getBalance(addr2.address));
-        addr3Balance = ethers.BigNumber.from(await ethers.provider.getBalance(addr3.address));
-        addr4Balance = ethers.BigNumber.from(await ethers.provider.getBalance(addr4.address));
-
-        // send some FTM to the splitter
-        let tx = {
-            to: splitter.address,
-            // Convert currency unit from ether to wei
             value: 1000,
             gasLimit: 50000
         }
@@ -57,11 +38,11 @@ describe("MemexSplitter Contract", function () {
         expect(ethers.BigNumber.from(await ethers.provider.getBalance(addr4.address))).to.equal(addr4Balance.add(450));
     });
 
-    it("Should revert if splitting more than own balance - ERC20", async function () {
+    it("Should revert if splitting more than owned balance - ERC20", async function () {
         await expect(splitter.splitERC20(1001, mockERC20.address)).to.be.revertedWith("Not enough balance");
     });
 
-    it("Should revert if splitting more than own balance - FTM", async function () {
+    it("Should revert if splitting more than owned balance - FTM", async function () {
         await expect(splitter.split(1001)).to.be.revertedWith("Not enough balance");
     });
 });
