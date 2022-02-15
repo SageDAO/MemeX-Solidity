@@ -30,10 +30,8 @@ model Drop {
   bannerImageName        String
   dropDescription        String
   dropName               String
-  endTime                String
   lotteryId              Int
   prizeMetadataCid       String
-  startTime              String
   bannerImageIpfsPath    String
   bannerImageS3Path      String
   metadataIpfsPath       String
@@ -52,9 +50,14 @@ model Drop {
   royaltyPercentage      Float     @default(0.0)
   dropTileContentIpfsUrl String
   dropTileContentS3Url   String
+  finished               Boolean   @default(false)
+  splitterId             Int?
+  endTime                Int
+  startTime              Int
   ApprovedBy             User?     @relation("approvals", fields: [approvedBy], references: [walletAddress])
   CreatedBy              User      @relation("artists", fields: [createdBy], references: [walletAddress])
   defaultPrize           Nft?      @relation(fields: [defaultPrizeId], references: [id])
+  Splitter               Splitter? @relation(fields: [splitterId], references: [id])
   Nft                    Nft[]     @relation("nftOnDrop")
   User                   User[]    @relation("userFavoriteDrops")
 }
@@ -114,6 +117,21 @@ model User {
   FavoriteDrop   Drop[]   @relation("userFavoriteDrops")
 
   @@index([walletAddress])
+}
+
+model RoyaltySplit {
+  id                 Int      @id @default(autoincrement())
+  destinationAddress String   @db.Char(42)
+  splitterId         Int
+  percent            Float
+  Splitter           Splitter @relation(fields: [splitterId], references: [id])
+}
+
+model Splitter {
+  id              Int            @id @default(autoincrement())
+  splitterAddress String?        @db.Char(42)
+  Drop            Drop[]
+  RoyaltySplit    RoyaltySplit[]
 }
 
 enum AssetType {

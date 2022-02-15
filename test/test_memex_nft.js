@@ -36,7 +36,7 @@ describe('MemeXNFT Contract', () => {
 
     it("Should not mint without minter role", async function () {
         await expect(nft.connect(addr3).mint(addr2.address, 1, 1, 1, [])
-        ).to.be.revertedWith("MemeXNFT: Only Lottery or Minter role can mint");
+        ).to.be.revertedWith("MemeXNFT: No minting privileges");
     })
 
     it("Should calculate royalties", async function () {
