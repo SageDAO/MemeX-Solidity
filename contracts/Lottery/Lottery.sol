@@ -55,6 +55,9 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     //lotteryId => address array
     mapping(uint256 => address[]) public lotteryTickets;
 
+    //lotteryId => value already withdrawed from the lottery
+    mapping(uint256 => uint256) public withdrawals;
+
     enum Status {
         Planned, // The lottery is only planned, cant buy tickets yet
         Canceled, // A lottery that got canceled
@@ -138,6 +141,15 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         onlyAdmin
     {
         whitelists[_lotteryId] = _whitelist;
+    }
+
+    function setMaxParticipants(uint256 _lotteryId, uint32 _maxParticipants)
+        public
+        onlyAdmin
+    {
+        LotteryInfo storage lotteryInfo = lotteryHistory[_lotteryId];
+        lotteryInfo.maxParticipants = _maxParticipants;
+        lotteryHistory[_lotteryId] = lotteryInfo;
     }
 
     function setMaxTicketsPerParticipant(uint8 _maxTicketsPerParticipant)
@@ -309,10 +321,10 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
      * @param _costPerTicketCoins cost in wei per ticket in FTM
      * @param _startTime timestamp to begin lottery entries
      * @param _nftContract reference to the NFT contract
-     * @param _maxParticipants max number of participants. Use 0 for unlimited
-     * @param _artistAddress wallet address of the artist
+     * @param _royaltyDestination wallet address of the artist
      * @param _defaultPrizeId default prize id
      * @param _royaltyPercentage royalty percentage for the drop in base points (200 = 2% )
+     * @param _primarySalesDestination address of the primary sales destination
      * @param _dropMetadataURI base URI for the drop metadata
      * @return lotteryId
      */
@@ -322,10 +334,10 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         uint32 _startTime,
         uint32 _closeTime,
         IMemeXNFT _nftContract,
-        uint16 _maxParticipants,
-        address _artistAddress,
+        address _royaltyDestination,
         uint256 _defaultPrizeId,
         uint16 _royaltyPercentage,
+        address _primarySalesDestination,
         string calldata _dropMetadataURI
     ) public onlyAdmin returns (uint256 lotteryId) {
         Status lotteryStatus;
@@ -335,16 +347,17 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
             lotteryStatus = Status.Planned;
         }
         lotteryId = _nftContract.createCollection(
-            _artistAddress,
+            _royaltyDestination,
             _royaltyPercentage,
-            _dropMetadataURI
+            _dropMetadataURI,
+            _primarySalesDestination
         );
         lotteries.push(lotteryId);
         LotteryInfo memory newLottery = LotteryInfo(
             _startTime,
             _closeTime,
             0,
-            _maxParticipants,
+            0,
             lotteryId,
             lotteryStatus,
             _costPerTicketPinas,
@@ -617,11 +630,24 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
 
     /**
      * @notice Function called to withdraw funds (native tokens) from the contract.
+     * @param _lotteryId withdraw funds from this lottery
      * @param _to Recipient of the funds
      * @param _amount Amount to withdraw
      */
-    function withdraw(address payable _to, uint256 _amount) external onlyAdmin {
-        require(_amount <= address(this).balance);
-        _to.transfer(_amount);
+    function withdraw(
+        uint256 _lotteryId,
+        address payable _to,
+        uint256 _amount
+    ) external onlyAdmin {
+        uint256 previousWithdrawals = withdrawals[_lotteryId];
+        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
+        withdrawals[_lotteryId] += _amount;
+        require(
+            _amount + previousWithdrawals <=
+                lottery.ticketCostCoins * lottery.numTicketsWithCoins,
+            "Not enough funds"
+        );
+        (bool sent, ) = _to.call{value: _amount}("");
+        require(sent, "withdraw failed");
     }
 }

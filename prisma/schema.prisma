@@ -9,57 +9,109 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
+model Collection {
+  id                   Int        @id @default(autoincrement())
+  collectionContractId Int?
+  primarySplitterId    Int?
+  secondarySplitterId  Int?
+  whitelistId          Int?
+  dropId               Int?
+  auctionId            Int?
+  createdAt            DateTime   @default(now())
+  royaltyPercentage    Float      @default(0.0)
+  artistAddress        String     @db.Char(42)
+  Artist               User       @relation("ArtistCollections", fields: [artistAddress], references: [walletAddress])
+  PrimarySplitter      Splitter?  @relation("primarySplitter", fields: [primarySplitterId], references: [id])
+  SecondarySplitter    Splitter?  @relation("secondarySplitter", fields: [secondarySplitterId], references: [id])
+  Whitelist            Whitelist? @relation(fields: [whitelistId], references: [id])
+  Auction              Auction?
+  Drop                 Drop?
+  Nfts                 Nft[]
+}
+
+model SplitEntry {
+  id                 Int      @id @default(autoincrement())
+  destinationAddress String   @db.Char(42)
+  splitterId         Int
+  percent            Float
+  Splitter           Splitter @relation(fields: [splitterId], references: [id])
+}
+
+model Splitter {
+  id                     Int          @id @default(autoincrement())
+  splitterAddress        String?      @db.Char(42)
+  CollectionsAsPrimary   Collection[] @relation("primarySplitter")
+  CollectionsAsSecondary Collection[] @relation("secondarySplitter")
+  SplitterEntries        SplitEntry[]
+}
+
+model WhitelistEntry {
+  id          Int           @id @default(autoincrement())
+  whitelistId Int
+  minBalance  String?
+  tokenId     BigInt?
+  type        WhitelistType
+  Whitelist   Whitelist     @relation(fields: [whitelistId], references: [id])
+}
+
+model Whitelist {
+  id               Int              @id @default(autoincrement())
+  contractAddress  String           @db.Char(42)
+  Collections      Collection[]
+  WhitelistEntries WhitelistEntry[]
+}
+
+model Auction {
+  id           Int        @id @default(autoincrement())
+  collectionId Int        @unique
+  Collection   Collection @relation(fields: [collectionId], references: [id])
+}
+
 model Nft {
-  id            Int          @id @default(autoincrement())
-  dropId        Int
-  name          String
-  description   String
-  rarity        String
-  ipfsPath      String
-  s3Path        String
-  tags          String
-  numberOfMints Int          @default(0)
-  isVideo       Boolean      @default(false)
-  drop          Drop         @relation("nftOnDrop", fields: [dropId], references: [id])
-  defaultPrizes Drop[]
-  prizeProof    PrizeProof[]
+  id                            Int          @id @default(autoincrement())
+  name                          String
+  description                   String
+  rarity                        String
+  ipfsPath                      String
+  s3Path                        String
+  tags                          String
+  numberOfMints                 Int          @default(0)
+  isVideo                       Boolean      @default(false)
+  collectionId                  Int
+  Collection                    Collection   @relation(fields: [collectionId], references: [id])
+  Drop_Drop_defaultPrizeIdToNft Drop[]       @relation("Drop_defaultPrizeIdToNft")
+  PrizeProof                    PrizeProof[]
 }
 
 model Drop {
-  id                     Int       @id @default(autoincrement())
-  bannerImageName        String
-  dropDescription        String
-  dropName               String
-  lotteryId              Int
-  prizeMetadataCid       String
-  bannerImageIpfsPath    String
-  bannerImageS3Path      String
-  metadataIpfsPath       String
-  metadataS3Path         String
-  tags                   String
-  approvedAt             DateTime?
-  approvedBy             String?   @db.Char(42)
-  blockchainCreatedAt    DateTime?
-  costPerTicketCoins     Float     @default(0.0)
-  costPerTicketPoints    BigInt    @default(0)
-  createdAt              DateTime  @default(now())
-  createdBy              String    @db.Char(42)
-  defaultPrizeId         Int?
-  isLive                 Boolean   @default(false)
-  maxParticipants        Int       @default(0)
-  royaltyPercentage      Float     @default(0.0)
-  dropTileContentIpfsUrl String
-  dropTileContentS3Url   String
-  finished               Boolean   @default(false)
-  splitterId             Int?
-  endTime                Int
-  startTime              Int
-  ApprovedBy             User?     @relation("approvals", fields: [approvedBy], references: [walletAddress])
-  CreatedBy              User      @relation("artists", fields: [createdBy], references: [walletAddress])
-  defaultPrize           Nft?      @relation(fields: [defaultPrizeId], references: [id])
-  Splitter               Splitter? @relation(fields: [splitterId], references: [id])
-  Nft                    Nft[]     @relation("nftOnDrop")
-  User                   User[]    @relation("userFavoriteDrops")
+  id                           Int        @id @default(autoincrement())
+  bannerImageName              String
+  dropDescription              String
+  dropName                     String
+  lotteryId                    Int        @unique
+  prizeMetadataCid             String
+  bannerImageIpfsPath          String
+  bannerImageS3Path            String
+  metadataIpfsPath             String
+  metadataS3Path               String
+  tags                         String
+  approvedAt                   DateTime?
+  approvedBy                   String?    @db.Char(42)
+  blockchainCreatedAt          DateTime?
+  costPerTicketCoins           Float      @default(0.0)
+  costPerTicketPoints          BigInt     @default(0)
+  defaultPrizeId               Int?
+  isLive                       Boolean    @default(false)
+  maxParticipants              Int        @default(0)
+  dropTileContentIpfsUrl       String
+  dropTileContentS3Url         String
+  finished                     Boolean    @default(false)
+  endTime                      Int
+  startTime                    Int
+  User_Drop_approvedByToUser   User?      @relation("Drop_approvedByToUser", fields: [approvedBy], references: [walletAddress])
+  Nft_Drop_defaultPrizeIdToNft Nft?       @relation("Drop_defaultPrizeIdToNft", fields: [defaultPrizeId], references: [id])
+  Collection                   Collection @relation(fields: [lotteryId], references: [id])
+  User_userFavoriteDrops       User[]     @relation("userFavoriteDrops")
 }
 
 model PrizeProof {
@@ -87,7 +139,7 @@ model MemeTransactions {
   @@index([from, to])
 }
 
-model RewardPublished {
+model EarnedPoints {
   address           String   @id @db.Char(42)
   totalPointsEarned BigInt   @default(0)
   proof             String
@@ -105,33 +157,18 @@ model RewardType {
 }
 
 model User {
-  walletAddress  String   @id @db.Char(42)
-  userName       String?
-  email          String?  @unique
-  createdAt      DateTime @default(now())
-  role           Role     @default(USER)
-  bio            String?  @db.VarChar(200)
-  profilePicture String?
-  Approval       Drop[]   @relation("approvals")
-  Artist         Drop[]   @relation("artists")
-  FavoriteDrop   Drop[]   @relation("userFavoriteDrops")
+  walletAddress              String       @id @db.Char(42)
+  userName                   String?
+  email                      String?      @unique
+  createdAt                  DateTime     @default(now())
+  role                       Role         @default(USER)
+  bio                        String?      @db.VarChar(200)
+  profilePicture             String?
+  ArtistCollections          Collection[] @relation("ArtistCollections")
+  Drop_Drop_approvedByToUser Drop[]       @relation("Drop_approvedByToUser")
+  Drop_userFavoriteDrops     Drop[]       @relation("userFavoriteDrops")
 
   @@index([walletAddress])
-}
-
-model RoyaltySplit {
-  id                 Int      @id @default(autoincrement())
-  destinationAddress String   @db.Char(42)
-  splitterId         Int
-  percent            Float
-  Splitter           Splitter @relation(fields: [splitterId], references: [id])
-}
-
-model Splitter {
-  id              Int            @id @default(autoincrement())
-  splitterAddress String?        @db.Char(42)
-  Drop            Drop[]
-  RoyaltySplit    RoyaltySplit[]
 }
 
 enum AssetType {
@@ -144,4 +181,12 @@ enum Role {
   USER
   ARTIST
   ADMIN
+}
+
+enum WhitelistType {
+  WALLET
+  ERC20
+  ERC721
+  ERC1155
+  MERKLE
 }
