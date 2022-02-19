@@ -34,6 +34,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         address royaltyDestination;
         uint16 royalty;
         string dropMetadataURI;
+        address primarySalesDestination;
     }
 
     function incrementCollectionCount() internal {
@@ -70,13 +71,15 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         returns (
             address,
             uint16,
-            string memory
+            string memory,
+            address
         )
     {
         return (
             collections[_collectionId].royaltyDestination,
             collections[_collectionId].royalty,
-            collections[_collectionId].dropMetadataURI
+            collections[_collectionId].dropMetadataURI,
+            collections[_collectionId].primarySalesDestination
         );
     }
 
@@ -91,6 +94,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         uint256 _collectionId,
         address _royaltyDestination,
         uint16 _royaltyPercentage,
+        address _primarySalesDestination,
         string memory _dropMetadataURI
     ) public {
         require(
@@ -99,37 +103,45 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         );
         require(_royaltyDestination != address(0));
         collections[_collectionId].royaltyDestination = _royaltyDestination;
+        collections[_collectionId]
+            .primarySalesDestination = _primarySalesDestination;
         collections[_collectionId].royalty = _royaltyPercentage;
         collections[_collectionId].dropMetadataURI = _dropMetadataURI;
     }
 
     /**
-     * @notice Creates a new collection (drop).
-     * @param _artistAddress the wallet address of the artist
+     * @notice Creates a new collection.
+     * @param _royaltyDestination the wallet address of the artist
      * @param _royaltyPercentage the royalty percentage in base points (200 = 2%)
      * @param _dropMetadataURI the metadata URI of the drop
+     * @param _primarySalesDestination the wallet address to receive primary sales of the collection
      */
     function createCollection(
-        address _artistAddress,
+        address _royaltyDestination,
         uint16 _royaltyPercentage,
-        string memory _dropMetadataURI
+        string memory _dropMetadataURI,
+        address _primarySalesDestination
     ) external returns (uint256) {
         require(
             hasAdminRole(msg.sender) || hasSmartContractRole(msg.sender),
             "ERC1155.createCollection only Admin or Minter can create"
         );
-        require(_artistAddress != address(0), "Artist address can't be 0");
+        require(
+            _royaltyDestination != address(0),
+            "Royalty destination address can't be 0"
+        );
         CollectionInfo memory collection = CollectionInfo(
-            _artistAddress,
+            _royaltyDestination,
             _royaltyPercentage,
-            _dropMetadataURI
+            _dropMetadataURI,
+            _primarySalesDestination
         );
         incrementCollectionCount();
         collections[collectionCount] = collection;
 
         emit CollectionCreated(
             collectionCount,
-            _artistAddress,
+            _royaltyDestination,
             _royaltyPercentage,
             _dropMetadataURI
         );

@@ -307,7 +307,7 @@ async function main() {
             proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
             logger.info(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
 
-            updates.push(prisma.rewardPublished.upsert({
+            updates.push(prisma.earnedPoints.upsert({
                 where: {
                     address: leaf.address
                 },

@@ -98,12 +98,14 @@ contract MemeXAuction is MemeXAccessControls {
         uint16 _fee,
         address _artistAddress,
         uint16 _royaltyPercentage,
+        address _primarySalesDestination,
         string calldata _metadataURI
     ) public onlyAdmin returns (uint256 auctionId) {
         uint256 collectionId = _nftContract.createCollection(
             _artistAddress,
             _royaltyPercentage,
-            _metadataURI
+            _metadataURI,
+            _primarySalesDestination
         );
         require(collectionId > 0, "Collection creation failed");
         return
@@ -195,9 +197,10 @@ contract MemeXAuction is MemeXAccessControls {
             );
         }
 
-        (address artistAddress, , ) = auction.nftContract.getCollectionInfo(
-            auction.collectionId
-        );
+        // TODO: change this logic considering primary sales splitter
+        (address artistAddress, , , address primarySalesDestination) = auction
+            .nftContract
+            .getCollectionInfo(auction.collectionId);
 
         uint256 feePaid = getPercentageOfBid(highestBid, auction.feePercentage);
         if (acceptsERC20(_auctionId)) {

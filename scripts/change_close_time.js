@@ -36,7 +36,7 @@ async function main() {
             lotteryId: lotteryId
         },
         data: {
-            endTime: newEndTime.toString()
+            endTime: newEndTime
         },
     });
 
