@@ -59,9 +59,8 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     mapping(uint256 => uint256) public withdrawals;
 
     enum Status {
-        Planned, // The lottery is only planned, cant buy tickets yet
+        Created, // The lottery has been created
         Canceled, // A lottery that got canceled
-        Open, // Entries are open
         Closed, // Entries are closed. Must be closed to draw numbers
         Completed // The lottery has been completed and the numbers drawn
     }
@@ -341,11 +340,6 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         string calldata _dropMetadataURI
     ) public onlyAdmin returns (uint256 lotteryId) {
         Status lotteryStatus;
-        if (_startTime <= block.timestamp) {
-            lotteryStatus = Status.Open;
-        } else {
-            lotteryStatus = Status.Planned;
-        }
         lotteryId = _nftContract.createCollection(
             _royaltyDestination,
             _royaltyPercentage,
@@ -359,7 +353,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
             0,
             0,
             lotteryId,
-            lotteryStatus,
+            Status.Created,
             _costPerTicketPinas,
             _costPerTicketCoins,
             0,
@@ -379,7 +373,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     function requestRandomNumber(uint256 _lotteryId) external onlyAdmin {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(lottery.closingTime < block.timestamp, "Lottery is not closed");
-        if (lottery.status == Status.Open) {
+        if (lottery.status == Status.Created) {
             lottery.status = Status.Closed;
             emit LotteryStatusChanged(_lotteryId, lottery.status);
         }
@@ -512,21 +506,11 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
                 "Can't buy this amount of tickets"
             );
         }
-        if (
-            lottery.status == Status.Planned &&
-            lottery.startTime <= block.timestamp
-        ) {
-            lottery.status = Status.Open;
-            emit LotteryStatusChanged(_lotteryId, lottery.status);
-        }
-        if (
-            lottery.status == Status.Open &&
-            lottery.closingTime < block.timestamp
-        ) {
-            lottery.status = Status.Closed;
-            emit LotteryStatusChanged(_lotteryId, lottery.status);
-        }
-        require(lottery.status == Status.Open, "Lottery is not open");
+        require(
+            lottery.startTime <= block.timestamp &&
+                lottery.closingTime < block.timestamp,
+            "Lottery is not open"
+        );
         if (_usePoints) {
             uint256 totalCostInPoints = numberOfTickets *
                 lottery.ticketCostPoints;

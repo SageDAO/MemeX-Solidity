@@ -37,17 +37,13 @@ async function main() {
         let primarySplitterAddress = drop.Collection.PrimarySplitter?.splitterAddress;
         if (primarySplitterAddress == null) {
             const splitId = drop.Collection.primarySplitterId;
-            logger.info(`Deploying primary splitter for drop #${drop.id}`);
-            primarySplitterAddress = await deploySplitter(drop, splitId);
-            logger.info(`Primary splitter deployed at ${primarySplitterAddress}`);           
+            drop.Collection.PrimarySplitter.splitterAddress = await deploySplitter(drop, splitId);
         }
         
         let secondarySplitterAddress = drop.Collection.SecondarySplitter?.splitterAddress;
         if (secondarySplitterAddress == null) {
             const splitId = drop.Collection.secondarySplitterId;
-            logger.info(`Deploying secondary splitter for drop #${drop.id}`);
-            secondarySplitterAddress = await deploySplitter(drop, splitId);   
-            logger.info(`Secondary splitter deployed at ${secondarySplitterAddress}`);        
+            drop.Collection.SecondarySplitter.splitterAddress = await deploySplitter(drop, splitId);   
         }
 
         if (drop.blockchainCreatedAt == null) {
@@ -77,7 +73,8 @@ async function fetchApprovedDrops() {
             Collection: {
                 include: {
                     PrimarySplitter: true,
-                    SecondarySplitter: true
+                    SecondarySplitter: true,
+                    Artist: true,
                 },
             },
         }
@@ -263,23 +260,32 @@ async function deploySplitter(drop, splitId) {
             splitterId: splitId
         }
     });
-    if (splitEntries.length < 2) {
-        logger.error(`Drop #${drop.id} contain less than 2 royalty split addresses`);
+    if (splitEntries.length == 0) {
+        logger.error(`No split addresses found for Drop #${drop.id}`);
         return null;
     }
-    let destinations = new Array();
-    let weights = new Array();
-    for (i = 0; i < splitEntries.length; i++) {
-        destinations.push(splitEntries[i].destinationAddress);
-        weights.push(parseInt(splitEntries[i].percent * 100) );// royalty percentage using basis points. 1% = 100
+    let splitAddress;
+    if (splitEntries.length == 1) {
+        logger.info(`Only one split address found for Drop #${drop.id}. No splitter needed.`);
+        splitAddress = splitEntries[0].destinationAddress;
+    } else {
+        logger.info(`Deploying splitter for splitId #${splitId}`);
+        let destinations = new Array();
+        let weights = new Array();
+        for (i = 0; i < splitEntries.length; i++) {
+            destinations.push(splitEntries[i].destinationAddress);
+            weights.push(parseInt(splitEntries[i].percent * 100) );// royalty percentage using basis points. 1% = 100
+        }
+        const Splitter = await ethers.getContractFactory("MemeXSplitter");
+        const splitter = await Splitter.deploy(owner.address, destinations, weights);
+        splitAddress = splitter.address;
+        logger.info(`Splitter deployed to ${splitAddress}`);           
     }
-    const Splitter = await ethers.getContractFactory("MemeXSplitter");
-    const splitter = await Splitter.deploy(owner.address, destinations, weights);
     await prisma.splitter.update({
         where: { id: splitId },
-        data: { splitterAddress: splitter.address }
+        data: { splitterAddress: splitAddress }
     });
-    return splitter.address;
+    return splitAddress;
 }
 
 async function createLottery(drop, lottery, nftContractAddress) {
@@ -298,7 +304,8 @@ async function createLottery(drop, lottery, nftContractAddress) {
         drop.defaultPrizeId || 0,
         royaltyPercentageBasisPoints,
         primarySalesDestination,
-        "https://" + drop.prizeMetadataCid + ".ipfs.dweb.link/"
+        "https://" + drop.prizeMetadataCid + ".ipfs.dweb.link/",
+        { gasLimit: 4000000 }
     );
     const receipt = await tx.wait();
     drop.Collection.collectionContractId = receipt.events[1].args[0];
@@ -320,7 +327,7 @@ async function createLottery(drop, lottery, nftContractAddress) {
             id: drop.Collection.id
         },
         data: {
-            collectionContractId: drop.Collection.collectionContractId
+            collectionContractId: drop.Collection.collectionContractId.toNumber()
         },
     });
     await addPrizes(drop, lottery);
@@ -334,7 +341,7 @@ const buf2hex = x => '0x' + x.toString('hex');
 async function addPrizes(drop, lottery) {
     let prizes = await prisma.nft.findMany({
         where: {
-            dropId: drop.id
+            collectionId: drop.id
         },
         orderBy: {
             numberOfMints: "asc"
@@ -349,7 +356,7 @@ async function addPrizes(drop, lottery) {
         }
     }
     if (prizeIds.length > 0) {
-        await lottery.addPrizes(drop.lotteryId.toNumber(), prizeIds, prizeAmounts);
+        await lottery.addPrizes(parseInt(drop.lotteryId), prizeIds, prizeAmounts);
     }
 }
 
