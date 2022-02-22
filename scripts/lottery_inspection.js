@@ -28,6 +28,8 @@ async function main() {
     } else {
         lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
         lottery = await Lottery.attach(lotteryAddress);
+
+
     }
     logger.info('Searching for lotteries that require action');
     let drops = await fetchApprovedDrops();
@@ -290,27 +292,33 @@ async function deploySplitter(drop, splitId) {
 
 async function createLottery(drop, lottery, nftContractAddress) {
     logger.info("Creating lottery for drop #id: " + drop.id);
+    const Nft = await ethers.getContractFactory("MemeXNFT");
+    const nft = await Nft.attach(nftContractAddress);
     let royaltyAddress = drop.Collection.secondarySplitterId != null ? drop.Collection.SecondarySplitter.splitterAddress : drop.Collection.artistAddress; 
     let primarySalesDestination = drop.Collection.primarySplitterId != null ? drop.Collection.PrimarySplitter.splitterAddress : drop.Collection.artistAddress;
     // percentage in basis points (200 = 2.00%)
     let royaltyPercentageBasisPoints = parseInt(drop.Collection.royaltyPercentage * 100);
+    await nft.createCollection(
+        drop.lotteryId, 
+        royaltyAddress, 
+        royaltyPercentageBasisPoints, 
+        "https://" + drop.prizeMetadataCid + ".ipfs.dweb.link/",
+        primarySalesDestination);
+    logger.info("Collection created");
     const tx = await lottery.createNewLottery(
+        drop.lotteryId,
         drop.costPerTicketPoints,
         ethers.utils.parseEther(drop.costPerTicketCoins.toString()),
         drop.startTime,
         drop.endTime,
         nftContractAddress,
-        royaltyAddress,
-        drop.defaultPrizeId || 0,
-        royaltyPercentageBasisPoints,
-        primarySalesDestination,
-        "https://" + drop.prizeMetadataCid + ".ipfs.dweb.link/",
-        { gasLimit: 4000000 }
+        drop.defaultPrizeId || 0
     );
-    const receipt = await tx.wait();
-    drop.Collection.collectionContractId = receipt.events[1].args[0];
+    logger.info("Lottery created");
+
     if (drop.maxParticipants > 0) {
-        await lottery.setMaxParticipants(drop.Collection.collectionContractId, drop.maxParticipants);
+        logger.info("Setting max participants to " + drop.maxParticipants);
+        await lottery.setMaxParticipants(drop.lotteryId, drop.maxParticipants);
     }
     drop.blockchainCreatedAt = new Date();
     await prisma.drop.update({
@@ -322,18 +330,10 @@ async function createLottery(drop, lottery, nftContractAddress) {
             isLive: true
         }
     });
-    await prisma.collection.update({
-        where: {
-            id: drop.Collection.id
-        },
-        data: {
-            collectionContractId: drop.Collection.collectionContractId.toNumber()
-        },
-    });
     await addPrizes(drop, lottery);
 
     logger.info(`Lottery created with lotteryId: ${drop.lotteryId} | costPoints: ${drop.costPerTicketPoints} | costCoins: ${drop.costPerTicketCoins} | startTime: ${drop.startTime} | endTime: ${drop.endTime} | maxParticipants: ${drop.maxParticipants} | 
-    CreatedBy: ${drop.createdBy} | defaultPrizeId: ${drop.defaultPrizeId} | royaltyPercentageBasePoints: ${royaltyPercentageBasisPoints} | metadataIpfsPath: ${drop.metadataIpfsPath}`);
+    CreatedBy: ${drop.Collection.artistAddress} | defaultPrizeId: ${drop.defaultPrizeId} | royaltyPercentageBasePoints: ${royaltyPercentageBasisPoints} | metadataIpfsPath: ${drop.metadataIpfsPath}`);
 }
 
 const buf2hex = x => '0x' + x.toString('hex');
@@ -341,7 +341,7 @@ const buf2hex = x => '0x' + x.toString('hex');
 async function addPrizes(drop, lottery) {
     let prizes = await prisma.nft.findMany({
         where: {
-            collectionId: drop.id
+            collectionId: drop.lotteryId
         },
         orderBy: {
             numberOfMints: "asc"

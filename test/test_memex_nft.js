@@ -10,7 +10,7 @@ describe('MemeXNFT Contract', () => {
         _lotteryAddress = addr1.address;
         nft = await NFT.deploy("Memex", "MEMEX", owner.address);
         await nft.addSmartContractRole(_lotteryAddress);
-        await nft.createCollection(addr1.address, 200, basePath, addr1.address,);
+        await nft.createCollection(1, addr1.address, 200, basePath, addr1.address);
         await nft.connect(owner).addMinterRole(addr2.address);
         _id = 1;
         await nft.connect(addr2).mint(addr2.address, _id, 1, 1, []);

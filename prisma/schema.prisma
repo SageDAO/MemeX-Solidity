@@ -11,7 +11,6 @@ datasource db {
 
 model Collection {
   id                   Int        @id @default(autoincrement())
-  collectionContractId Int?
   primarySplitterId    Int?
   secondarySplitterId  Int?
   whitelistId          Int?
@@ -99,7 +98,7 @@ model Drop {
   approvedBy                   String?    @db.Char(42)
   blockchainCreatedAt          DateTime?
   costPerTicketCoins           Float      @default(0.0)
-  costPerTicketPoints          BigInt     @default(0)
+  costPerTicketPoints          Int        @default(0)
   defaultPrizeId               Int?
   isLive                       Boolean    @default(false)
   maxParticipants              Int        @default(0)

@@ -7,8 +7,6 @@ import "../Utils/StringUtils.sol";
 import "../../interfaces/IMemeXNFT.sol";
 
 contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
-    uint256 public collectionCount;
-
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a;
 
     string public name;
@@ -35,10 +33,6 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         uint16 royalty;
         string dropMetadataURI;
         address primarySalesDestination;
-    }
-
-    function incrementCollectionCount() internal {
-        collectionCount++;
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -111,20 +105,26 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
 
     /**
      * @notice Creates a new collection.
+     * @param _collectionId the collection id
      * @param _royaltyDestination the wallet address of the artist
      * @param _royaltyPercentage the royalty percentage in base points (200 = 2%)
      * @param _dropMetadataURI the metadata URI of the drop
      * @param _primarySalesDestination the wallet address to receive primary sales of the collection
      */
     function createCollection(
+        uint256 _collectionId,
         address _royaltyDestination,
         uint16 _royaltyPercentage,
         string memory _dropMetadataURI,
         address _primarySalesDestination
-    ) external returns (uint256) {
+    ) external returns (bool) {
         require(
             hasAdminRole(msg.sender) || hasSmartContractRole(msg.sender),
             "ERC1155.createCollection only Admin or Minter can create"
+        );
+        require(
+            collections[_collectionId].royaltyDestination == address(0),
+            "Collection already exists"
         );
         require(
             _royaltyDestination != address(0),
@@ -136,16 +136,16 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
             _dropMetadataURI,
             _primarySalesDestination
         );
-        incrementCollectionCount();
-        collections[collectionCount] = collection;
+
+        collections[_collectionId] = collection;
 
         emit CollectionCreated(
-            collectionCount,
+            _collectionId,
             _royaltyDestination,
             _royaltyPercentage,
             _dropMetadataURI
         );
-        return collectionCount;
+        return true;
     }
 
     function collectionExists(uint256 _collectionId)
@@ -153,7 +153,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         view
         returns (bool)
     {
-        return _collectionId != 0 && _collectionId <= collectionCount;
+        return collections[_collectionId].royaltyDestination != address(0);
     }
 
     /**

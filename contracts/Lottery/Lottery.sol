@@ -68,7 +68,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
     // Information about lotteries
     struct LotteryInfo {
         uint32 startTime; // Timestamp where users can start buying tickets
-        uint32 closingTime; // Timestamp where ticket sales end
+        uint32 closeTime; // Timestamp where ticket sales end
         uint32 participantsCount; // number of participants
         uint32 maxParticipants; // max number of participants
         uint256 lotteryID; // ID for lotto
@@ -187,7 +187,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
             _time > lottery.startTime,
             "Close time must be after start time"
         );
-        lotteryHistory[_lotteryId].closingTime = _time;
+        lotteryHistory[_lotteryId].closeTime = _time;
     }
 
     function setRandomGenerator(address _IRandomNumberGenerator)
@@ -304,7 +304,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         LotteryInfo storage lottery = lotteryHistory[lotteryId];
         require(lottery.startTime > 0, "Lottery does not exist");
         lottery.startTime = _startTime;
-        lottery.closingTime = _closeTime;
+        lottery.closeTime = _closeTime;
         lottery.ticketCostPoints = _costPerTicketPoints;
         lottery.ticketCostCoins = _costPerTicketCoins;
         lottery.nftContract = _nftContract;
@@ -316,43 +316,39 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
 
     /**
      * @notice Creates a new lottery.
+     * @param _collectionId the NFT collection id
      * @param _costPerTicketPinas cost in wei per ticket in points/tokens (token only when using ERC20 on the rewards contract)
      * @param _costPerTicketCoins cost in wei per ticket in FTM
-     * @param _startTime timestamp to begin lottery entries
+     * @param _startTime lottery start time
+     * @param _closeTime lottery closing time
      * @param _nftContract reference to the NFT contract
-     * @param _royaltyDestination wallet address of the artist
      * @param _defaultPrizeId default prize id
-     * @param _royaltyPercentage royalty percentage for the drop in base points (200 = 2% )
-     * @param _primarySalesDestination address of the primary sales destination
-     * @param _dropMetadataURI base URI for the drop metadata
-     * @return lotteryId
      */
     function createNewLottery(
+        uint256 _collectionId,
         uint256 _costPerTicketPinas,
         uint256 _costPerTicketCoins,
         uint32 _startTime,
         uint32 _closeTime,
         IMemeXNFT _nftContract,
-        address _royaltyDestination,
-        uint256 _defaultPrizeId,
-        uint16 _royaltyPercentage,
-        address _primarySalesDestination,
-        string calldata _dropMetadataURI
-    ) public onlyAdmin returns (uint256 lotteryId) {
-        Status lotteryStatus;
-        lotteryId = _nftContract.createCollection(
-            _royaltyDestination,
-            _royaltyPercentage,
-            _dropMetadataURI,
-            _primarySalesDestination
+        uint256 _defaultPrizeId
+    ) public onlyAdmin {
+        require(_closeTime > _startTime, "Close time must be after start time");
+        require(
+            _nftContract.collectionExists(_collectionId),
+            "Collection does not exist"
         );
-        lotteries.push(lotteryId);
+        require(
+            _costPerTicketCoins > 0 || _costPerTicketPinas > 0,
+            "No cost per ticket set"
+        );
+        lotteries.push(_collectionId);
         LotteryInfo memory newLottery = LotteryInfo(
             _startTime,
             _closeTime,
             0,
             0,
-            lotteryId,
+            _collectionId,
             Status.Created,
             _costPerTicketPinas,
             _costPerTicketCoins,
@@ -361,9 +357,8 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
             _nftContract,
             _defaultPrizeId
         );
-        lotteryHistory[lotteryId] = newLottery;
-        emit LotteryStatusChanged(lotteryId, lotteryStatus);
-        return lotteryId;
+        lotteryHistory[_collectionId] = newLottery;
+        emit LotteryStatusChanged(_collectionId, Status.Created);
     }
 
     /**
@@ -372,7 +367,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
      */
     function requestRandomNumber(uint256 _lotteryId) external onlyAdmin {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-        require(lottery.closingTime < block.timestamp, "Lottery is not closed");
+        require(lottery.closeTime < block.timestamp, "Lottery is not closed");
         if (lottery.status == Status.Created) {
             lottery.status = Status.Closed;
             emit LotteryStatusChanged(_lotteryId, lottery.status);
@@ -508,7 +503,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         }
         require(
             lottery.startTime <= block.timestamp &&
-                lottery.closingTime < block.timestamp,
+                lottery.closeTime > block.timestamp,
             "Lottery is not open"
         );
         if (_usePoints) {

@@ -88,39 +88,6 @@ contract MemeXAuction is MemeXAccessControls {
         feeBeneficiary = _feeBeneficiary;
     }
 
-    function createCollectionAndAuction(
-        uint256 _nftId,
-        uint256 _buyNowPrice,
-        uint256 _minimumPrice,
-        address _token,
-        uint32 _duration,
-        IMemeXNFT _nftContract,
-        uint16 _fee,
-        address _artistAddress,
-        uint16 _royaltyPercentage,
-        address _primarySalesDestination,
-        string calldata _metadataURI
-    ) public onlyAdmin returns (uint256 auctionId) {
-        uint256 collectionId = _nftContract.createCollection(
-            _artistAddress,
-            _royaltyPercentage,
-            _metadataURI,
-            _primarySalesDestination
-        );
-        require(collectionId > 0, "Collection creation failed");
-        return
-            createAuction(
-                collectionId,
-                _nftId,
-                _buyNowPrice,
-                _minimumPrice,
-                _token,
-                _duration,
-                _nftContract,
-                _fee
-            );
-    }
-
     function createAuction(
         uint256 _collectionId,
         uint256 _nftId,
