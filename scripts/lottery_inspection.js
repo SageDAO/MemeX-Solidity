@@ -114,7 +114,7 @@ async function inspectLotteryState(lotteryId, lottery, drop) {
         }
     }
 
-    if (lotteryInfo.status == 2) {
+    if (lotteryInfo.status == 3) {
         if (participants > 0) {
             // check if there are prizeProofs stored in the DB for that lottery
             // if there aren't any, create the proofs
