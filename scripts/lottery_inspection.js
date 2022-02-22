@@ -102,7 +102,7 @@ async function inspectLotteryState(lotteryId, lottery, drop) {
     lotteryInfo = await lottery.getLotteryInfo(lotteryId);
     participants = lotteryInfo.participantsCount;
     
-    if (lotteryInfo.status == 2 && lotteryInfo.closingTime < block.timestamp) {
+    if (lotteryInfo.status == 0 && lotteryInfo.closeTime < block.timestamp) {
         if (participants > 0) {
             logger.info(`Drop #${drop.id} is closed, requesting random number.`);
             await lottery.requestRandomNumber(lotteryId);
@@ -114,7 +114,7 @@ async function inspectLotteryState(lotteryId, lottery, drop) {
         }
     }
 
-    if (lotteryInfo.status == 4) {
+    if (lotteryInfo.status == 2) {
         if (participants > 0) {
             // check if there are prizeProofs stored in the DB for that lottery
             // if there aren't any, create the proofs
