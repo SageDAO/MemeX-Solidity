@@ -189,6 +189,15 @@ async function inspectLotteryState(lotteryId, lottery, drop) {
             // generate and store proofs for each winner
             await generateAndStoreProofs(leaves, tree, lotteryId);
 
+            await prisma.drop.update({
+                where: {
+                    id: drop.id
+                },
+                data: {
+                    finished: true,
+                }
+            });
+
             logger.info(`Drop #${drop.id} had ${leaves.length} prizes distributed.`);
         }
     }
