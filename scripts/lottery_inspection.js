@@ -37,15 +37,13 @@ async function main() {
     const now = Math.floor(Date.now() / 1000);
     for (const drop of drops) {
         let primarySplitterAddress = drop.Collection.PrimarySplitter?.splitterAddress;
-        if (primarySplitterAddress == null) {
-            const splitId = drop.Collection.primarySplitterId;
-            drop.Collection.PrimarySplitter.splitterAddress = await deploySplitter(drop, splitId);
+        if (drop.Collection.primarySplitterId != null && primarySplitterAddress == null) {
+            drop.Collection.PrimarySplitter.splitterAddress = await deploySplitter(drop, drop.Collection.primarySplitterId);
         }
         
         let secondarySplitterAddress = drop.Collection.SecondarySplitter?.splitterAddress;
-        if (secondarySplitterAddress == null) {
-            const splitId = drop.Collection.secondarySplitterId;
-            drop.Collection.SecondarySplitter.splitterAddress = await deploySplitter(drop, splitId);   
+        if (drop.Collection.secondarySplitterId != null && secondarySplitterAddress == null) {
+            drop.Collection.SecondarySplitter.splitterAddress = await deploySplitter(drop, drop.Collection.secondarySplitterId);   
         }
 
         if (drop.blockchainCreatedAt == null) {
