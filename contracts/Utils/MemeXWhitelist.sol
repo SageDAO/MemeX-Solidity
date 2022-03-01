@@ -29,6 +29,12 @@ contract MemeXWhitelist is MemeXAccessControls, IMemeXWhitelist {
         _;
     }
 
+    /**
+     * @notice Assess whether an address meets requirements to be considered whitelisted
+     * Will check if the address contains at least minBalance tokens on any of the stored contract addresses.
+     * @param _address The address to assess whitelist status.
+     * @return True if the address is whitelisted, false otherwise.
+     */
     function isWhitelisted(address _address, uint256 _collectionId)
         public
         view
@@ -48,6 +54,13 @@ contract MemeXWhitelist is MemeXAccessControls, IMemeXWhitelist {
         return false;
     }
 
+    /**
+     * @notice Add a new contract address (ERC-20 or ERC-721) and minBalance.
+     * If an address has at least minBalance tokens on any added contract it will be whitelisted.
+     * @param _address, ERC-20/ERC-721 contract address
+     * @param _minBalance mininum balance to be considered whitelisted
+     * @param _collectionId collection id for which the requirements will be applied
+     */
     function addAddress(
         address _address,
         uint256 _minBalance,
@@ -58,6 +71,11 @@ contract MemeXWhitelist is MemeXAccessControls, IMemeXWhitelist {
         whitelist[_collectionId].push(param);
     }
 
+    /**
+     * @notice remove a contract address from the requirements list
+     * @param _address contract address to be removed
+     * @param _collectionId collection id for which the requirements apply
+     */
     function removeAddress(address _address, uint256 _collectionId)
         public
         onlyAdmin

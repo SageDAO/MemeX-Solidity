@@ -29,10 +29,18 @@ contract MemeXSplitter is MemeXAccessControls {
         }
     }
 
+    /**
+     * @notice Sets the list of destination address. Each address will receive a part of the funds in proportion to its weight.
+     * @param _destinations The list of destination addresses.
+     */
     function setDestinations(address[] memory _destinations) public onlyAdmin {
         destinations = _destinations;
     }
 
+    /**
+     * @notice Set the weight of distribution to each destination address. The index of the destination address must be the same as the index of the weight.
+     * @param _weights The weight of distribution to each destination address.
+     */
     function setWeights(uint16[] memory _weights) public onlyAdmin {
         weights = _weights;
         totalWeight = 0;
@@ -41,6 +49,11 @@ contract MemeXSplitter is MemeXAccessControls {
         }
     }
 
+    /**
+     * @notice Split ERC20 tokens to the destination list.
+     * @param _amount The amount of tokens to split.
+     * @param _erc20Address The address of the ERC20 contract.
+     */
     function splitERC20(uint256 _amount, address _erc20Address) public payable {
         if (_erc20Address != address(0)) {
             require(
@@ -62,6 +75,10 @@ contract MemeXSplitter is MemeXAccessControls {
         }
     }
 
+    /**
+     * @dev Split native tokens to the destination list.
+     * @param _amount The amount of tokens to split.
+     */
     function split(uint256 _amount) public payable {
         require((address(this).balance) >= _amount, "Not enough balance");
 
