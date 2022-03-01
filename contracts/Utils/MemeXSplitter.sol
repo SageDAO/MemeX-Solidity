@@ -2,9 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "../Access/MemeXAccessControls.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract MemeXSplitter is MemeXAccessControls {
+contract MemeXSplitter is MemeXAccessControls, ReentrancyGuard {
     address[] public destinations;
 
     uint16[] public weights;
@@ -54,7 +55,11 @@ contract MemeXSplitter is MemeXAccessControls {
      * @param _amount The amount of tokens to split.
      * @param _erc20Address The address of the ERC20 contract.
      */
-    function splitERC20(uint256 _amount, address _erc20Address) public payable {
+    function splitERC20(uint256 _amount, address _erc20Address)
+        public
+        payable
+        nonReentrant
+    {
         if (_erc20Address != address(0)) {
             require(
                 IERC20(_erc20Address).balanceOf(address(this)) >= _amount,
@@ -79,7 +84,7 @@ contract MemeXSplitter is MemeXAccessControls {
      * @dev Split native tokens to the destination list.
      * @param _amount The amount of tokens to split.
      */
-    function split(uint256 _amount) public payable {
+    function split(uint256 _amount) public payable nonReentrant {
         require((address(this).balance) >= _amount, "Not enough balance");
 
         uint16 _totalWeight = totalWeight;
