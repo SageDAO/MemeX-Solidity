@@ -12,10 +12,12 @@ interface IMemeXNFT {
     ) external;
 
     function createCollection(
+        uint256 _collectionId,
         address _artistAddress,
         uint16 _royaltyPercentage,
-        string memory _dropMetadataURI
-    ) external returns (uint256);
+        string memory _dropMetadataURI,
+        address _primarySalesDestination
+    ) external returns (bool);
 
     function setCollectionBaseMetadataURI(
         uint256 _collectionId,
@@ -27,7 +29,8 @@ interface IMemeXNFT {
         returns (
             address,
             uint16,
-            string memory
+            string memory,
+            address
         );
 
     function collectionExists(uint256 _collectionId) external returns (bool);

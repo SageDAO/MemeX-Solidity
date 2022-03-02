@@ -24,7 +24,9 @@ describe("Auction Contract", function () {
         await nft.addSmartContractRole(auction.address);
         blockNum = await ethers.provider.getBlockNumber();
         block = await ethers.provider.getBlock(blockNum);
-        await auction.createCollectionAndAuction(1, 1000, 2, '0x0000000000000000000000000000000000000000', 120, nft.address, 200, artist.address, 200, "ipfs://collection");
+
+        await nft.createCollection(1, artist.address, 200, "ipfs://path/", artist.address)
+        await auction.createAuction(1, 1, 1000, 2, '0x0000000000000000000000000000000000000000', 120, nft.address, 200);
         await auction.createAuction(1, 2, 1000, 2, mockERC20.address, 120, nft.address, 200);
     });
 

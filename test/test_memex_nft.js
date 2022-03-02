@@ -7,13 +7,10 @@ describe('MemeXNFT Contract', () => {
     beforeEach(async () => {
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
         NFT = await ethers.getContractFactory("MemeXNFT");
-        _name = "MemeXNFT";
-        _symbol = "MXN";
-        _admin = owner.address;
         _lotteryAddress = addr1.address;
         nft = await NFT.deploy("Memex", "MEMEX", owner.address);
         await nft.addSmartContractRole(_lotteryAddress);
-        await nft.createCollection(addr1.address, 200, basePath);
+        await nft.createCollection(1, addr1.address, 200, basePath, addr1.address);
         await nft.connect(owner).addMinterRole(addr2.address);
         _id = 1;
         await nft.connect(addr2).mint(addr2.address, _id, 1, 1, []);
@@ -36,7 +33,7 @@ describe('MemeXNFT Contract', () => {
 
     it("Should not mint without minter role", async function () {
         await expect(nft.connect(addr3).mint(addr2.address, 1, 1, 1, [])
-        ).to.be.revertedWith("MemeXNFT: Only Lottery or Minter role can mint");
+        ).to.be.revertedWith("MemeXNFT: No minting privileges");
     })
 
     it("Should calculate royalties", async function () {
@@ -52,9 +49,9 @@ describe('MemeXNFT Contract', () => {
     });
 
     it("Should signal implementation of EIP-2981", async function () {
-        const _INTERFACE_ID_ERC2981 = 0x2a55205a;
+        const INTERFACE_ID_ERC2981 = 0x2a55205a;
 
-        expect(await nft.supportsInterface(_INTERFACE_ID_ERC2981)).to.equal(true);
+        expect(await nft.supportsInterface(INTERFACE_ID_ERC2981)).to.equal(true);
 
     });
 

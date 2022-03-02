@@ -7,9 +7,7 @@ import "../Utils/StringUtils.sol";
 import "../../interfaces/IMemeXNFT.sol";
 
 contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
-    uint256 public collectionCount;
-
-    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
+    bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a;
 
     string public name;
     // Contract symbol
@@ -26,18 +24,15 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
 
     event CollectionCreated(
         uint256 collectionId,
-        address artistAddress,
+        address royaltyDestination,
         uint16 royaltyPercentage,
         string baseMetadataURI
     );
     struct CollectionInfo {
-        address artistAddress;
+        address royaltyDestination;
         uint16 royalty;
         string dropMetadataURI;
-    }
-
-    function incrementCollectionCount() internal {
-        collectionCount++;
+        address primarySalesDestination;
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -49,7 +44,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
     {
         return
             interfaceId == type(IERC1155).interfaceId ||
-            interfaceId == _INTERFACE_ID_ERC2981 ||
+            interfaceId == INTERFACE_ID_ERC2981 ||
             interfaceId == type(IAccessControl).interfaceId ||
             super.supportsInterface(interfaceId);
     }
@@ -70,70 +65,87 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         returns (
             address,
             uint16,
-            string memory
+            string memory,
+            address
         )
     {
         return (
-            collections[_collectionId].artistAddress,
+            collections[_collectionId].royaltyDestination,
             collections[_collectionId].royalty,
-            collections[_collectionId].dropMetadataURI
+            collections[_collectionId].dropMetadataURI,
+            collections[_collectionId].primarySalesDestination
         );
     }
 
     /**
      * @notice Changes information about a collection (drop).
      * @param _collectionId the collectionId
-     * @param _artistAddress the wallet address of the artist
+     * @param _royaltyDestination the royalty destination address
      * @param _royaltyPercentage the royalty percentage in base points (200 = 2%)
      * @param _dropMetadataURI the metadata URI of the drop
      */
     function setCollection(
         uint256 _collectionId,
-        address _artistAddress,
+        address _royaltyDestination,
         uint16 _royaltyPercentage,
+        address _primarySalesDestination,
         string memory _dropMetadataURI
     ) public {
         require(
             hasAdminRole(msg.sender),
             "MemeXNFT: Only Admin can set collection info"
         );
-        require(_artistAddress != address(0));
-        collections[_collectionId].artistAddress = _artistAddress;
+        require(_royaltyDestination != address(0));
+        collections[_collectionId].royaltyDestination = _royaltyDestination;
+        collections[_collectionId]
+            .primarySalesDestination = _primarySalesDestination;
         collections[_collectionId].royalty = _royaltyPercentage;
         collections[_collectionId].dropMetadataURI = _dropMetadataURI;
     }
 
     /**
-     * @notice Creates a new collection (drop).
-     * @param _artistAddress the wallet address of the artist
+     * @notice Creates a new collection.
+     * @param _collectionId the collection id
+     * @param _royaltyDestination the wallet address of the artist
      * @param _royaltyPercentage the royalty percentage in base points (200 = 2%)
      * @param _dropMetadataURI the metadata URI of the drop
+     * @param _primarySalesDestination the wallet address to receive primary sales of the collection
      */
     function createCollection(
-        address _artistAddress,
+        uint256 _collectionId,
+        address _royaltyDestination,
         uint16 _royaltyPercentage,
-        string memory _dropMetadataURI
-    ) external returns (uint256) {
+        string memory _dropMetadataURI,
+        address _primarySalesDestination
+    ) external returns (bool) {
         require(
             hasAdminRole(msg.sender) || hasSmartContractRole(msg.sender),
             "ERC1155.createCollection only Admin or Minter can create"
         );
-        require(_artistAddress != address(0), "Artist address can't be 0");
-        CollectionInfo memory collection = CollectionInfo(
-            _artistAddress,
-            _royaltyPercentage,
-            _dropMetadataURI
+        require(
+            collections[_collectionId].royaltyDestination == address(0),
+            "Collection already exists"
         );
-        incrementCollectionCount();
-        collections[collectionCount] = collection;
+        require(
+            _royaltyDestination != address(0),
+            "Royalty destination address can't be 0"
+        );
+        CollectionInfo memory collection = CollectionInfo(
+            _royaltyDestination,
+            _royaltyPercentage,
+            _dropMetadataURI,
+            _primarySalesDestination
+        );
+
+        collections[_collectionId] = collection;
 
         emit CollectionCreated(
-            collectionCount,
-            _artistAddress,
+            _collectionId,
+            _royaltyDestination,
             _royaltyPercentage,
             _dropMetadataURI
         );
-        return collectionCount;
+        return true;
     }
 
     function collectionExists(uint256 _collectionId)
@@ -141,7 +153,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         view
         returns (bool)
     {
-        return _collectionId != 0 && _collectionId <= collectionCount;
+        return collections[_collectionId].royaltyDestination != address(0);
     }
 
     /**
@@ -160,10 +172,12 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
     ) public {
         require(
             hasSmartContractRole(msg.sender) || hasMinterRole(msg.sender),
-            "MemeXNFT: Only Lottery or Minter role can mint"
+            "MemeXNFT: No minting privileges"
         );
-        tokenToCollection[_id] = _collectionId;
-        nftsInCollection[_collectionId].push(_id);
+        if (tokenToCollection[_id] == 0) {
+            tokenToCollection[_id] = _collectionId;
+            nftsInCollection[_collectionId].push(_id);
+        }
         _mint(_to, _id, _quantity, _data);
     }
 
@@ -190,18 +204,18 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
     /**
      * @notice Calculates royalties based on a sale price provided following EIP-2981.
      * Solution is agnostic of the sale price unit and will answer using the same unit.
-     * @return  receiver address: address to receive royaltyAmount.
+     * @return  address to receive royaltyAmount, amount to be paid as royalty.
      */
     function royaltyInfo(uint256 tokenId, uint256 salePrice)
         external
         view
-        returns (address receiver, uint256 royaltyAmount)
+        returns (address, uint256)
     {
         CollectionInfo memory collection = collections[
             tokenToCollection[tokenId]
         ];
         return (
-            collection.artistAddress,
+            collection.royaltyDestination,
             (salePrice * collection.royalty) / 10000
         );
     }
