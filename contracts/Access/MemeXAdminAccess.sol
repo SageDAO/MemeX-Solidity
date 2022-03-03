@@ -10,8 +10,6 @@ contract MemeXAdminAccess is AccessControl {
     /// @notice Events for adding and removing various roles.
     event AdminRoleGranted(address indexed beneficiary, address indexed caller);
 
-    event AdminRoleGranted2(address indexed beneficiary);
-
     event AdminRoleRemoved(address indexed beneficiary, address indexed caller);
 
     /// @notice The deployer is automatically given the admin role which will allow them to then grant roles to other addresses.
