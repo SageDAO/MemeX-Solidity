@@ -198,7 +198,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         string memory baseURI = collections[tokenToCollection[_id]]
             .dropMetadataURI;
 
-        return StringUtils.strConcat(baseURI, StringUtils.uint2str(_id));
+        return string.concat(baseURI, StringUtils.uint2str(_id));
     }
 
     /**
