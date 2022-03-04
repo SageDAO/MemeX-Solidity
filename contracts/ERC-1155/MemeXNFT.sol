@@ -117,7 +117,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         uint16 _royaltyPercentage,
         string memory _dropMetadataURI,
         address _primarySalesDestination
-    ) external returns (bool) {
+    ) external {
         require(
             hasAdminRole(msg.sender) || hasSmartContractRole(msg.sender),
             "ERC1155.createCollection only Admin or Minter can create"
@@ -145,7 +145,6 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
             _royaltyPercentage,
             _dropMetadataURI
         );
-        return true;
     }
 
     function collectionExists(uint256 _collectionId)
