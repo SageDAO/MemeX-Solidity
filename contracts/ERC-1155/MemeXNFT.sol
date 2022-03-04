@@ -194,11 +194,12 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
 
     function uri(uint256 _id) public view override returns (string memory) {
         require(exists(_id), "NONEXISTENT_TOKEN");
-        // fetch base URI for this collection
-        string memory baseURI = collections[tokenToCollection[_id]]
-            .dropMetadataURI;
 
-        return string.concat(baseURI, StringUtils.uint2str(_id));
+        return
+            string.concat(
+                collections[tokenToCollection[_id]].dropMetadataURI,
+                StringUtils.uint2str(_id)
+            );
     }
 
     /**
@@ -211,7 +212,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         view
         returns (address, uint256)
     {
-        CollectionInfo memory collection = collections[
+        CollectionInfo storage collection = collections[
             tokenToCollection[tokenId]
         ];
         return (
