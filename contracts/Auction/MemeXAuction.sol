@@ -216,7 +216,7 @@ contract MemeXAuction is MemeXAccessControls {
 
     function cancelAuction(uint256 _auctionId) public onlyAdmin {
         require(!auctions[_auctionId].finished, "Auction is already finished");
-        reverseLastBid(_auctionId);
+        reverseLastBid(_auctionId, acceptsERC20(_auctionId));
         auctions[_auctionId].finished = true;
         emit AuctionCancelled(_auctionId);
     }
@@ -240,8 +240,8 @@ contract MemeXAuction is MemeXAccessControls {
                 (auction.highestBid * (10000 + bidIncrementPercentage)) / 10000,
             "Bid is lower than highest bid increment"
         );
-
-        if (acceptsERC20(_auctionId)) {
+        bool isERC20Auction = acceptsERC20(_auctionId);
+        if (isERC20Auction) {
             require(msg.value == 0, "Auction is receiving ERC20 tokens");
             IERC20(auction.erc20Token).transferFrom(
                 msg.sender,
@@ -251,7 +251,7 @@ contract MemeXAuction is MemeXAccessControls {
         } else {
             require(msg.value == _amount, "Value != bid amount");
         }
-        reverseLastBid(_auctionId);
+        reverseLastBid(_auctionId, isERC20Auction);
         auction.highestBidder = msg.sender;
         auction.highestBid = _amount;
 
@@ -268,7 +268,7 @@ contract MemeXAuction is MemeXAccessControls {
         emit BidPlaced(_auctionId, msg.sender, _amount, endTime);
     }
 
-    function reverseLastBid(uint256 _auctionId) private {
+    function reverseLastBid(uint256 _auctionId, bool _isERC20Auction) private {
         Auction storage auction = auctions[_auctionId];
         address highestBidder = auction.highestBidder;
         uint256 highestBid = auction.highestBid;
@@ -276,7 +276,7 @@ contract MemeXAuction is MemeXAccessControls {
         auction.highestBid = 0;
 
         if (highestBidder != address(0)) {
-            if (acceptsERC20(_auctionId)) {
+            if (_isERC20Auction) {
                 IERC20(auction.erc20Token).transfer(highestBidder, highestBid);
             } else {
                 (bool sent, ) = highestBidder.call{value: highestBid}("");
