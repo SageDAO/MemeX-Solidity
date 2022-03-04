@@ -10,22 +10,22 @@ datasource db {
 }
 
 model Collection {
-  id                   Int        @id @default(autoincrement())
-  primarySplitterId    Int?
-  secondarySplitterId  Int?
-  whitelistId          Int?
-  dropId               Int?
-  auctionId            Int?
-  createdAt            DateTime   @default(now())
-  royaltyPercentage    Float      @default(0.0)
-  artistAddress        String     @db.Char(42)
-  Artist               User       @relation("ArtistCollections", fields: [artistAddress], references: [walletAddress])
-  PrimarySplitter      Splitter?  @relation("primarySplitter", fields: [primarySplitterId], references: [id])
-  SecondarySplitter    Splitter?  @relation("secondarySplitter", fields: [secondarySplitterId], references: [id])
-  Whitelist            Whitelist? @relation(fields: [whitelistId], references: [id])
-  Auction              Auction?
-  Drop                 Drop?
-  Nfts                 Nft[]
+  id                  Int        @id @default(autoincrement())
+  primarySplitterId   Int?
+  secondarySplitterId Int?
+  whitelistId         Int?
+  dropId              Int?
+  auctionId           Int?
+  createdAt           DateTime   @default(now())
+  royaltyPercentage   Float      @default(0.0)
+  artistAddress       String     @db.Char(42)
+  Artist              User       @relation("ArtistCollections", fields: [artistAddress], references: [walletAddress])
+  PrimarySplitter     Splitter?  @relation("primarySplitter", fields: [primarySplitterId], references: [id])
+  SecondarySplitter   Splitter?  @relation("secondarySplitter", fields: [secondarySplitterId], references: [id])
+  Whitelist           Whitelist? @relation(fields: [whitelistId], references: [id])
+  Auction             Auction?
+  Drop                Drop?
+  Nfts                Nft[]
 }
 
 model SplitEntry {
@@ -143,6 +143,7 @@ model EarnedPoints {
   totalPointsEarned BigInt   @default(0)
   proof             String
   updatedAt         DateTime @default(now())
+  User              User     @relation(fields: [address], references: [walletAddress])
 }
 
 model RewardType {
@@ -156,16 +157,17 @@ model RewardType {
 }
 
 model User {
-  walletAddress              String       @id @db.Char(42)
+  walletAddress              String        @id @db.Char(42)
   userName                   String?
-  email                      String?      @unique
-  createdAt                  DateTime     @default(now())
-  role                       Role         @default(USER)
-  bio                        String?      @db.VarChar(200)
+  email                      String?       @unique
+  createdAt                  DateTime      @default(now())
+  role                       Role          @default(USER)
+  bio                        String?       @db.VarChar(200)
   profilePicture             String?
-  ArtistCollections          Collection[] @relation("ArtistCollections")
-  Drop_Drop_approvedByToUser Drop[]       @relation("Drop_approvedByToUser")
-  Drop_userFavoriteDrops     Drop[]       @relation("userFavoriteDrops")
+  ArtistCollections          Collection[]  @relation("ArtistCollections")
+  Drop_Drop_approvedByToUser Drop[]        @relation("Drop_approvedByToUser")
+  EarnedPoints               EarnedPoints?
+  Drop_userFavoriteDrops     Drop[]        @relation("userFavoriteDrops")
 
   @@index([walletAddress])
 }
