@@ -10,8 +10,6 @@ contract MemeXAuction is MemeXAccessControls {
 
     mapping(uint256 => Auction) public auctions;
 
-    address public feeBeneficiary;
-
     mapping(address => uint256) withdrawCredits;
 
     uint16 public defaultTimeExtension = 3600;
@@ -29,7 +27,6 @@ contract MemeXAuction is MemeXAccessControls {
         uint256 highestBid;
         address highestBidder;
         IMemeXNFT nftContract;
-        uint16 feePercentage;
         bool finished;
     }
 
@@ -65,7 +62,6 @@ contract MemeXAuction is MemeXAccessControls {
 
     constructor(address _admin) {
         initAccessControls(_admin);
-        setFeeBeneficiary(_admin);
     }
 
     function incrementAuctionCount() internal returns (uint256) {
@@ -84,10 +80,6 @@ contract MemeXAuction is MemeXAccessControls {
         bidIncrementPercentage = _bidIncrementPercentage;
     }
 
-    function setFeeBeneficiary(address _feeBeneficiary) public onlyAdmin {
-        feeBeneficiary = _feeBeneficiary;
-    }
-
     function createAuction(
         uint256 _collectionId,
         uint256 _nftId,
@@ -95,8 +87,7 @@ contract MemeXAuction is MemeXAccessControls {
         uint256 _minimumPrice,
         address _token,
         uint32 _duration,
-        IMemeXNFT _nftContract,
-        uint16 _fee
+        IMemeXNFT _nftContract
     ) public onlyAdmin returns (uint256 auctionId) {
         require(_duration > 0, "Invalid auction time");
         require(
@@ -120,7 +111,6 @@ contract MemeXAuction is MemeXAccessControls {
             0,
             address(0),
             _nftContract,
-            _fee,
             false
         );
 
@@ -164,27 +154,14 @@ contract MemeXAuction is MemeXAccessControls {
             );
         }
 
-        // TODO: change this logic considering primary sales splitter
-        (address artistAddress, , , address primarySalesDestination) = auction
+        (, , , address salesDestination) = auction
             .nftContract
             .getCollectionInfo(auction.collectionId);
-
-        uint256 feePaid = getPercentageOfBid(highestBid, auction.feePercentage);
-        if (acceptsERC20(_auctionId)) {
-            if (feePaid != 0) {
-                IERC20(auction.erc20Token).transfer(feeBeneficiary, feePaid);
-            }
-            IERC20(auction.erc20Token).transfer(
-                artistAddress,
-                highestBid - feePaid
-            );
+        if (auction.erc20Token != address(0)) {
+            IERC20(auction.erc20Token).transfer(salesDestination, highestBid);
         } else {
-            if (feePaid != 0) {
-                (bool feeSent, ) = feeBeneficiary.call{value: feePaid}("");
-                require(feeSent, "Failed to send FTM to fee beneficiary");
-            }
-            (bool sent, ) = artistAddress.call{value: highestBid - feePaid}("");
-            require(sent, "Failed to send FTM to artist");
+            (bool sent, ) = salesDestination.call{value: highestBid}("");
+            require(sent, "Failed to send FTM to sales destination");
         }
 
         emit AuctionSettled(_auctionId, highestBidder, highestBid);
@@ -215,8 +192,9 @@ contract MemeXAuction is MemeXAccessControls {
     }
 
     function cancelAuction(uint256 _auctionId) public onlyAdmin {
-        require(!auctions[_auctionId].finished, "Auction is already finished");
-        reverseLastBid(_auctionId, acceptsERC20(_auctionId));
+        Auction storage auction = auctions[_auctionId];
+        require(!auction.finished, "Auction is already finished");
+        reverseLastBid(_auctionId, auction.erc20Token != address(0));
         auctions[_auctionId].finished = true;
         emit AuctionCancelled(_auctionId);
     }
@@ -240,7 +218,7 @@ contract MemeXAuction is MemeXAccessControls {
                 (auction.highestBid * (10000 + bidIncrementPercentage)) / 10000,
             "Bid is lower than highest bid increment"
         );
-        bool isERC20Auction = acceptsERC20(_auctionId);
+        bool isERC20Auction = auction.erc20Token != address(0);
         if (isERC20Auction) {
             require(msg.value == 0, "Auction is receiving ERC20 tokens");
             IERC20(auction.erc20Token).transferFrom(
@@ -295,9 +273,5 @@ contract MemeXAuction is MemeXAccessControls {
         returns (Auction memory)
     {
         return auctions[_auctionId];
-    }
-
-    function acceptsERC20(uint256 _auctionId) public view returns (bool) {
-        return auctions[_auctionId].erc20Token != address(0);
     }
 }
