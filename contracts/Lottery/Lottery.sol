@@ -146,9 +146,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         public
         onlyAdmin
     {
-        LotteryInfo storage lotteryInfo = lotteryHistory[_lotteryId];
-        lotteryInfo.maxParticipants = _maxParticipants;
-        lotteryHistory[_lotteryId] = lotteryInfo;
+        lotteryHistory[_lotteryId].maxParticipants = _maxParticipants;
     }
 
     function setMaxTicketsPerParticipant(uint8 _maxTicketsPerParticipant)
