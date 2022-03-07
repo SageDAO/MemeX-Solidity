@@ -29,10 +29,10 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         string baseMetadataURI
     );
     struct CollectionInfo {
-        address royaltyDestination;
         uint16 royalty;
-        string dropMetadataURI;
+        address royaltyDestination;
         address primarySalesDestination;
+        string dropMetadataURI;
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -131,10 +131,10 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
             "Royalty destination address can't be 0"
         );
         CollectionInfo memory collection = CollectionInfo(
-            _royaltyDestination,
             _royaltyPercentage,
-            _dropMetadataURI,
-            _primarySalesDestination
+            _royaltyDestination,
+            _primarySalesDestination,
+            _dropMetadataURI
         );
 
         collections[_collectionId] = collection;

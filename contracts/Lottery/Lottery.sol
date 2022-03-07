@@ -71,13 +71,13 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         uint32 closeTime; // Timestamp where ticket sales end
         uint32 participantsCount; // number of participants
         uint32 maxParticipants; // max number of participants
-        uint256 lotteryID; // ID for lotto
-        Status status; // Status for lotto
-        uint256 ticketCostPoints; // Cost per ticket in points
-        uint256 ticketCostCoins; // Cost per ticket in FTM
         uint16 numTicketsWithPoints; // amount of tickets sold with points
         uint16 numTicketsWithCoins; // amount of tickets sold with coins
+        Status status; // Status for lotto
         IMemeXNFT nftContract; // reference to the NFT Contract
+        uint256 lotteryID; // ID for lotto
+        uint256 ticketCostPoints; // Cost per ticket in points
+        uint256 ticketCostCoins; // Cost per ticket in FTM
         uint256 defaultPrizeId; // prize all participants win if no other prizes are given
     }
 
@@ -281,7 +281,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
             _prizeIds.length == _prizeAmounts.length,
             "Number of prize ids and amounts must be equal"
         );
-        for (uint16 i = 0; i < _prizeIds.length; i++) {
+        for (uint256 i; i < _prizeIds.length; i++) {
             prizes[_lotteryId].push(PrizeInfo(_prizeIds[i], _prizeAmounts[i]));
         }
 
@@ -346,13 +346,13 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
             _closeTime,
             0,
             0,
-            _collectionId,
+            0,
+            0,
             Status.Created,
+            _nftContract,
+            _collectionId,
             _costPerTicketPinas,
             _costPerTicketCoins,
-            0,
-            0,
-            _nftContract,
             _defaultPrizeId
         );
         lotteryHistory[_collectionId] = newLottery;
@@ -435,7 +435,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         );
         lottery.status = Status.Canceled;
         address[] memory tickets = lotteryTickets[_lotteryId];
-        for (uint16 i = 0; i < tickets.length; i++) {
+        for (uint256 i; i < tickets.length; i++) {
             rewardsContract.refundPoints(tickets[i], lottery.ticketCostPoints);
         }
         emit LotteryStatusChanged(_lotteryId, lottery.status);
@@ -538,7 +538,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
             lottery.participantsCount++;
             participants[_lotteryId][msg.sender] = participantInfo;
         }
-        for (uint8 i = 0; i < numberOfTickets; i++) {
+        for (uint256 i; i < numberOfTickets; i++) {
             assignNewTicketToParticipant(_lotteryId, msg.sender, _usePoints);
         }
         return remainingPoints;
