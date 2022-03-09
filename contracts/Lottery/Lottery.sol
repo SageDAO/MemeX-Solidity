@@ -12,7 +12,7 @@ import "../../interfaces/ILottery.sol";
 import "../../interfaces/IMemeXWhitelist.sol";
 
 contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
-    uint8 public maxTicketsPerParticipant;
+    uint256 public maxTicketsPerParticipant;
 
     bytes32 internal requestId_;
 
@@ -149,7 +149,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         lotteryHistory[_lotteryId].maxParticipants = _maxParticipants;
     }
 
-    function setMaxTicketsPerParticipant(uint8 _maxTicketsPerParticipant)
+    function setMaxTicketsPerParticipant(uint256 _maxTicketsPerParticipant)
         public
         onlyAdmin
     {
@@ -185,7 +185,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
             _time > lottery.startTime,
             "Close time must be after start time"
         );
-        lotteryHistory[_lotteryId].closeTime = _time;
+        lottery.closeTime = _time;
     }
 
     function setRandomGenerator(address _IRandomNumberGenerator)
@@ -254,7 +254,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         _;
     }
 
-    function removePrize(uint256 _lotteryId, uint32 _index) public onlyAdmin {
+    function removePrize(uint256 _lotteryId, uint256 _index) public onlyAdmin {
         require(_index < prizes[_lotteryId].length, "Index out of bounds");
 
         prizes[_lotteryId][_index] = prizes[_lotteryId][
@@ -435,7 +435,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         );
         lottery.status = Status.Canceled;
         address[] memory tickets = lotteryTickets[_lotteryId];
-        for (uint256 i; i < tickets.length; i++) {
+        for (uint256 i; i < tickets.length; ++i) {
             rewardsContract.refundPoints(tickets[i], lottery.ticketCostPoints);
         }
         emit LotteryStatusChanged(_lotteryId, lottery.status);
@@ -535,10 +535,10 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         }
         if (numTicketsBought == 0) {
             participantHistory[msg.sender].push(_lotteryId);
-            lottery.participantsCount++;
+            ++lottery.participantsCount;
             participants[_lotteryId][msg.sender] = participantInfo;
         }
-        for (uint256 i; i < numberOfTickets; i++) {
+        for (uint256 i; i < numberOfTickets; ++i) {
             assignNewTicketToParticipant(_lotteryId, msg.sender, _usePoints);
         }
         return remainingPoints;
