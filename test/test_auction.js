@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 
 describe("Auction Contract", function () {
     beforeEach(async () => {
-        [owner, addr1, addr2, addr3, feeBeneficiary, artist, ...addrs] = await ethers.getSigners();
+        [owner, addr1, addr2, addr3, artist, ...addrs] = await ethers.getSigners();
        
         Nft = await ethers.getContractFactory("MemeXNFT");
         nft = await Nft.deploy("Memex", "MEMEX", owner.address);
@@ -16,7 +16,6 @@ describe("Auction Contract", function () {
 
         Auction = await ethers.getContractFactory('MemeXAuction');
         auction = await Auction.deploy(owner.address);
-        await auction.setFeeBeneficiary(feeBeneficiary.address);
 
         ContractBidder = await ethers.getContractFactory('MockAuctionBidder');
         contractBidder = await ContractBidder.deploy(auction.address);
@@ -26,23 +25,23 @@ describe("Auction Contract", function () {
         block = await ethers.provider.getBlock(blockNum);
 
         await nft.createCollection(1, artist.address, 200, "ipfs://path/", artist.address)
-        await auction.createAuction(1, 1, 1000, 2, '0x0000000000000000000000000000000000000000', 120, nft.address, 200);
-        await auction.createAuction(1, 2, 1000, 2, mockERC20.address, 120, nft.address, 200);
+        await auction.createAuction(1, 1, 1000, 2, '0x0000000000000000000000000000000000000000', 120, nft.address);
+        await auction.createAuction(1, 2, 1000, 2, mockERC20.address, 120, nft.address);
     });
 
     it("Should create auction - FTM", async function () {
         await expect(auction.createAuction(1, 1, 10, 2, '0x0000000000000000000000000000000000000000',
-         120, nft.address, 200)).to.emit(auction, 'AuctionCreated');
+         120, nft.address)).to.emit(auction, 'AuctionCreated');
     });
 
     it("Should create auction - ERC20", async function () {
         await expect(auction.createAuction(1, 1, 10, 2, mockERC20.address,
-         120, nft.address, 200)).to.emit(auction, 'AuctionCreated');
+         120, nft.address)).to.emit(auction, 'AuctionCreated');
     });
 
     it("Should cancel auction", async function () {
         await auction.createAuction(1, 1,  10, 2, '0x0000000000000000000000000000000000000000',
-         120, nft.address, 200);
+         120, nft.address);
         await expect(auction.cancelAuction(3)).to.emit(auction, 'AuctionCancelled');
     });
 
@@ -85,33 +84,27 @@ describe("Auction Contract", function () {
         expect(balance).to.equal(1);
     });
 
-    it("Should collect fee and transfer the remaining value to the artist - FTM", async function () {
-        beneficiaryBalance = await ethers.provider.getBalance(feeBeneficiary.address);
+    it("Should transfer value to the destination address - FTM", async function () {
         artistBalance = await ethers.provider.getBalance(artist.address);
         await auction.connect(addr2).bid(1, 1000, {value: 1000});
 
-        beneficiaryBalanceAfterSettle = await ethers.provider.getBalance(feeBeneficiary.address);
         artistBalanceAfterSettle = await ethers.provider.getBalance(artist.address);
         
-        expect(beneficiaryBalanceAfterSettle).to.equal(beneficiaryBalance.add(20));
-        expect(artistBalanceAfterSettle).to.equal(artistBalance.add(980));
+        expect(artistBalanceAfterSettle).to.equal(artistBalance.add(1000));
     });
 
-    it("Should collect fee and transfer rest to artist - ERC20", async function () {
+    it("Should transfer funds to destination address - ERC20", async function () {
         balance = await mockERC20.balanceOf(artist.address);
         
         await mockERC20.connect(addr2).approve(auction.address, 1000);
         await auction.connect(addr2).bid(2, 1000);
 
-        expect(await mockERC20.balanceOf(artist.address)).to.equal(balance.add(980));
-
-        balance = await mockERC20.balanceOf(feeBeneficiary.address);
-        expect(balance).to.equal(20);
+        expect(await mockERC20.balanceOf(artist.address)).to.equal(balance.add(1000));
     
     });
 
     it("Should revert if bid lower than higest bid increment", async function () {
-        await auction.createAuction(1, 1, 0, 0, '0x0000000000000000000000000000000000000000', 120, nft.address, 200);
+        await auction.createAuction(1, 1, 0, 0, '0x0000000000000000000000000000000000000000', 120, nft.address);
         await auction.connect(addr2).bid(3, 1000, {value: 1000});
         await expect(auction.connect(addr2).bid(3, 1001, {value: 1001})).to.be.revertedWith("Bid is lower than highest bid increment");
         await expect(auction.connect(addr2).bid(3, 1010, {value: 1010})).to.emit(auction, 'BidPlaced');
@@ -127,7 +120,7 @@ describe("Auction Contract", function () {
     });
 
     it("Should revert if bid = 0", async function () {
-        await auction.createAuction(1, 1, 10, 0, '0x0000000000000000000000000000000000000000', 120, nft.address, 200);
+        await auction.createAuction(1, 1, 10, 0, '0x0000000000000000000000000000000000000000', 120, nft.address);
         await expect(auction.connect(addr2).bid(3, 0, {value: 0})).to.be.revertedWith("Bid is lower than minimum");
     });
 
@@ -149,15 +142,11 @@ describe("Auction Contract", function () {
     });
 
     it("Should revert if calling create not being admin", async function () {
-        await expect(auction.connect(addr1).createAuction(1, 1, 10, 2, '0x0000000000000000000000000000000000000000', 120, nft.address, 200)).to.be.revertedWith("Admin calls only");
+        await expect(auction.connect(addr1).createAuction(1, 1, 10, 2, '0x0000000000000000000000000000000000000000', 120, nft.address)).to.be.revertedWith("Admin calls only");
     });
 
     it("Should revert if calling cancel not being admin", async function () {
         await expect(auction.connect(addr1).cancelAuction(1)).to.be.revertedWith("Admin calls only");
-    });
-
-    it("Should revert if calling setFeeBeneficiary not being admin", async function () {
-        await expect(auction.connect(addr1).setFeeBeneficiary(owner.address)).to.be.revertedWith("Admin calls only");
     });
 
     it("Should revert if calling update not being admin", async function () {
