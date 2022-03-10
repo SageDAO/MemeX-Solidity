@@ -53,7 +53,7 @@ async function main() {
             await createLottery(collection, lottery, CONTRACTS[hre.network.name]["nftAddress"]);
         } else {
             // if we're past endTime, inspect the lottery and take the required actions
-            if (now >= collection.endTime) {
+            if (now >= collection.Lottery.endTime) {
                 await inspectLotteryState(collection.id, lottery, collection);
             }
         }
@@ -78,8 +78,8 @@ async function fetchApprovedDrops() {
     });
 }
 
-async function getTotalAmountOfPrizes(lotteryId, totalParticipants) {
-    prizes = await lottery.getPrizes(lotteryId);
+async function getTotalAmountOfPrizes(collectionId, totalParticipants) {
+    prizes = await lottery.getPrizes(collectionId);
     var totalPrizes = 0;
     // iterate the prize array getting the number of prizes for each entry
     for (let i = 0; i < prizes.length; i++) {
@@ -91,20 +91,20 @@ async function getTotalAmountOfPrizes(lotteryId, totalParticipants) {
     return totalPrizes;
 }
 
-async function inspectLotteryState(lotteryId, lottery, collection) {
+async function inspectLotteryState(collectionId, lottery, collection) {
     const blockNum = await ethers.provider.getBlockNumber();
     const block = await ethers.provider.getBlock(blockNum);
-    lotteryInfo = await lottery.getLotteryInfo(lotteryId);
+    lotteryInfo = await lottery.getLotteryInfo(collectionId);
     participants = lotteryInfo.participantsCount;
     
     if (lotteryInfo.status == 0 && lotteryInfo.closeTime < block.timestamp) {
         if (participants > 0) {
             logger.info(`Drop #${collection.id} is closed, requesting random number.`);
-            await lottery.requestRandomNumber(lotteryId);
+            await lottery.requestRandomNumber(collectionId);
             return;
         } else {
             logger.info(`Drop #${collection.id} was canceled. Closed without participants.`);
-            await lottery.cancelLottery(lotteryId);
+            await lottery.cancelLottery(collectionId);
             return;
         }
     }
@@ -114,19 +114,19 @@ async function inspectLotteryState(lotteryId, lottery, collection) {
             // check if there are prizeProofs stored in the DB for that lottery
             // if there aren't any, create the proofs
             logger.info(`Drop #${collection.id} is closed but has no prizes yet`);
-            entries = await lottery.getLotteryTickets(lotteryId, { gasLimit: 500000000 });
+            entries = await lottery.getLotteryTickets(collectionId, { gasLimit: 500000000 });
             totalEntries = entries.length;
-            logger.info(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
+            logger.info(`A total of ${totalEntries} entries for collectionId ${collectionId}`);
 
             defaultPrizeId = lotteryInfo.defaultPrizeId;
 
-            randomSeed = await lottery.randomSeeds(lotteryId);
+            randomSeed = await lottery.randomSeeds(collectionId);
             logger.info(`Random seed stored for this lottery: ${randomSeed}`);
 
             logger.info(`Total participants: ${participants}`);
 
             logger.info(`Getting prize info`);
-            let totalPrizes = await getTotalAmountOfPrizes(lotteryId, participants);
+            let totalPrizes = await getTotalAmountOfPrizes(collectionId, participants);
 
             logger.info(`Total prizes: ${totalPrizes}`);
             var prizesAwarded = 0;
@@ -155,7 +155,7 @@ async function inspectLotteryState(lotteryId, lottery, collection) {
                     logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${entries[randomPosition]}`);
 
                     var leaf = {
-                        lotteryId: Number(lotteryId), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), proof: "", createdAt: new Date()
+                        collectionId: Number(collectionId), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), proof: "", createdAt: new Date()
                     };
                     leaves.push(leaf);
                 }
@@ -166,7 +166,7 @@ async function inspectLotteryState(lotteryId, lottery, collection) {
                 for (i = 0; i < entries.length; i++) {
                     if (!winners.has(entries[i])) {
                         var leaf = {
-                            lotteryId: Number(lotteryId), winnerAddress: entries[i], nftId: defaultPrizeId.toNumber(), proof: "", createdAt: new Date()
+                            collectionId: Number(collectionId), winnerAddress: entries[i], nftId: defaultPrizeId.toNumber(), proof: "", createdAt: new Date()
                         };
                         winners.add(entries[i]);
                         leaves.push(leaf);
@@ -174,15 +174,15 @@ async function inspectLotteryState(lotteryId, lottery, collection) {
                 }
             }
             logger.info(`All prizes awarded. Building the merkle tree`);
-            hashedLeaves = leaves.map(leaf => getEncodedLeaf(lotteryId, leaf));
+            hashedLeaves = leaves.map(leaf => getEncodedLeaf(collectionId, leaf));
             const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
 
             const root = tree.getHexRoot().toString('hex');
             logger.info(`Storing the Merkle tree root in the contract: ${root}`);
-            await lottery.setPrizeMerkleRoot(lotteryId, root);
+            await lottery.setPrizeMerkleRoot(collectionId, root);
 
             // generate and store proofs for each winner
-            await generateAndStoreProofs(leaves, tree, lotteryId);
+            await generateAndStoreProofs(leaves, tree, collectionId);
 
             await prisma.lottery.update({
                 where: {
@@ -198,10 +198,10 @@ async function inspectLotteryState(lotteryId, lottery, collection) {
     }
 }
 
-async function generateAndStoreProofs(leaves, tree, lotteryId) {
+async function generateAndStoreProofs(leaves, tree, collectionId) {
     for (index in leaves) {
         leaf = leaves[index];
-        leaf.proof = tree.getProof(getEncodedLeaf(lotteryId, leaf)).map(x => buf2hex(x.data)).toString();
+        leaf.proof = tree.getProof(getEncodedLeaf(collectionId, leaf)).map(x => buf2hex(x.data)).toString();
         logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`);
     }
     // store proofs on the DB so they can be easily queried
@@ -253,10 +253,10 @@ main()
         setTimeout(exit, 2000, 1);
     });
 
-function getEncodedLeaf(lotteryId, leaf) {
+function getEncodedLeaf(collectionId, leaf) {
     logger.info(`Encoding leaf: ${leaf.winnerAddress} ${leaf.nftId}`);
     return keccak256(abiCoder.encode(["uint256", "address", "uint256"],
-        [lotteryId, leaf.winnerAddress, leaf.nftId]));
+        [collectionId, leaf.winnerAddress, leaf.nftId]));
 }
 
 async function deploySplitter(collection, splitId) {
