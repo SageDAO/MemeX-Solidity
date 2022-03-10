@@ -24,7 +24,7 @@ async function main() {
     const Lottery = await ethers.getContractFactory("MemeXLottery");
 
     if (hre.network.name == "hardhat") { 
-        await hardhatTests(Lottery, block);
+        await hardhatTests(Lottery);
     } else {
         lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
         lottery = await Lottery.attach(lotteryAddress);
@@ -32,26 +32,29 @@ async function main() {
 
     }
     logger.info('Searching for lotteries that require action');
-    let drops = await fetchApprovedDrops();
+    let collections = await fetchApprovedDrops();
     
     const now = Math.floor(Date.now() / 1000);
-    for (const drop of drops) {
-        let primarySplitterAddress = drop.Collection.PrimarySplitter?.splitterAddress;
-        if (drop.Collection.primarySplitterId != null && primarySplitterAddress == null) {
-            drop.Collection.PrimarySplitter.splitterAddress = await deploySplitter(drop, drop.Collection.primarySplitterId);
+    for (const collection of collections) {
+        if (collection.Lottery.finished ) {
+            continue;
+        }
+        let primarySplitterAddress = collection.PrimarySplitter?.splitterAddress;
+        if (collection.primarySplitterId != null && primarySplitterAddress == null) {
+            collection.PrimarySplitter.splitterAddress = await deploySplitter(collection, collection.primarySplitterId);
         }
         
-        let secondarySplitterAddress = drop.Collection.SecondarySplitter?.splitterAddress;
-        if (drop.Collection.secondarySplitterId != null && secondarySplitterAddress == null) {
-            drop.Collection.SecondarySplitter.splitterAddress = await deploySplitter(drop, drop.Collection.secondarySplitterId);   
+        let secondarySplitterAddress = collection.SecondarySplitter?.splitterAddress;
+        if (collection.secondarySplitterId != null && secondarySplitterAddress == null) {
+            collection.SecondarySplitter.splitterAddress = await deploySplitter(collection, collection.secondarySplitterId);   
         }
 
-        if (drop.blockchainCreatedAt == null) {
-            await createLottery(drop, lottery, CONTRACTS[hre.network.name]["nftAddress"]);
+        if (collection.Lottery.blockchainCreatedAt == null) {
+            await createLottery(collection, lottery, CONTRACTS[hre.network.name]["nftAddress"]);
         } else {
             // if we're past endTime, inspect the lottery and take the required actions
-            if (now >= drop.endTime) {
-                await inspectLotteryState(drop.lotteryId, lottery, drop);
+            if (now >= collection.endTime) {
+                await inspectLotteryState(collection.lotteryId, lottery, collection);
             }
         }
     }
@@ -60,24 +63,18 @@ async function main() {
 }
 
 async function fetchApprovedDrops() {
-    return await prisma.drop.findMany({
+    return await prisma.collection.findMany({
         where: {
             approvedAt: {
                 not: null
             },
-            finished: {
-                equals: false,
-            }
         },
         include: {
-            Collection: {
-                include: {
-                    PrimarySplitter: true,
-                    SecondarySplitter: true,
-                    Artist: true,
-                },
-            },
-        }
+            PrimarySplitter: true,
+            SecondarySplitter: true,
+            Artist: true,
+            Lottery: true,
+        }      
     });
 }
 
@@ -262,7 +259,7 @@ function getEncodedLeaf(lotteryId, leaf) {
         [lotteryId, leaf.winnerAddress, leaf.nftId]));
 }
 
-async function deploySplitter(drop, splitId) {
+async function deploySplitter(collection, splitId) {
     let owner = await ethers.getSigner();
     let splitEntries =  await prisma.splitEntry.findMany({
         where: {
@@ -270,12 +267,12 @@ async function deploySplitter(drop, splitId) {
         }
     });
     if (splitEntries.length == 0) {
-        logger.error(`No split addresses found for Drop #${drop.id}`);
+        logger.error(`No split addresses found for Drop #${collection.id}`);
         return null;
     }
     let splitAddress;
     if (splitEntries.length == 1) {
-        logger.info(`Only one split address found for Drop #${drop.id}. No splitter needed.`);
+        logger.info(`Only one split address found for Drop #${collection.id}. No splitter needed.`);
         splitAddress = splitEntries[0].destinationAddress;
     } else {
         logger.info(`Deploying splitter for splitId #${splitId}`);
@@ -297,58 +294,58 @@ async function deploySplitter(drop, splitId) {
     return splitAddress;
 }
 
-async function createLottery(drop, lottery, nftContractAddress) {
-    logger.info("Creating lottery for drop #id: " + drop.id);
+async function createLottery(collection, lottery, nftContractAddress) {
+    logger.info("Creating lottery for drop #id: " + collection.id);
     const Nft = await ethers.getContractFactory("MemeXNFT");
     const nft = await Nft.attach(nftContractAddress);
-    let royaltyAddress = drop.Collection.secondarySplitterId != null ? drop.Collection.SecondarySplitter.splitterAddress : drop.Collection.artistAddress; 
-    let primarySalesDestination = drop.Collection.primarySplitterId != null ? drop.Collection.PrimarySplitter.splitterAddress : drop.Collection.artistAddress;
+    let royaltyAddress = collection.secondarySplitterId != null ? collection.SecondarySplitter.splitterAddress : collection.Collection.artistAddress; 
+    let primarySalesDestination = collection.primarySplitterId != null ? collection.PrimarySplitter.splitterAddress : collection.Collection.artistAddress;
     // percentage in basis points (200 = 2.00%)
-    let royaltyPercentageBasisPoints = parseInt(drop.Collection.royaltyPercentage * 100);
+    let royaltyPercentageBasisPoints = parseInt(collection.royaltyPercentage * 100);
     await nft.createCollection(
-        drop.lotteryId, 
+        collection.id, 
         royaltyAddress, 
         royaltyPercentageBasisPoints, 
-        "https://" + drop.prizeMetadataCid + ".ipfs.dweb.link/",
+        "https://" + collection.collectionMetadataCid + ".ipfs.dweb.link/",
         primarySalesDestination);
     logger.info("Collection created");
     const tx = await lottery.createNewLottery(
-        drop.lotteryId,
-        drop.costPerTicketPoints,
-        ethers.utils.parseEther(drop.costPerTicketCoins.toString()),
-        drop.startTime,
-        drop.endTime,
+        collection.id,
+        collection.Lottery.costPerTicketPoints,
+        ethers.utils.parseEther(collection.Lottery.costPerTicketCoins.toString()),
+        collection.Lottery.startTime,
+        collection.Lottery.endTime,
         nftContractAddress,
-        drop.defaultPrizeId || 0
+        collection.Lottery.defaultPrizeId || 0
     );
     logger.info("Lottery created");
 
-    if (drop.maxParticipants > 0) {
-        logger.info("Setting max participants to " + drop.maxParticipants);
-        await lottery.setMaxParticipants(drop.lotteryId, drop.maxParticipants);
+    if (collection.Lottery.maxParticipants > 0) {
+        logger.info("Setting max participants to " + collection.Lottery.maxParticipants);
+        await lottery.setMaxParticipants(collection.id, collection.Lottery.maxParticipants);
     }
-    drop.blockchainCreatedAt = new Date();
-    await prisma.drop.update({
+    collection.Lottery.blockchainCreatedAt = new Date();
+    await prisma.lottery.update({
         where: {
-            id: drop.id
+            collectionId: collection.id
         },
         data: {
-            blockchainCreatedAt: drop.blockchainCreatedAt,
+            blockchainCreatedAt: collection.Lottery.blockchainCreatedAt,
             isLive: true
         }
     });
-    await addPrizes(drop, lottery);
+    await addPrizes(collection, lottery);
 
-    logger.info(`Lottery created with lotteryId: ${drop.lotteryId} | costPoints: ${drop.costPerTicketPoints} | costCoins: ${drop.costPerTicketCoins} | startTime: ${drop.startTime} | endTime: ${drop.endTime} | maxParticipants: ${drop.maxParticipants} | 
-    CreatedBy: ${drop.Collection.artistAddress} | defaultPrizeId: ${drop.defaultPrizeId} | royaltyPercentageBasePoints: ${royaltyPercentageBasisPoints} | metadataIpfsPath: ${drop.metadataIpfsPath}`);
+    logger.info(`Lottery created with id: ${collection.collectionId} | costPoints: ${collection.Lottery.costPerTicketPoints} | costCoins: ${collection.Lottery.costPerTicketCoins} | startTime: ${collection.Lottery.startTime} | endTime: ${collection.Lottery.endTime} | maxParticipants: ${collection.Lottery.maxParticipants} | 
+    CreatedBy: ${collection.artistAddress} | defaultPrizeId: ${collection.Lottery.defaultPrizeId} | royaltyPercentageBasePoints: ${royaltyPercentageBasisPoints} | metadataIpfsPath: ${collection.collectionMetadataCid}`);
 }
 
 const buf2hex = x => '0x' + x.toString('hex');
 
-async function addPrizes(drop, lottery) {
+async function addPrizes(collection, lottery) {
     let prizes = await prisma.nft.findMany({
         where: {
-            collectionId: drop.lotteryId
+            collectionId: collection.id
         },
         orderBy: {
             numberOfMints: "asc"
@@ -363,7 +360,7 @@ async function addPrizes(drop, lottery) {
         }
     }
     if (prizeIds.length > 0) {
-        await lottery.addPrizes(parseInt(drop.lotteryId), prizeIds, prizeAmounts);
+        await lottery.addPrizes(parseInt(collection.id), prizeIds, prizeAmounts);
     }
 }
 
