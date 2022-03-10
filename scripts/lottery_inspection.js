@@ -54,7 +54,7 @@ async function main() {
         } else {
             // if we're past endTime, inspect the lottery and take the required actions
             if (now >= collection.endTime) {
-                await inspectLotteryState(collection.lotteryId, lottery, collection);
+                await inspectLotteryState(collection.id, lottery, collection);
             }
         }
     }
@@ -91,7 +91,7 @@ async function getTotalAmountOfPrizes(lotteryId, totalParticipants) {
     return totalPrizes;
 }
 
-async function inspectLotteryState(lotteryId, lottery, drop) {
+async function inspectLotteryState(lotteryId, lottery, collection) {
     const blockNum = await ethers.provider.getBlockNumber();
     const block = await ethers.provider.getBlock(blockNum);
     lotteryInfo = await lottery.getLotteryInfo(lotteryId);
@@ -99,11 +99,11 @@ async function inspectLotteryState(lotteryId, lottery, drop) {
     
     if (lotteryInfo.status == 0 && lotteryInfo.closeTime < block.timestamp) {
         if (participants > 0) {
-            logger.info(`Drop #${drop.id} is closed, requesting random number.`);
+            logger.info(`Drop #${collection.id} is closed, requesting random number.`);
             await lottery.requestRandomNumber(lotteryId);
             return;
         } else {
-            logger.info(`Drop #${drop.id} was canceled. Closed without participants.`);
+            logger.info(`Drop #${collection.id} was canceled. Closed without participants.`);
             await lottery.cancelLottery(lotteryId);
             return;
         }
@@ -113,7 +113,7 @@ async function inspectLotteryState(lotteryId, lottery, drop) {
         if (participants > 0) {
             // check if there are prizeProofs stored in the DB for that lottery
             // if there aren't any, create the proofs
-            logger.info(`Drop #${drop.id} is closed but has no prizes yet`);
+            logger.info(`Drop #${collection.id} is closed but has no prizes yet`);
             entries = await lottery.getLotteryTickets(lotteryId, { gasLimit: 500000000 });
             totalEntries = entries.length;
             logger.info(`A total of ${totalEntries} entries for lotteryId ${lotteryId}`);
@@ -131,7 +131,7 @@ async function inspectLotteryState(lotteryId, lottery, drop) {
             logger.info(`Total prizes: ${totalPrizes}`);
             var prizesAwarded = 0;
 
-            logger.info(`Drop #${drop.id} starting prize distribution`);
+            logger.info(`Drop #${collection.id} starting prize distribution`);
             const winners = new Set();
             var leaves = new Array();
 
@@ -184,16 +184,16 @@ async function inspectLotteryState(lotteryId, lottery, drop) {
             // generate and store proofs for each winner
             await generateAndStoreProofs(leaves, tree, lotteryId);
 
-            await prisma.drop.update({
+            await prisma.lottery.update({
                 where: {
-                    id: drop.id
+                    collectionId: collection.id
                 },
                 data: {
                     finished: true,
                 }
             });
 
-            logger.info(`Drop #${drop.id} had ${leaves.length} prizes distributed.`);
+            logger.info(`Drop #${collection.id} had ${leaves.length} prizes distributed.`);
         }
     }
 }
