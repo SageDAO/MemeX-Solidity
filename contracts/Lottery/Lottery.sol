@@ -526,12 +526,6 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
                 msg.value >= totalCostInCoins,
                 "Didn't transfer enough funds to buy tickets"
             );
-            if (lottery.ticketCostPoints != 0) {
-                require(
-                    participantInfo.ticketsFromPoints > 0,
-                    "Participant not found"
-                );
-            }
             participantInfo.ticketsFromCoins += numberOfTickets;
             lottery.numTicketsWithCoins += numberOfTickets;
         }

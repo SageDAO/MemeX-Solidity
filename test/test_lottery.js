@@ -180,7 +180,6 @@ describe("Lottery Contract", function () {
         });
 
     });
-        
 
     it("Should not allow user to buy ticket when lottery is not open", async function () {
         await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
@@ -196,17 +195,9 @@ describe("Lottery Contract", function () {
             { value: ethers.utils.parseEther("0") })).to.be.revertedWith("Didn't transfer enough funds to buy tickets");
     });
 
-    it("Should not allow to boost without buying ticket", async function () {
-        await lottery.createNewLottery(2, 1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
-            nft.address, 0);
-        await expect(lottery.buyTickets(2, 1, false,
-            { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Participant not found");
-    });
-
     it("Should not allow to buy tickets with the wrong lottery id", async function () {
         await expect(lottery.buyTickets(2, 1, true)).to.be.revertedWith("Lottery is not open");
     });
-
 
     it("Should run more than one lottery", async function () {
         await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
