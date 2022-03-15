@@ -39,6 +39,18 @@ contract Rewards is MemeXAccessControls, IRewards {
         initAccessControls(_admin);
     }
 
+    function getPointsUsedBatch(address[] calldata addresses)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        uint256[] memory result = new uint256[](addresses.length);
+        for (uint256 i; i < addresses.length; ++i) {
+            result[i] = totalPointsUsed[addresses[i]];
+        }
+        return result;
+    }
+
     function setRewardRate(
         address _token,
         uint16 _chainId,
@@ -59,7 +71,7 @@ contract Rewards is MemeXAccessControls, IRewards {
             _positionSize,
             _positionSizeLimit
         );
-        for (uint16 i = 0; i < rewardTokenAddresses.length; i++) {
+        for (uint256 i = 0; i < rewardTokenAddresses.length; ++i) {
             if (rewardTokenAddresses[i] == _token) {
                 return;
             }
@@ -68,7 +80,7 @@ contract Rewards is MemeXAccessControls, IRewards {
         rewardTokenAddresses.push(_token);
     }
 
-    function removeReward(uint16 _index) public {
+    function removeReward(uint256 _index) public {
         require(hasAdminRole(msg.sender), "Only admin calls");
         require(_index < rewardTokenAddresses.length, "Index out of bounds");
         rewardTokenAddresses[_index] = rewardTokenAddresses[
