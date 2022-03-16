@@ -158,13 +158,13 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
     /**
      * @dev Mints some amount of tokens to an address
      * @param _to          Address of the future owner of the token
-     * @param _id          Token ID to mint
+     * @param _tokenId     Token ID to mint
      * @param _quantity    Amount of tokens to mint
      * @param _data        Data to pass if receiver is contract
      */
     function mint(
         address _to,
-        uint256 _id,
+        uint256 _tokenId,
         uint32 _quantity,
         uint256 _collectionId,
         bytes memory _data
@@ -173,11 +173,11 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
             hasSmartContractRole(msg.sender) || hasMinterRole(msg.sender),
             "MemeXNFT: No minting privileges"
         );
-        if (tokenToCollection[_id] == 0) {
-            tokenToCollection[_id] = _collectionId;
-            nftsInCollection[_collectionId].push(_id);
+        if (tokenToCollection[_tokenId] == 0) {
+            tokenToCollection[_tokenId] = _collectionId;
+            nftsInCollection[_collectionId].push(_tokenId);
         }
-        _mint(_to, _id, _quantity, _data);
+        _mint(_to, _tokenId, _quantity, _data);
     }
 
     function setCollectionBaseMetadataURI(
