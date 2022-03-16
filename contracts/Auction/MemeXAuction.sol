@@ -12,26 +12,26 @@ contract MemeXAuction is MemeXAccessControls {
 
     mapping(address => uint256) withdrawCredits;
 
-    uint16 public defaultTimeExtension = 3600;
+    uint32 public defaultTimeExtension = 3600;
     uint16 public bidIncrementPercentage = 100; // 1,00% higher than the previous bid
 
     struct Auction {
-        uint256 endTime;
-        uint256 collectionId;
-        uint256 nftId;
         // seller can define an ERC20 token to be used for the auction.
         // If not defined, the native token is used (FTM).
         address erc20Token;
+        address highestBidder;
+        IMemeXNFT nftContract;
+        uint32 startTime;
+        uint32 endTime;
+        bool finished;
+        uint256 collectionId;
+        uint256 nftId;
         uint256 buyNowPrice;
         uint256 minimumPrice;
         uint256 highestBid;
-        address highestBidder;
-        IMemeXNFT nftContract;
-        bool finished;
     }
 
     event AuctionCreated(
-        uint256 indexed auctionId,
         uint256 indexed collectionId,
         uint256 nftId,
         address erc20Token
@@ -86,10 +86,11 @@ contract MemeXAuction is MemeXAccessControls {
         uint256 _buyNowPrice,
         uint256 _minimumPrice,
         address _token,
-        uint32 _duration,
+        uint32 _startTime,
+        uint32 _endTime,
         IMemeXNFT _nftContract
     ) public onlyAdmin returns (uint256 auctionId) {
-        require(_duration > 0, "Invalid auction time");
+        require(_endTime > _startTime, "Invalid auction time");
         require(
             _buyNowPrice == 0 || _buyNowPrice >= _minimumPrice,
             "Invalid buy now price"
@@ -102,21 +103,22 @@ contract MemeXAuction is MemeXAccessControls {
         auctionId = incrementAuctionCount();
 
         Auction memory auction = Auction(
-            block.timestamp + _duration,
-            _collectionId,
-            _nftId,
             _token,
-            _buyNowPrice,
-            _minimumPrice,
-            0,
             address(0),
             _nftContract,
-            false
+            _startTime,
+            _endTime,
+            false,
+            _collectionId,
+            _nftId,
+            _buyNowPrice,
+            _minimumPrice,
+            0
         );
 
         auctions[auctionId] = auction;
 
-        emit AuctionCreated(auctionId, _collectionId, _nftId, _token);
+        emit AuctionCreated(_collectionId, _nftId, _token);
 
         return auctionId;
     }
@@ -180,7 +182,7 @@ contract MemeXAuction is MemeXAccessControls {
         uint256 _buyNowPrice,
         uint256 _minimumPrice,
         address _token,
-        uint64 _endTime
+        uint32 _endTime
     ) public onlyAdmin {
         require(!auctions[_auctionId].finished, "Auction is already finished");
         require(auctions[_auctionId].endTime > 0, "Auction not found");
@@ -202,7 +204,7 @@ contract MemeXAuction is MemeXAccessControls {
     function bid(uint256 _auctionId, uint256 _amount) public payable {
         Auction storage auction = auctions[_auctionId];
         require(!auction.finished, "Auction is already finished");
-        uint256 endTime = auction.endTime;
+        uint32 endTime = auction.endTime;
         require(endTime > block.timestamp, "Auction has ended");
         require(
             _amount > 0 && _amount >= auction.minimumPrice,
@@ -233,10 +235,10 @@ contract MemeXAuction is MemeXAccessControls {
         auction.highestBidder = msg.sender;
         auction.highestBid = _amount;
 
-        uint16 timeExtension = defaultTimeExtension;
+        uint32 timeExtension = defaultTimeExtension;
 
         if (endTime - block.timestamp < timeExtension) {
-            endTime = block.timestamp + timeExtension;
+            endTime = uint32(block.timestamp) + timeExtension;
             auction.endTime = endTime;
         }
 
