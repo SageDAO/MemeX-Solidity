@@ -205,6 +205,10 @@ contract MemeXAuction is MemeXAccessControls {
         Auction storage auction = auctions[_auctionId];
         require(!auction.finished, "Auction is already finished");
         uint32 endTime = auction.endTime;
+        require(
+            auction.startTime <= block.timestamp,
+            "Auction has not started"
+        );
         require(endTime > block.timestamp, "Auction has ended");
         require(
             _amount > 0 && _amount >= auction.minimumPrice,
