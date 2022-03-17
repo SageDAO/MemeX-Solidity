@@ -52,7 +52,7 @@ contract MemeXDirectMint is MemeXAccessControls {
         uint256 nftIdRangeStart,
         uint256 nftIdRangeEnd
     ) public onlyAdmin {
-        require(startTime <= endTime, "Start time must be before end time");
+        require(startTime < endTime, "Start time must be before end time");
         require(
             nftIdRangeStart <= nftIdRangeEnd,
             "NFT id range start must be before end"
@@ -74,15 +74,8 @@ contract MemeXDirectMint is MemeXAccessControls {
         directMints[collectionId] = directMint;
     }
 
-    function mintBatch(
-        uint256 _collectionId,
-        uint256 _amount,
-        uint256 _tokenId
-    ) public payable {
+    function mintBatch(uint256 _collectionId, uint256 _amount) public payable {
         DirectMint storage dm = directMints[_collectionId];
-
-        require(_tokenId >= dm.nftIdRangeStart, "Invalid token id");
-        require(_tokenId <= dm.nftIdRangeEnd, "Invalid token id");
 
         require(
             dm.nftContract.collectionExists(_collectionId),
@@ -111,7 +104,7 @@ contract MemeXDirectMint is MemeXAccessControls {
             );
         }
 
-        for (uint256 i = 0; i < _amount; i++) {
+        for (uint256 i = 0; i < _amount; ++i) {
             uint256 tokenId = nextTokenId(_collectionId);
             dm.nftContract.mint(msg.sender, tokenId, 1, _collectionId, "");
 
