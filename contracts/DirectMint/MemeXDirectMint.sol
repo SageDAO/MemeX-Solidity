@@ -82,13 +82,13 @@ contract MemeXDirectMint is MemeXAccessControls {
             "Collection does not exist"
         );
 
-        require(block.timestamp >= dm.startTime, "Minting has not started");
-        require(block.timestamp < dm.endTime, "Minting has ended");
+        require(dm.startTime <= block.timestamp, "Minting has not started");
+        require(dm.endTime > block.timestamp, "Minting has ended");
 
         userMints[msg.sender] += _amount;
         require(
-            dm.limitPerUser <= userMints[msg.sender],
-            "User has reached limit"
+            dm.limitPerUser >= userMints[msg.sender],
+            "Can't mint more than limit"
         );
 
         if (dm.erc20Token == address(0)) {
@@ -117,5 +117,13 @@ contract MemeXDirectMint is MemeXAccessControls {
         uint256 tokenId = dm.nftIdRangeStart + dm.totalTokensMinted;
         ++dm.totalTokensMinted;
         return tokenId;
+    }
+
+    function getDirectMint(uint256 _collectionId)
+        public
+        view
+        returns (DirectMint memory)
+    {
+        return directMints[_collectionId];
     }
 }
