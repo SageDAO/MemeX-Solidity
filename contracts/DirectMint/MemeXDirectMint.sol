@@ -19,6 +19,13 @@ contract MemeXDirectMint is MemeXAccessControls {
         uint256 nftIdRangeEnd;
     }
 
+    event DirectMintCreated(
+        uint256 indexed collectionId,
+        uint32 startTime,
+        uint32 endTime,
+        uint256 pricePerUnit
+    );
+
     event Minted(
         address indexed destination,
         uint256 indexed collectionId,
@@ -71,6 +78,8 @@ contract MemeXDirectMint is MemeXAccessControls {
             nftIdRangeEnd
         );
 
+        emit DirectMintCreated(collectionId, startTime, endTime, pricePerUnit);
+
         directMints[collectionId] = directMint;
     }
 
@@ -84,7 +93,11 @@ contract MemeXDirectMint is MemeXAccessControls {
 
         require(dm.startTime <= block.timestamp, "Minting has not started");
         require(dm.endTime > block.timestamp, "Minting has ended");
-
+        require(
+            dm.totalTokensMinted + _amount <=
+                dm.nftIdRangeEnd - dm.nftIdRangeStart + 1,
+            "Not enough tokens left"
+        );
         userMints[msg.sender] += _amount;
         require(
             dm.limitPerUser >= userMints[msg.sender],
