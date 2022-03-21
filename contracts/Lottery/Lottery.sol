@@ -232,10 +232,6 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         return lotteries.length;
     }
 
-    function getLotteryIds() public view returns (uint256[] memory) {
-        return lotteries;
-    }
-
     /**
      * @notice Query lottery info
      * @param _lotteryId The lottery ID
