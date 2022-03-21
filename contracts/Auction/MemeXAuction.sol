@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IMemeXNFT.sol";
-import "../Access/MemeXAccessControls.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract MemeXAuction is MemeXAccessControls {
+contract MemeXAuction is AccessControl {
     uint256 public auctionCount;
 
     mapping(uint256 => Auction) public auctions;
@@ -56,12 +56,12 @@ contract MemeXAuction is MemeXAccessControls {
      * @dev Throws if not called by an admin account.
      */
     modifier onlyAdmin() {
-        require(hasAdminRole(msg.sender), "Admin calls only");
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
         _;
     }
 
     constructor(address _admin) {
-        initAccessControls(_admin);
+        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     function incrementAuctionCount() internal returns (uint256) {

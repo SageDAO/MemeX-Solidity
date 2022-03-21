@@ -2,13 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "../../interfaces/IMemeXWhitelist.sol";
-import "../Access/MemeXAccessControls.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 interface IBalanceOf {
     function balanceOf(address owner) external view returns (uint256 balance);
 }
 
-contract MemeXWhitelist is MemeXAccessControls, IMemeXWhitelist {
+contract MemeXWhitelist is AccessControl, IMemeXWhitelist {
     mapping(uint256 => WhitelistTarget[]) public whitelist;
 
     struct WhitelistTarget {
@@ -17,15 +17,15 @@ contract MemeXWhitelist is MemeXAccessControls, IMemeXWhitelist {
         uint256 minBalance;
     }
 
-    constructor(address _owner) {
-        initAccessControls(_owner);
+    constructor(address _admin) {
+        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
      * @dev Throws if not called by an admin account.
      */
     modifier onlyAdmin() {
-        require(hasAdminRole(msg.sender), "Admin calls only");
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
         _;
     }
 

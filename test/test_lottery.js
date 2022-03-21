@@ -1,8 +1,10 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { Wallet } = require('ethers');
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require('keccak256');
+
+const MANAGE_POINTS_ROLE = keccak256("MANAGE_POINTS_ROLE");
+const MINTER_ROLE = keccak256("MINTER_ROLE");
 
 describe("Lottery Contract", function () {
     beforeEach(async () => {
@@ -13,12 +15,13 @@ describe("Lottery Contract", function () {
         Lottery = await ethers.getContractFactory("MemeXLottery");
         lottery = await upgrades.deployProxy(Lottery, [rewards.address, owner.address]);
         await lottery.deployed();
-        await rewards.addSmartContractRole(lottery.address);
+        await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
+        await rewards.grantRole(MANAGE_POINTS_ROLE, owner.address);
 
         Nft = await ethers.getContractFactory("MemeXNFT");
         nft = await Nft.deploy("Memex", "MEMEX", owner.address);
-        await nft.addSmartContractRole(lottery.address);
-        
+        await nft.grantRole(MINTER_ROLE, lottery.address);
+
         MockRNG = await ethers.getContractFactory("MockRNG");
         mockRng = await MockRNG.deploy(lottery.address);
         await lottery.setRandomGenerator(mockRng.address);
@@ -157,11 +160,11 @@ describe("Lottery Contract", function () {
     describe("FTM sales", () => {
         beforeEach(async () => {
             await lottery.createNewLottery(2, 1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
-            nft.address, 0);
+                nft.address, 0);
             await lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 15000000000, hexproofB);
             await lottery.connect(addr2).buyTickets(2, 2, false,
                 { value: ethers.utils.parseEther("2") });
-            }); 
+        });
 
         it("Should allow user to boost", async function () {
             expect(await lottery.getLotteryTicketCount(2)).to.equal(3);
@@ -169,13 +172,13 @@ describe("Lottery Contract", function () {
 
         it("Should allow withdraw funds from ticket sales", async function () {
             addr2Balance = ethers.BigNumber.from(await ethers.provider.getBalance(addr2.address));
-            await lottery.withdraw(2, addr2.address, ethers.utils.parseEther("1")); 
+            await lottery.withdraw(2, addr2.address, ethers.utils.parseEther("1"));
             expect(ethers.BigNumber.from(await ethers.provider.getBalance(addr2.address))).to.equal(addr2Balance.add(ethers.utils.parseEther("1")));
         });
 
         it("Should fail trying to withdraw more funds than lottery collected", async function () {
-            await lottery.withdraw(2, addr2.address, ethers.utils.parseEther("1")); 
-            await lottery.withdraw(2, addr2.address, ethers.utils.parseEther("1")); 
+            await lottery.withdraw(2, addr2.address, ethers.utils.parseEther("1"));
+            await lottery.withdraw(2, addr2.address, ethers.utils.parseEther("1"));
             await expect(lottery.withdraw(2, addr2.address, ethers.utils.parseEther("1"))).to.be.revertedWith("Not enough funds");
         });
 
@@ -344,20 +347,20 @@ describe("Lottery Contract", function () {
     describe("Whitelist", () => {
         beforeEach(async () => {
             await lottery.setWhitelist(1, whitelist.address);
-        }); 
+        });
 
         it("Should set and get whitelist", async () => {
-            expect (await lottery.getWhitelist(1)).to.equal(whitelist.address);
+            expect(await lottery.getWhitelist(1)).to.equal(whitelist.address);
         });
 
         it("Should revert if not whitelisted", async () => {
-            await expect(lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 
+            await expect(lottery.connect(addr1).claimPointsAndBuyTickets(1, 1,
                 1500000000, hexproof)).to.be.revertedWith("Not whitelisted");
         });
 
         it("Should revert if not enough balance on whitelisted tokens", async () => {
             await whitelist.addAddress(mockERC20.address, 1001, 1);
-            await expect(lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 
+            await expect(lottery.connect(addr1).claimPointsAndBuyTickets(1, 1,
                 1500000000, hexproof)).to.be.revertedWith("Not whitelisted");
         });
 
