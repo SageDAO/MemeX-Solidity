@@ -1,5 +1,8 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const keccak256 = require('keccak256');
+
+const MINTER_ROLE = keccak256("MINTER_ROLE");
 
 const basePath = "ipfs://path/";
 
@@ -9,9 +12,10 @@ describe('MemeXNFT Contract', () => {
         NFT = await ethers.getContractFactory("MemeXNFT");
         _lotteryAddress = addr1.address;
         nft = await NFT.deploy("Memex", "MEMEX", owner.address);
-        await nft.addSmartContractRole(_lotteryAddress);
+        await nft.grantRole(MINTER_ROLE, _lotteryAddress);
+
         await nft.createCollection(1, addr1.address, 200, basePath, addr1.address);
-        await nft.connect(owner).addMinterRole(addr2.address);
+        await nft.grantRole(MINTER_ROLE, addr2.address);
         _id = 1;
         await nft.connect(addr2).mint(addr2.address, _id, 1, 1, []);
     })

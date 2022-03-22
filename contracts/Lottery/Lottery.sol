@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../Access/MemeXAccessControls.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -11,7 +11,7 @@ import "../../interfaces/IMemeXNFT.sol";
 import "../../interfaces/ILottery.sol";
 import "../../interfaces/IMemeXWhitelist.sol";
 
-contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
+contract MemeXLottery is AccessControl, ILottery, Initializable {
     uint256 public maxTicketsPerParticipant;
 
     bytes32 internal requestId_;
@@ -109,7 +109,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
      * @dev Throws if not called by an admin account.
      */
     modifier onlyAdmin() {
-        require(hasAdminRole(msg.sender), "Admin calls only");
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
         _;
     }
 
@@ -120,7 +120,7 @@ contract MemeXLottery is MemeXAccessControls, ILottery, Initializable {
         public
         initializer
     {
-        initAccessControls(_admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         rewardsContract = IRewards(_rewardsContract);
     }
 

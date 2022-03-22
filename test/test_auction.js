@@ -1,5 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const keccak256 = require('keccak256');
+const MINTER_ROLE = keccak256("MINTER_ROLE");
 
 describe("Auction Contract", function () {
     beforeEach(async () => {
@@ -20,7 +22,7 @@ describe("Auction Contract", function () {
         ContractBidder = await ethers.getContractFactory('MockAuctionBidder');
         contractBidder = await ContractBidder.deploy(auction.address);
 
-        await nft.addSmartContractRole(auction.address);
+        await nft.grantRole(MINTER_ROLE, auction.address);
         blockNum = await ethers.provider.getBlockNumber();
         block = await ethers.provider.getBlock(blockNum);
 
