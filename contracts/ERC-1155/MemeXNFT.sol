@@ -128,7 +128,7 @@ contract MemeXNFT is ERC1155Supply, AccessControl, IMemeXNFT {
         address _primarySalesDestination
     ) external {
         require(
-            hasRole(DEFAULT_ADMIN_ROLE, tx.origin),
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
             "ERC1155.createCollection only Admin or Minter can create"
         );
         require(
