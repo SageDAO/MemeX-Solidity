@@ -9,6 +9,11 @@ const hre = require("hardhat");
 const CONTRACTS = require("../contracts.js");
 const fse = require('fs-extra');
 const path = require('path');
+const keccak256 = require('keccak256');
+
+const MANAGE_POINTS_ROLE = keccak256("MANAGE_POINTS_ROLE");
+const MINTER_ROLE = keccak256("MINTER_ROLE");
+
 
 const timer = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -35,7 +40,7 @@ replaceAddress = async (oldAddress, newAddress) => {
     const contracts = fse.readFileSync(configPath, 'utf8');
     const newContract = contracts.replace(oldAddress, newAddress);
     fse.writeFileSync(configPath, newContract);
-  
+
     const webAssetPath = path.join('..', 'MemeX-UI', 'constants', 'config.ts');
     const webAsset = fse.readFileSync(webAssetPath, 'utf8');
     const count = (webAsset.match(new RegExp(oldAddress, 'g')) || []).length;
@@ -51,7 +56,7 @@ replaceAddress = async (oldAddress, newAddress) => {
 deployRewards = async (deployer) => {
   rewards_address = CONTRACTS[hre.network.name]["rewardsAddress"];
   const Rewards = await hre.ethers.getContractFactory("Rewards");
-  if (shouldDeployContract("Rewards")) { 
+  if (shouldDeployContract("Rewards")) {
     rewards = await Rewards.deploy(deployer.address);
     await rewards.deployed();
     console.log("Rewards contract deployed to:", rewards.address);
@@ -71,7 +76,7 @@ deployRewards = async (deployer) => {
 deployNFT = async (deployer, lottery) => {
   nft_address = CONTRACTS[hre.network.name]["nftAddress"];
   const Nft = await hre.ethers.getContractFactory("MemeXNFT");
-  if (shouldDeployContract("MemeXNFT")) { 
+  if (shouldDeployContract("MemeXNFT")) {
     console.log("deploying NFT contract");
     nft = await Nft.deploy("MemeX NFTs", "MemeXNFT", deployer.address);
     await nft.deployed();
@@ -92,7 +97,7 @@ deployNFT = async (deployer, lottery) => {
 deployLottery = async (rewards, deployer) => {
   lottery_address = CONTRACTS[hre.network.name]["lotteryAddress"];
   const Lottery = await hre.ethers.getContractFactory("MemeXLottery");
-  if (shouldDeployContract("MemeXLottery")) { 
+  if (shouldDeployContract("MemeXLottery")) {
     // lottery = await Lottery.deploy(rewards.address, deployer.address);
     const lottery = await upgrades.deployProxy(Lottery, [rewards.address, deployer.address]);
     await lottery.deployed();
@@ -113,7 +118,7 @@ deployLottery = async (rewards, deployer) => {
 deployRandomness = async () => {
   rand_address = CONTRACTS[hre.network.name]["randomnessAddress"];
   const Randomness = await hre.ethers.getContractFactory("RandomNumberConsumer");
-  if (shouldDeployContract("RandomNumberConsumer")) { 
+  if (shouldDeployContract("RandomNumberConsumer")) {
     _vrfCoordinator = "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B";
     _linkToken = "0x01BE23585060835E02B77ef475b0Cc51aA1e0709";
     _lotteryAddr = CONTRACTS[hre.network.name]["lotteryAddress"];
@@ -138,7 +143,7 @@ deployRandomness = async () => {
 deployAuction = async (deployer) => {
   auction_address = CONTRACTS[hre.network.name]["auctionAddress"];
   const Auction = await hre.ethers.getContractFactory("MemeXAuction");
-  if (shouldDeployContract("MemeXAuction")) { 
+  if (shouldDeployContract("MemeXAuction")) {
     const auction = await Auction.deploy(deployer.address);
     await auction.deployed();
     console.log("Auction deployed to:", auction.address);
@@ -159,7 +164,7 @@ deployAuction = async (deployer) => {
 deployRNGTemp = async (_lotteryAddr) => {
   rand_address = CONTRACTS[hre.network.name]["randomnessAddress"];
   const Randomness = await hre.ethers.getContractFactory("RNGTemp");
-  if (shouldDeployContract("RNGTemp")) { 
+  if (shouldDeployContract("RNGTemp")) {
     randomness = await Randomness.deploy(_lotteryAddr);
     console.log("Randomness deployed to:", randomness.address);
     // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
@@ -217,45 +222,44 @@ async function main() {
     await randomness.setLotteryAddress(lottery.address);
     await lottery.setRandomGenerator(randomness.address);
     await lottery.setRewardsContract(rewards.address);
-    await nft.addSmartContractRole(lottery.address);
-    await rewards.addSmartContractRole(lottery.address);
+    await nft.grantRole(MINTER_ROLE, lottery.address);
+    await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
   } else { // else, update only the new contract references
-    
+
     if (newRandomness) {
       if (lottery && lottery.address != "") {
         await randomness.setLotteryAddress(lottery.address);
         await lottery.setRandomGenerator(randomness.address);
       }
     }
-  
+
     if (newNft) {
-      if (lottery && lottery.address != "") {
-        await nft.addSmartContractRole(lottery.address);
-      }
+      await nft.grantRole(MINTER_ROLE, lottery.address);
+      await nft.grantRole(MINTER_ROLE, auction.address);
     }
-  
+
     if (newLottery) {
       await lottery.setRandomGenerator(randomness.address);
       await lottery.setRewardsContract(rewards.address);
-      await nft.addSmartContractRole(lottery.address);
-      await rewards.addSmartContractRole(lottery.address);
+      await nft.grantRole(MINTER_ROLE, lottery.address);
+      await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
       await randomness.setLotteryAddress(lottery.address);
     }
     if (newRewards) {
       if (lottery && lottery.address != "") {
-        await rewards.addSmartContractRole(lottery.address);
+        await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
         await lottery.setRewardsContract(rewards.address);
       }
     }
 
     if (newAuction) {
-      await nft.addSmartContractRole(auction.address);
+      await nft.grantRole(MINTER_ROLE, auction.address);
     }
   }
 
   const artifactsPath = path.join('.', 'artifacts', 'contracts');
   const webAssetPath = path.join('..', 'MemeX-UI', 'constants', 'abis');
-  
+
   fse.copySync(artifactsPath, webAssetPath, { overwrite: true });
 
 }
