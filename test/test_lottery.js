@@ -71,7 +71,7 @@ describe("Lottery Contract", function () {
         expect(lottery.startTime).to.equal(block.timestamp);
         expect(lottery.closeTime).to.equal(block.timestamp + 86400 * 3);
         expect(lottery.nftContract).to.equal(nft.address);
-        expect(lottery.maxParticipants).to.equal(1);
+        expect(lottery.maxTickets).to.equal(1);
         expect(lottery.defaultPrizeId).to.equal(2);
     });
 
@@ -150,11 +150,11 @@ describe("Lottery Contract", function () {
         expect(await lottery.getLotteryTicketCount(1)).to.equal(10);
     });
 
-    it("Should not let users join when Lottery is full", async function () {
-        await lottery.setMaxParticipants(1, 1);
+    it("Should not let users buy tickets when lottery sold out", async function () {
+        await lottery.setMaxTickets(1, 1);
         await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
         // should fail on the second entry
-        await expect(lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB)).to.be.revertedWith("Lottery is full");
+        await expect(lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB)).to.be.revertedWith("Tickets sold out");
     });
 
     describe("FTM sales", () => {
