@@ -70,7 +70,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint32 startTime; // Timestamp where users can start buying tickets
         uint32 closeTime; // Timestamp where ticket sales end
         uint32 participantsCount; // number of participants
-        uint32 maxParticipants; // max number of participants
+        uint32 maxTickets; // max number of tickets for the lottery
         uint16 numTicketsWithPoints; // amount of tickets sold with points
         uint16 numTicketsWithCoins; // amount of tickets sold with coins
         Status status; // Status for lotto
@@ -142,11 +142,11 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         whitelists[_lotteryId] = _whitelist;
     }
 
-    function setMaxParticipants(uint256 _lotteryId, uint32 _maxParticipants)
+    function setMaxTickets(uint256 _lotteryId, uint32 _maxTickets)
         public
         onlyAdmin
     {
-        lotteryHistory[_lotteryId].maxParticipants = _maxParticipants;
+        lotteryHistory[_lotteryId].maxTickets = _maxTickets;
     }
 
     function setMaxTicketsPerParticipant(uint256 _maxTicketsPerParticipant)
@@ -291,7 +291,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint32 _startTime,
         uint32 _closeTime,
         IMemeXNFT _nftContract,
-        uint16 _maxParticipants,
+        uint16 _maxTickets,
         uint256 _defaultPrizeId,
         Status _status
     ) public onlyAdmin {
@@ -302,7 +302,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         lottery.ticketCostPoints = _costPerTicketPoints;
         lottery.ticketCostCoins = _costPerTicketCoins;
         lottery.nftContract = _nftContract;
-        lottery.maxParticipants = _maxParticipants;
+        lottery.maxTickets = _maxTickets;
         lottery.defaultPrizeId = _defaultPrizeId;
         lottery.status = _status;
         emit LotteryStatusChanged(lotteryId, _status);
@@ -468,10 +468,13 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     ) public payable returns (uint256) {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         uint256 remainingPoints;
-        if (lottery.maxParticipants != 0) {
+        if (lottery.maxTickets != 0) {
             require(
-                lottery.participantsCount < lottery.maxParticipants,
-                "Lottery is full"
+                lottery.numTicketsWithCoins +
+                    lottery.numTicketsWithPoints +
+                    numberOfTickets <=
+                    lottery.maxTickets,
+                "Tickets sold out"
             );
         }
 
