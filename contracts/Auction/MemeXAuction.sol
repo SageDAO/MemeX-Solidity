@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IMemeXNFT.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract MemeXAuction is AccessControl {
+contract MemeXAuction is AccessControl, ReentrancyGuard {
     uint256 public auctionCount;
 
     mapping(uint256 => Auction) public auctions;
@@ -201,7 +202,11 @@ contract MemeXAuction is AccessControl {
         emit AuctionCancelled(_auctionId);
     }
 
-    function bid(uint256 _auctionId, uint256 _amount) public payable {
+    function bid(uint256 _auctionId, uint256 _amount)
+        public
+        payable
+        nonReentrant
+    {
         Auction storage auction = auctions[_auctionId];
         require(!auction.finished, "Auction is already finished");
         uint32 endTime = auction.endTime;
