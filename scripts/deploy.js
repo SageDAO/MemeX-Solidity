@@ -22,14 +22,14 @@ function shouldDeployContract(name) {
   switch (name) {
     case "Rewards":
       return true;
-    case "Randomness":
-      return false;
+    case "RNGTemp":
+      return true;
     case "MemeXLottery":
-      return false;
+      return true;
     case "MemeXNFT":
-      return false;
+      return true;
     case "MemeXAuction":
-      return false;
+      return true;
   }
   return false;
 }
