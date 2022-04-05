@@ -310,7 +310,7 @@ describe("Lottery Contract", function () {
         await expect(rewards.connect(owner).refundPoints(addr1.address, 1500000000)).to.be.revertedWith("Can't refund more points than used");
     });
 
-    it.only("Should refund points if lottery is cancelled", async function () {
+    it("Should refund points if lottery is cancelled", async function () {
         await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 1500000000, hexproof);
         await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
         expect(await rewards.availablePoints(addr1.address)).to.equal(0);
