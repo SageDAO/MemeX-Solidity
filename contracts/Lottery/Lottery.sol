@@ -569,6 +569,13 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint256 _prizeId,
         bytes32[] calldata _proof
     ) public {
+        ParticipantInfo storage participantInfo = participants[_lotteryId][
+            _winner
+        ];
+        require(
+            !participantInfo.refunded,
+            "Participant has requested a refund"
+        );
         require(
             _verify(
                 _leaf(_lotteryId, _winner, _prizeId),
