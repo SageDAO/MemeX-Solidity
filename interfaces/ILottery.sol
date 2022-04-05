@@ -17,6 +17,7 @@ interface ILottery {
         uint32 _startTime,
         uint32 _closeTime,
         IMemeXNFT _nftContract,
+        bool _isRefundable,
         uint256 _defaultPrizeId
     ) external;
 }

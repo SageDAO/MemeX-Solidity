@@ -39,7 +39,7 @@ describe("Lottery Contract", function () {
         await nft.createCollection(1, artist.address, 200, "ipfs://path/", artist.address);
         await nft.createCollection(2, artist.address, 200, "ipfs://path/collection2", artist.address)
         await lottery.createNewLottery(1, 1500000000, 0, block.timestamp, block.timestamp + 86400 * 3,
-            nft.address, 0);
+            nft.address, true, 0);
         lottery.addPrizes(1, [1, 2], [1, 100]);
 
         abiCoder = ethers.utils.defaultAbiCoder;
@@ -86,7 +86,7 @@ describe("Lottery Contract", function () {
 
     it("Should allow user to buy tickets with coins", async function () {
         await lottery.createNewLottery(1, 0, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
-            nft.address, 0);
+            nft.address, true, 0);
         await lottery.connect(addr2).buyTickets(1, 1, false,
             { value: ethers.utils.parseEther("1") });
         expect(await lottery.getLotteryTicketCount(1)).to.equal(1);
@@ -94,7 +94,7 @@ describe("Lottery Contract", function () {
 
     it("Should add 100 prizes", async function () {
         await lottery.createNewLottery(1, 0, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
-            nft.address, 0);
+            nft.address, true, 0);
         prizes = Array(100).fill().map((_, idx) => 10 + idx);
         amounts = Array(100).fill(1);
         await lottery.addPrizes(1, prizes, amounts);
@@ -160,13 +160,13 @@ describe("Lottery Contract", function () {
     describe("FTM sales", () => {
         beforeEach(async () => {
             await lottery.createNewLottery(2, 1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
-                nft.address, 0);
+                nft.address, true, 0);
             await lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 15000000000, hexproofB);
             await lottery.connect(addr2).buyTickets(2, 2, false,
                 { value: ethers.utils.parseEther("2") });
         });
 
-        it("Should allow user to boost", async function () {
+        it("Should allow user to buy tickets with FTM", async function () {
             expect(await lottery.getLotteryTicketCount(2)).to.equal(3);
         });
 
@@ -182,6 +182,23 @@ describe("Lottery Contract", function () {
             await expect(lottery.withdraw(2, addr2.address, ethers.utils.parseEther("1"))).to.be.revertedWith("Not enough funds");
         });
 
+        it("Should allow refunds on a refundable lottery", async function () {
+            await lottery.updateLottery(2, 1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
+                nft.address, 0, 0, 3); // "force" a lottery completion
+            expect(await lottery.connect(addr2).askForRefund(2)).to.have.emit(lottery, "Refunded");
+        });
+
+        it("Should revert if asking for a refund before the lottery ends", async function () {
+            await expect(lottery.connect(addr2).askForRefund(2)).to.be.revertedWith("Can't ask for a refund on this lottery");
+        });
+
+        it("Should revert if asking for a refund twice", async function () {
+            await lottery.updateLottery(2, 1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
+                nft.address, 0, 0, 3); // "force" a lottery completion
+            expect(await lottery.connect(addr2).askForRefund(2)).to.have.emit(lottery, "Refunded");
+            await expect(lottery.connect(addr2).askForRefund(2)).to.be.revertedWith("Participant has no refundable tickets");
+        });
+
     });
 
     it("Should not allow user to buy ticket when lottery is not open", async function () {
@@ -192,7 +209,7 @@ describe("Lottery Contract", function () {
 
     it("Should not allow to boost without sending funds", async function () {
         await lottery.createNewLottery(2, 1500000000, ethers.utils.parseEther("1"), block.timestamp, block.timestamp + 86400 * 3,
-            nft.address, 0);
+            nft.address, true, 0);
         await lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 15000000000, hexproofB);
         await expect(lottery.connect(addr2).buyTickets(2, 1, false,
             { value: ethers.utils.parseEther("0") })).to.be.revertedWith("Didn't transfer enough funds to buy tickets");
@@ -212,7 +229,7 @@ describe("Lottery Contract", function () {
         const block = await ethers.provider.getBlock(blockNum);
         // create a second lottery
         await lottery.createNewLottery(2, 1500000000, 0, block.timestamp, block.timestamp + 86400 * 3,
-            nft.address, 0);
+            nft.address, true, 0);
         lottery.addPrizes(2, [3, 4], [1, 1]);
         await lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 15000000000, hexproofB);
         await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
@@ -271,14 +288,14 @@ describe("Lottery Contract", function () {
     });
 
     it("Should not call createNewLottery if not admin", async function () {
-        await expect(lottery.connect(addr1).createNewLottery(1, 1, 1, 1, 1, nft.address, 0)).to.be.revertedWith("Admin calls only");
+        await expect(lottery.connect(addr1).createNewLottery(1, 1, 1, 1, 1, nft.address, true, 0)).to.be.revertedWith("Admin calls only");
     });
 
     it("Should not allow to boost if boostCost = 0", async function () {
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
         await lottery.createNewLottery(1, 1500000000, 0, block.timestamp, block.timestamp + 86400 * 3,
-            nft.address, 0);
+            nft.address, true, 0);
         await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
         await expect(lottery.connect(addr2).buyTickets(1, 1, false,
             { value: ethers.utils.parseEther("1") })).to.be.revertedWith("Can't buy tickets with coins");
@@ -293,11 +310,13 @@ describe("Lottery Contract", function () {
         await expect(rewards.connect(owner).refundPoints(addr1.address, 1500000000)).to.be.revertedWith("Can't refund more points than used");
     });
 
-    it("Should refund points if lottery is cancelled", async function () {
+    it.only("Should refund points if lottery is cancelled", async function () {
         await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 1500000000, hexproof);
         await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 15000000000, hexproofB);
         expect(await rewards.availablePoints(addr1.address)).to.equal(0);
         await lottery.cancelLottery(1);
+        await lottery.connect(addr1).askForRefund(1);
+        await lottery.connect(addr2).askForRefund(1);
         expect(await rewards.availablePoints(addr1.address)).to.equal(1500000000);
         expect(await rewards.availablePoints(addr2.address)).to.equal(15000000000);
     });
@@ -341,6 +360,15 @@ describe("Lottery Contract", function () {
         it("Should throw trying to claim twice", async function () {
             await lottery.connect(addr1).claimPrize(1, addr1.address, 1, hexproof);
             await expect(lottery.connect(addr1).claimPrize(1, addr1.address, 1, hexproof)).to.be.revertedWith("Participant already claimed prize");
+        });
+
+        it("Should revert if asking a refund after claiming a prize", async function () {
+            await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
+            await ethers.provider.send("evm_mine", []);
+            await lottery.requestRandomNumber(1);
+            expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
+            await lottery.connect(addr1).claimPrize(1, addr1.address, 1, hexproof);
+            await expect(lottery.connect(addr1).askForRefund(1)).to.be.revertedWith("Can't refund after claiming");
         });
     });
 

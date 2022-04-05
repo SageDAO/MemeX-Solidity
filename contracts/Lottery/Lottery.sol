@@ -47,6 +47,8 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     struct ParticipantInfo {
         uint16 ticketsFromCoins;
         uint16 ticketsFromPoints;
+        bool refunded;
+        bool claimedPrize;
     }
 
     //loteryId => randomNumber received from RNG
@@ -75,6 +77,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint16 numTicketsWithCoins; // amount of tickets sold with coins
         Status status; // Status for lotto
         IMemeXNFT nftContract; // reference to the NFT Contract
+        bool isRefundable; // if true, users who don't win can withdraw their FTM back
         uint256 lotteryID; // ID for lotto
         uint256 ticketCostPoints; // Cost per ticket in points
         uint256 ticketCostCoins; // Cost per ticket in FTM
@@ -103,6 +106,11 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint256 indexed lotteryId,
         address indexed participantAddress,
         uint256 indexed prizeId
+    );
+    event Refunded(
+        uint256 indexed lotteryId,
+        address indexed participantAddress,
+        uint256 refundAmount
     );
 
     /**
@@ -325,6 +333,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint32 _startTime,
         uint32 _closeTime,
         IMemeXNFT _nftContract,
+        bool _isRefundable,
         uint256 _defaultPrizeId
     ) public onlyAdmin {
         require(_closeTime > _startTime, "Close time must be after start time");
@@ -346,6 +355,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             0,
             Status.Created,
             _nftContract,
+            _isRefundable,
             _collectionId,
             _costPerTicketPinas,
             _costPerTicketCoins,
@@ -429,11 +439,8 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             lottery.status != Status.Completed,
             "Lottery already completed"
         );
+        // set status to canceled, allowing users to ask for a refund
         lottery.status = Status.Canceled;
-        address[] memory tickets = lotteryTickets[_lotteryId];
-        for (uint256 i; i < tickets.length; ++i) {
-            rewardsContract.refundPoints(tickets[i], lottery.ticketCostPoints);
-        }
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
@@ -457,7 +464,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     }
 
     /**
-     * @notice Function called by users to buy lottery tickets using PINA points
+     * @notice Function called by users to buy lottery tickets using PINA points or FTM
      * @param _lotteryId ID of the lottery to buy tickets for
      * @param numberOfTickets Number of tickets to buy
      */
@@ -575,6 +582,8 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             "Participant already claimed prize"
         );
 
+        participants[_lotteryId][_winner].claimedPrize = true;
+
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
         claimedPrizes[_winner][_prizeId] = true;
@@ -596,6 +605,48 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         bytes32[] memory _proof
     ) internal pure returns (bool) {
         return MerkleProof.verify(_proof, _root, _leafHash);
+    }
+
+    function askForRefund(uint256 _lotteryId) public {
+        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+
+        // get the ParticipantInfo
+        ParticipantInfo storage participantInfo = participants[_lotteryId][
+            msg.sender
+        ];
+
+        if (lottery.status == Status.Completed) {
+            // check if the participant has any refundable tickets
+            require(
+                participantInfo.ticketsFromCoins > 0 &&
+                    lottery.isRefundable &&
+                    !participantInfo.refunded,
+                "Participant has no refundable tickets"
+            );
+            // check if the user didn't win a prize
+            require(
+                !participants[_lotteryId][msg.sender].claimedPrize,
+                "Can't refund after claiming"
+            );
+        } else if (lottery.status == Status.Canceled) {
+            require(!participantInfo.refunded, "Already refunded");
+            // points are only refunded if the lottery is canceled
+            rewardsContract.refundPoints(msg.sender, lottery.ticketCostPoints);
+        } else {
+            revert("Can't ask for a refund on this lottery");
+        }
+
+        participantInfo.refunded = true;
+
+        // get the refund amount
+        uint256 refundAmount = participantInfo.ticketsFromCoins *
+            lottery.ticketCostCoins;
+
+        if (refundAmount > 0) {
+            (bool sent, ) = msg.sender.call{value: refundAmount}("");
+            require(sent, "Refund failed");
+            emit Refunded(_lotteryId, msg.sender, refundAmount);
+        }
     }
 
     /**
