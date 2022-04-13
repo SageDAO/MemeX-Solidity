@@ -4,15 +4,13 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../../interfaces/IRewards.sol";
+import "../../interfaces/IMemeXStorage.sol";
 
 contract Rewards is AccessControl, IRewards {
+    IMemeXStorage private memexStorage;
+
     bytes32 public constant MANAGE_POINTS_ROLE =
         keccak256("MANAGE_POINTS_ROLE");
-    bytes32 public pointsMerkleRoot;
-
-    mapping(address => uint256) public totalPointsUsed;
-
-    mapping(address => uint256) public totalPointsEarned;
 
     mapping(address => RewardInfo) public rewardInfo;
 
@@ -42,8 +40,9 @@ contract Rewards is AccessControl, IRewards {
         _;
     }
 
-    constructor(address _admin) {
+    constructor(address _admin, IMemeXStorage _memexStorage) {
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+        memexStorage = _memexStorage;
     }
 
     function getPointsUsedBatch(address[] calldata addresses)
@@ -53,7 +52,9 @@ contract Rewards is AccessControl, IRewards {
     {
         uint256[] memory result = new uint256[](addresses.length);
         for (uint256 i; i < addresses.length; ++i) {
-            result[i] = totalPointsUsed[addresses[i]];
+            result[i] = memexStorage.getUint(
+                keccak256(abi.encodePacked("totalPointsUsed", addresses[i]))
+            );
         }
         return result;
     }
@@ -94,8 +95,28 @@ contract Rewards is AccessControl, IRewards {
         rewardTokenAddresses.pop();
     }
 
-    function availablePoints(address user) public view returns (uint256) {
-        return totalPointsEarned[user] - totalPointsUsed[user];
+    function availablePoints(address _user) public view returns (uint256) {
+        return
+            memexStorage.getUint(
+                keccak256(abi.encodePacked("totalPointsEarned", _user))
+            ) -
+            memexStorage.getUint(
+                keccak256(abi.encodePacked("totalPointsUsed", _user))
+            );
+    }
+
+    function totalPointsUsed(address _user) public view returns (uint256) {
+        return
+            memexStorage.getUint(
+                keccak256(abi.encodePacked("totalPointsUsed", _user))
+            );
+    }
+
+    function totalPointsEarned(address _user) public view returns (uint256) {
+        return
+            memexStorage.getUint(
+                keccak256(abi.encodePacked("totalPointsEarned", _user))
+            );
     }
 
     function burnUserPoints(address _account, uint256 _amount)
@@ -106,11 +127,20 @@ contract Rewards is AccessControl, IRewards {
             hasRole(MANAGE_POINTS_ROLE, msg.sender),
             "Smart contract role required"
         );
-        uint256 available = totalPointsEarned[_account] -
-            totalPointsUsed[_account];
+
+        uint256 available = memexStorage.getUint(
+            keccak256(abi.encodePacked("totalPointsEarned", _account))
+        ) -
+            memexStorage.getUint(
+                keccak256(abi.encodePacked("totalPointsUsed", _account))
+            );
         require(_amount > 0, "Can't use 0 points");
         require(_amount <= available, "Not enough points");
-        totalPointsUsed[_account] += _amount;
+        // set totalPointsUsed
+        memexStorage.addUint(
+            keccak256(abi.encodePacked("totalPointsUsed", _account)),
+            _amount
+        );
 
         emit PointsUsed(_account, _amount, available - _amount);
         return available - _amount;
@@ -122,13 +152,22 @@ contract Rewards is AccessControl, IRewards {
             "No role to do refunds"
         );
         require(_points > 0, "Can't refund 0 points");
-        uint256 used = totalPointsUsed[_account];
+        uint256 used = memexStorage.getUint(
+            keccak256(abi.encodePacked("totalPointsUsed", _account))
+        );
         require(_points <= used, "Can't refund more points than used");
-        totalPointsUsed[_account] = used - _points;
+        memexStorage.setUint(
+            keccak256(abi.encodePacked("totalPointsUsed", _account)),
+            used - _points
+        );
     }
 
     function setPointsMerkleRoot(bytes32 _root) public onlyAdmin {
-        pointsMerkleRoot = _root;
+        memexStorage.setBytes32(keccak256("pointsRoot"), _root);
+    }
+
+    function getPointsMerkleRoot() public view returns (bytes32) {
+        return memexStorage.getBytes32(keccak256("pointsRoot"));
     }
 
     function claimPointsWithProof(
@@ -137,13 +176,19 @@ contract Rewards is AccessControl, IRewards {
         bytes32[] calldata _proof
     ) public returns (uint256) {
         require(
-            _verify(_leaf(_address, _points), pointsMerkleRoot, _proof),
+            _verify(_leaf(_address, _points), getPointsMerkleRoot(), _proof),
             "Invalid proof"
         );
-        uint256 newPoints = _points - totalPointsEarned[_address];
+        uint256 newPoints = _points -
+            memexStorage.getUint(
+                keccak256(abi.encodePacked("totalPointsEarned", _address))
+            );
         require(newPoints > 0, "Participant already claimed all points");
 
-        totalPointsEarned[_address] = _points;
+        memexStorage.setUint(
+            keccak256(abi.encodePacked("totalPointsEarned", _address)),
+            _points
+        );
         emit PointsEarned(_address, newPoints);
         return newPoints;
     }

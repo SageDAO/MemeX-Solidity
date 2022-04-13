@@ -9,8 +9,10 @@ const MANAGE_POINTS_ROLE = keccak256("MANAGE_POINTS_ROLE");
 describe("Rewards Contract", function () {
     beforeEach(async () => {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
+        MemeXStorage = await ethers.getContractFactory("MemeXStorage");
+        memexStorage = await MemeXStorage.deploy();
         Rewards = await ethers.getContractFactory('Rewards');
-        rewards = await Rewards.deploy(owner.address);
+        rewards = await Rewards.deploy(owner.address, memexStorage.address);
         // addr2 will simulate the lottery contract
         await rewards.grantRole(MANAGE_POINTS_ROLE, addr2.address);
     });
