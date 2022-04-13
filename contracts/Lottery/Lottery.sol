@@ -12,8 +12,6 @@ import "../../interfaces/ILottery.sol";
 import "../../interfaces/IMemeXWhitelist.sol";
 
 contract MemeXLottery is AccessControl, ILottery, Initializable {
-    uint256 public maxTicketsPerParticipant;
-
     bytes32 internal requestId_;
 
     // Address of the randomness generator
@@ -73,6 +71,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint32 closeTime; // Timestamp where ticket sales end
         uint32 participantsCount; // number of participants
         uint32 maxTickets; // max number of tickets for the lottery
+        uint32 maxTicketsPerUser; // max number of tickets per user
         uint16 numTicketsWithPoints; // amount of tickets sold with points
         uint16 numTicketsWithCoins; // amount of tickets sold with coins
         Status status; // Status for lotto
@@ -157,11 +156,11 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         lotteryHistory[_lotteryId].maxTickets = _maxTickets;
     }
 
-    function setMaxTicketsPerParticipant(uint256 _maxTicketsPerParticipant)
+    function setMaxTicketsPerUser(uint256 _lotteryId, uint32 _maxTicketsPerUser)
         public
         onlyAdmin
     {
-        maxTicketsPerParticipant = _maxTicketsPerParticipant;
+        lotteryHistory[_lotteryId].maxTicketsPerUser = _maxTicketsPerUser;
     }
 
     function getParticipantHistory(address _participant)
@@ -353,6 +352,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             0,
             0,
             0,
+            0,
             Status.Created,
             _nftContract,
             _isRefundable,
@@ -499,9 +499,9 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         ];
         uint256 numTicketsBought = participantInfo.ticketsFromPoints +
             participantInfo.ticketsFromCoins;
-        if (maxTicketsPerParticipant > 0) {
+        if (lottery.maxTicketsPerUser > 0) {
             require(
-                numTicketsBought + numberOfTickets <= maxTicketsPerParticipant,
+                numTicketsBought + numberOfTickets <= lottery.maxTicketsPerUser,
                 "Can't buy this amount of tickets"
             );
         }
