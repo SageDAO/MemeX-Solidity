@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IMemeXStorage.sol";
 
-contract Rewards is AccessControl, IRewards {
+contract MemeXRewards is AccessControl, IMemeXRewards {
     IMemeXStorage private memexStorage;
 
     bytes32 public constant MANAGE_POINTS_ROLE =

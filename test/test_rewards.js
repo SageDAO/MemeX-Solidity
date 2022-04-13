@@ -11,7 +11,7 @@ describe("Rewards Contract", function () {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
         MemeXStorage = await ethers.getContractFactory("MemeXStorage");
         memexStorage = await MemeXStorage.deploy();
-        Rewards = await ethers.getContractFactory('Rewards');
+        Rewards = await ethers.getContractFactory('MemeXRewards');
         rewards = await Rewards.deploy(owner.address, memexStorage.address);
         // addr2 will simulate the lottery contract
         await rewards.grantRole(MANAGE_POINTS_ROLE, addr2.address);

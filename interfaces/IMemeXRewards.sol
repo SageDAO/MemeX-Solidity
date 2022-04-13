@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface IRewards {
+interface IMemeXRewards {
     /**
      * Pina points earned by the player.
      */
