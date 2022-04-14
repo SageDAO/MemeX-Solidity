@@ -6,6 +6,7 @@ const keccak256 = require('keccak256');
 const MANAGE_POINTS_ROLE = keccak256("MANAGE_POINTS_ROLE");
 const MINTER_ROLE = keccak256("MINTER_ROLE");
 
+const ONE_ETH = ethers.utils.parseEther("1");
 const TWO_ETH = ethers.utils.parseEther("2");
 const THREE_ETH = ethers.utils.parseEther("3");
 const FOUR_ETH = ethers.utils.parseEther("4");
@@ -254,7 +255,7 @@ describe("Lottery Contract", function () {
     });
 
     it("Should not call withdraw if not admin", async function () {
-        await expect(lottery.connect(addr1).withdraw(1, owner.address, 1)).to.be.revertedWith("Admin calls only");
+        await expect(lottery.connect(addr1).withdraw(owner.address, 1)).to.be.revertedWith("Admin calls only");
     });
 
     it("Should not call setRewardsContract if not admin", async function () {
@@ -275,7 +276,8 @@ describe("Lottery Contract", function () {
     });
 
     it("Should not call createNewLottery if not admin", async function () {
-        await expect(lottery.connect(addr1).createNewLottery(1, 1, 1, 1, 1, nft.address, true, 0)).to.be.revertedWith("Admin calls only");
+        await expect(lottery.connect(addr1).createNewLottery(1, 5, ethers.utils.parseEther("1"), 10, TWO_ETH, THREE_ETH, block.timestamp, block.timestamp + 86400 * 3,
+            nft.address, true, 0)).to.be.revertedWith("Admin calls only");
     });
 
     it("Should allow refund points manually", async function () {
@@ -323,26 +325,26 @@ describe("Lottery Contract", function () {
 
         it("Should claim prize with a merkle proof", async function () {
             await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 1, { value: TWO_ETH });
-            await lottery.connect(addr1).claimPrize(1, addr1.address, 1, prizeProofA);
+            await lottery.connect(addr1).claimPrize(1, addr1.address, 1, TWO_ETH, prizeProofA);
             expect(await nft.balanceOf(addr1.address, 1)).to.equal(1);
         });
 
         it("Should allow to claim more than one prize", async function () {
             await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 1, { value: TWO_ETH });
-            await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 1500, hexproofB, 1, { value: TWO_ETH });
+            await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 1, { value: TWO_ETH });
             expect(await lottery.prizeClaimed(1, addr1.address)).to.equal(false);
-            await lottery.connect(addr1).claimPrize(1, addr1.address, 1, prizeProofA);
+            await lottery.connect(addr1).claimPrize(1, addr1.address, 1, TWO_ETH, prizeProofA);
             expect(await lottery.prizeClaimed(1, addr1.address)).to.equal(true);
 
             expect(await lottery.prizeClaimed(2, addr1.address)).to.equal(false);
-            await lottery.connect(addr1).claimPrize(1, addr1.address, 2, prizeProofE);
+            await lottery.connect(addr1).claimPrize(1, addr1.address, 2, TWO_ETH, prizeProofE);
             expect(await lottery.prizeClaimed(2, addr1.address)).to.equal(true);
         });
 
         it("Should throw trying to claim twice", async function () {
             await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 1, { value: TWO_ETH });
-            await lottery.connect(addr1).claimPrize(1, addr1.address, 1, prizeProofA);
-            await expect(lottery.connect(addr1).claimPrize(1, addr1.address, 1, prizeProofA)).to.be.revertedWith("Participant already claimed prize");
+            await lottery.connect(addr1).claimPrize(1, addr1.address, 1, TWO_ETH, prizeProofA);
+            await expect(lottery.connect(addr1).claimPrize(1, addr1.address, 1, TWO_ETH, prizeProofA)).to.be.revertedWith("Participant already claimed prize");
         });
 
         it("Should revert if trying to claim a prize after asking for a refund", async function () {
@@ -355,7 +357,7 @@ describe("Lottery Contract", function () {
             await lottery.requestRandomNumber(1);
             expect(await mockRng.fulfillRequest(1, 1)).to.have.emit(lottery, "ResponseReceived");
             await lottery.connect(addr1).askForRefund(1);
-            await expect(lottery.connect(addr1).claimPrize(1, addr1.address, 1, prizeProofA)).to.be.revertedWith("Participant has requested a refund");
+            await expect(lottery.connect(addr1).claimPrize(1, addr1.address, 1, TWO_ETH, prizeProofA)).to.be.revertedWith("Participant has requested a refund");
         });
 
         it("Should revert if asking for a refund after claiming a prize", async function () {
@@ -381,19 +383,19 @@ describe("Lottery Contract", function () {
 
         it("Should revert if not whitelisted", async () => {
             await expect(lottery.connect(addr1).claimPointsAndBuyTickets(1, 1,
-                1500000000, hexproof)).to.be.revertedWith("Not whitelisted");
+                150, hexproof, 1, { value: TWO_ETH })).to.be.revertedWith("Not whitelisted");
         });
 
         it("Should revert if not enough balance on whitelisted tokens", async () => {
             await whitelist.addAddress(mockERC20.address, 1001, 1);
             await expect(lottery.connect(addr1).claimPointsAndBuyTickets(1, 1,
-                1500000000, hexproof)).to.be.revertedWith("Not whitelisted");
+                150, hexproof, 1, { value: TWO_ETH })).to.be.revertedWith("Not whitelisted");
         });
 
         it("Should allow purchase if whitelisted", async () => {
             await whitelist.addAddress(mockERC20.address, 1, 1);
             await expect(lottery.connect(addr1).claimPointsAndBuyTickets(1, 1,
-                1500000000, hexproof)).to.emit(lottery, "NewEntry");
+                150, hexproof, 1, { value: TWO_ETH })).to.emit(lottery, "NewEntry");
         });
     });
 });

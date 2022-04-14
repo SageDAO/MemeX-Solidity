@@ -608,6 +608,10 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             _winner
         ];
         require(
+            claimedPrizes[_winner][_prizeId] == false,
+            "Participant already claimed prize"
+        );
+        require(
             participantInfo.refundableValue >= _ticketValue,
             "Participant has requested a refund"
         );
@@ -620,10 +624,6 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
                 _proof
             ),
             "Invalid merkle proof"
-        );
-        require(
-            claimedPrizes[_winner][_prizeId] == false,
-            "Participant already claimed prize"
         );
 
         participants[_lotteryId][_winner].claimedPrize = true;
