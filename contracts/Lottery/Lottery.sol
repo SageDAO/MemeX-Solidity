@@ -601,15 +601,18 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint256 _lotteryId,
         address _winner,
         uint256 _prizeId,
+        uint256 _ticketValue,
         bytes32[] calldata _proof
     ) public {
         ParticipantInfo storage participantInfo = participants[_lotteryId][
             _winner
         ];
         require(
-            participantInfo.refundableValue > 0,
+            participantInfo.refundableValue >= _ticketValue,
             "Participant has requested a refund"
         );
+        participantInfo.refundableValue -= _ticketValue;
+        // TODO: include ticketValue as part of the leaf to be verified
         require(
             _verify(
                 _leaf(_lotteryId, _winner, _prizeId),
