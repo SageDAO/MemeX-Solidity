@@ -12,6 +12,7 @@ import "../../interfaces/ILottery.sol";
 import "../../interfaces/IMemeXWhitelist.sol";
 
 contract MemeXLottery is AccessControl, ILottery, Initializable {
+    IBalanceOf public currentMembershipAddress;
     bytes32 internal requestId_;
 
     // Address of the randomness generator
@@ -43,10 +44,12 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     mapping(uint256 => mapping(address => ParticipantInfo)) public participants;
 
     struct ParticipantInfo {
-        uint16 ticketsFromCoins;
-        uint16 ticketsFromPoints;
-        bool refunded;
+        uint16 ticketsAsVIP;
+        uint16 ticketsAsMember;
+        uint16 ticketsAsNonMember;
         bool claimedPrize;
+        uint256 refundablePoints;
+        uint256 refundableValue;
     }
 
     //loteryId => randomNumber received from RNG
@@ -65,6 +68,12 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         Completed // The lottery has been completed and the numbers drawn
     }
 
+    enum PriceTier {
+        VIP,
+        Member,
+        NonMember
+    }
+
     // Information about lotteries
     struct LotteryInfo {
         uint32 startTime; // Timestamp where users can start buying tickets
@@ -72,14 +81,16 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint32 participantsCount; // number of participants
         uint32 maxTickets; // max number of tickets for the lottery
         uint32 maxTicketsPerUser; // max number of tickets per user
-        uint16 numTicketsWithPoints; // amount of tickets sold with points
-        uint16 numTicketsWithCoins; // amount of tickets sold with coins
+        uint32 numTicketsSold; // number of tickets sold
         Status status; // Status for lotto
         IMemeXNFT nftContract; // reference to the NFT Contract
         bool isRefundable; // if true, users who don't win can withdraw their FTM back
         uint256 lotteryID; // ID for lotto
-        uint256 ticketCostPoints; // Cost per ticket in points
-        uint256 ticketCostCoins; // Cost per ticket in FTM
+        uint256 vipTicketCostPoints; // Cost per ticket in points for VIPs
+        uint256 vipTicketCostCoins; // Cost per ticket in FTM for VIPs
+        uint256 memberTicketCostPoints; // Cost per ticket in points for member users (who eaarned Pina points)
+        uint256 memberTicketCostCoins; // Cost per ticket in FTM for member users (who earned Pina points)
+        uint256 nonMemberTicketCostCoins; // Cost per ticket in FTM for regular users
         uint256 defaultPrizeId; // prize all participants win if no other prizes are given
     }
 
@@ -99,7 +110,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint256 indexed lotteryId,
         uint256 number,
         address indexed participantAddress,
-        bool withPoints
+        PriceTier tier
     );
     event PrizeClaimed(
         uint256 indexed lotteryId,
@@ -129,6 +140,13 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     {
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         rewardsContract = IRewards(_rewardsContract);
+    }
+
+    /**
+     * @notice Updates the address for the current year's membership contract
+     */
+    function setCurrentMembershipAddress(address _address) public onlyAdmin {
+        currentMembershipAddress = IBalanceOf(_address);
     }
 
     function setPrizeMerkleRoot(uint256 _lotteryId, bytes32 _root)
@@ -293,33 +311,39 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
 
     function updateLottery(
         uint256 lotteryId,
-        uint256 _costPerTicketPoints,
-        uint256 _costPerTicketCoins,
+        uint256 _vipTicketCostPoints,
+        uint256 _vipTicketCostCoins,
+        uint256 _memberTicketCostPoints,
+        uint256 _memberTicketCostCoins,
+        uint256 _nonMemberTicketCostCoins,
         uint32 _startTime,
         uint32 _closeTime,
         IMemeXNFT _nftContract,
         uint16 _maxTickets,
         uint256 _defaultPrizeId,
-        Status _status
+        Status _status,
+        bool _isRefundable
     ) public onlyAdmin {
         LotteryInfo storage lottery = lotteryHistory[lotteryId];
         require(lottery.startTime > 0, "Lottery does not exist");
         lottery.startTime = _startTime;
         lottery.closeTime = _closeTime;
-        lottery.ticketCostPoints = _costPerTicketPoints;
-        lottery.ticketCostCoins = _costPerTicketCoins;
+        lottery.vipTicketCostPoints = _vipTicketCostPoints;
+        lottery.vipTicketCostCoins = _vipTicketCostCoins;
+        lottery.memberTicketCostPoints = _memberTicketCostPoints;
+        lottery.memberTicketCostCoins = _memberTicketCostCoins;
+        lottery.nonMemberTicketCostCoins = _nonMemberTicketCostCoins;
         lottery.nftContract = _nftContract;
         lottery.maxTickets = _maxTickets;
         lottery.defaultPrizeId = _defaultPrizeId;
         lottery.status = _status;
+        lottery.isRefundable = _isRefundable;
         emit LotteryStatusChanged(lotteryId, _status);
     }
 
     /**
      * @notice Creates a new lottery.
      * @param _collectionId the NFT collection id
-     * @param _costPerTicketPinas cost in wei per ticket in points/tokens (token only when using ERC20 on the rewards contract)
-     * @param _costPerTicketCoins cost in wei per ticket in FTM
      * @param _startTime lottery start time
      * @param _closeTime lottery closing time
      * @param _nftContract reference to the NFT contract
@@ -327,8 +351,11 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
      */
     function createNewLottery(
         uint256 _collectionId,
-        uint256 _costPerTicketPinas,
-        uint256 _costPerTicketCoins,
+        uint256 _vipTicketCostPoints,
+        uint256 _vipTicketCostCoins,
+        uint256 _memberTicketCostPoints,
+        uint256 _memberTicketCostCoins,
+        uint256 _nonMemberTicketCostCoins,
         uint32 _startTime,
         uint32 _closeTime,
         IMemeXNFT _nftContract,
@@ -340,10 +367,6 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             _nftContract.collectionExists(_collectionId),
             "Collection does not exist"
         );
-        require(
-            _costPerTicketCoins > 0 || _costPerTicketPinas > 0,
-            "No cost per ticket set"
-        );
         lotteries.push(_collectionId);
         LotteryInfo memory newLottery = LotteryInfo(
             _startTime,
@@ -352,13 +375,15 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             0,
             0,
             0,
-            0,
             Status.Created,
             _nftContract,
             _isRefundable,
             _collectionId,
-            _costPerTicketPinas,
-            _costPerTicketCoins,
+            _vipTicketCostPoints,
+            _vipTicketCostCoins,
+            _memberTicketCostPoints,
+            _memberTicketCostCoins,
+            _nonMemberTicketCostCoins,
             _defaultPrizeId
         );
         lotteryHistory[_collectionId] = newLottery;
@@ -455,12 +480,13 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint256 _lotteryId,
         uint16 numberOfTickets,
         uint256 _points,
-        bytes32[] calldata _proof
+        bytes32[] calldata _proof,
+        PriceTier _tier
     ) public payable returns (uint256) {
         if (rewardsContract.totalPointsEarned(msg.sender) < _points) {
             rewardsContract.claimPointsWithProof(msg.sender, _points, _proof);
         }
-        return buyTickets(_lotteryId, numberOfTickets, true);
+        return buyTickets(_lotteryId, numberOfTickets, _tier);
     }
 
     /**
@@ -471,16 +497,16 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     function buyTickets(
         uint256 _lotteryId,
         uint16 numberOfTickets,
-        bool _usePoints
+        PriceTier _tier
     ) public payable returns (uint256) {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         uint256 remainingPoints;
+        uint256 totalCostInCoins;
+        uint256 totalCostInPoints;
+
         if (lottery.maxTickets != 0) {
             require(
-                lottery.numTicketsWithCoins +
-                    lottery.numTicketsWithPoints +
-                    numberOfTickets <=
-                    lottery.maxTickets,
+                lottery.numTicketsSold + numberOfTickets <= lottery.maxTickets,
                 "Tickets sold out"
             );
         }
@@ -497,8 +523,9 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         ParticipantInfo storage participantInfo = participants[_lotteryId][
             msg.sender
         ];
-        uint256 numTicketsBought = participantInfo.ticketsFromPoints +
-            participantInfo.ticketsFromCoins;
+        uint256 numTicketsBought = participantInfo.ticketsAsVIP +
+            participantInfo.ticketsAsMember +
+            participantInfo.ticketsAsNonMember;
         if (lottery.maxTicketsPerUser > 0) {
             require(
                 numTicketsBought + numberOfTickets <= lottery.maxTicketsPerUser,
@@ -510,36 +537,43 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
                 lottery.closeTime > block.timestamp,
             "Lottery is not open"
         );
-        if (_usePoints) {
-            uint256 totalCostInPoints = numberOfTickets *
-                lottery.ticketCostPoints;
-            require(totalCostInPoints > 0, "Can't buy tickets with points");
-            remainingPoints = rewardsContract.availablePoints(msg.sender);
+        if (_tier == PriceTier.VIP) {
             require(
-                remainingPoints >= totalCostInPoints,
-                "Not enough points to buy tickets"
+                currentMembershipAddress.balanceOf(msg.sender) > 0,
+                "Not a VIP"
             );
+            totalCostInCoins = numberOfTickets * lottery.vipTicketCostCoins;
+            totalCostInPoints = numberOfTickets * lottery.vipTicketCostPoints;
             remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
-            participantInfo.ticketsFromPoints += numberOfTickets;
-            lottery.numTicketsWithPoints += numberOfTickets;
+            participantInfo.ticketsAsVIP += numberOfTickets;
+            participantInfo.refundablePoints += totalCostInPoints;
+        } else if (_tier == PriceTier.Member) {
+            totalCostInCoins = numberOfTickets * lottery.memberTicketCostCoins;
+            totalCostInPoints =
+                numberOfTickets *
+                lottery.memberTicketCostPoints;
+            participantInfo.refundablePoints += totalCostInPoints;
+            remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
+            participantInfo.ticketsAsMember += numberOfTickets;
         } else {
-            uint256 totalCostInCoins = numberOfTickets *
-                lottery.ticketCostCoins;
-            require(totalCostInCoins > 0, "Can't buy tickets with coins");
-            require(
-                msg.value >= totalCostInCoins,
-                "Didn't transfer enough funds to buy tickets"
-            );
-            participantInfo.ticketsFromCoins += numberOfTickets;
-            lottery.numTicketsWithCoins += numberOfTickets;
+            totalCostInCoins =
+                numberOfTickets *
+                lottery.nonMemberTicketCostCoins;
+            participantInfo.ticketsAsNonMember += numberOfTickets;
         }
+        participantInfo.refundableValue += totalCostInCoins;
+        lottery.numTicketsSold += numberOfTickets;
+        require(
+            msg.value >= totalCostInCoins,
+            "Didn't transfer enough funds to buy tickets"
+        );
         if (numTicketsBought == 0) {
             participantHistory[msg.sender].push(_lotteryId);
             ++lottery.participantsCount;
             participants[_lotteryId][msg.sender] = participantInfo;
         }
         for (uint256 i; i < numberOfTickets; ++i) {
-            assignNewTicketToParticipant(_lotteryId, msg.sender, _usePoints);
+            assignNewTicketToParticipant(_lotteryId, msg.sender, _tier);
         }
         return remainingPoints;
     }
@@ -552,14 +586,14 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     function assignNewTicketToParticipant(
         uint256 _lotteryId,
         address _participantAddress,
-        bool _withPoints
+        PriceTier _tier
     ) private {
         lotteryTickets[_lotteryId].push(_participantAddress);
         emit NewEntry(
             _lotteryId,
             lotteryTickets[_lotteryId].length,
             _participantAddress,
-            _withPoints
+            _tier
         );
     }
 
@@ -573,7 +607,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             _winner
         ];
         require(
-            !participantInfo.refunded,
+            participantInfo.refundableValue > 0,
             "Participant has requested a refund"
         );
         require(
@@ -590,7 +624,6 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         );
 
         participants[_lotteryId][_winner].claimedPrize = true;
-
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
         claimedPrizes[_winner][_prizeId] = true;
@@ -625,57 +658,41 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         if (lottery.status == Status.Completed) {
             // check if the participant has any refundable tickets
             require(
-                participantInfo.ticketsFromCoins > 0 &&
-                    lottery.isRefundable &&
-                    !participantInfo.refunded,
+                lottery.isRefundable && participantInfo.refundableValue > 0,
                 "Participant has no refundable tickets"
             );
-            // check if the user didn't win a prize
-            require(
-                !participants[_lotteryId][msg.sender].claimedPrize,
-                "Can't refund after claiming"
-            );
         } else if (lottery.status == Status.Canceled) {
-            require(!participantInfo.refunded, "Already refunded");
+            require(participantInfo.refundableValue > 0, "Already refunded");
             // points are only refunded if the lottery is canceled
-            rewardsContract.refundPoints(msg.sender, lottery.ticketCostPoints);
+            rewardsContract.refundPoints(
+                msg.sender,
+                participantInfo.refundablePoints
+            );
         } else {
             revert("Can't ask for a refund on this lottery");
         }
 
-        participantInfo.refunded = true;
-
-        // get the refund amount
-        uint256 refundAmount = participantInfo.ticketsFromCoins *
-            lottery.ticketCostCoins;
-
-        if (refundAmount > 0) {
-            (bool sent, ) = msg.sender.call{value: refundAmount}("");
-            require(sent, "Refund failed");
-            emit Refunded(_lotteryId, msg.sender, refundAmount);
-        }
+        uint256 refundAmount = participantInfo.refundableValue;
+        participantInfo.refundableValue = 0;
+        (bool sent, ) = msg.sender.call{value: refundAmount}("");
+        require(sent, "Refund failed");
+        emit Refunded(_lotteryId, msg.sender, refundAmount);
     }
 
     /**
      * @notice Function called to withdraw funds (native tokens) from the contract.
-     * @param _lotteryId withdraw funds from this lottery
      * @param _to Recipient of the funds
      * @param _amount Amount to withdraw
      */
-    function withdraw(
-        uint256 _lotteryId,
-        address payable _to,
-        uint256 _amount
-    ) external onlyAdmin {
-        uint256 previousWithdrawals = withdrawals[_lotteryId];
-        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
-        withdrawals[_lotteryId] += _amount;
-        require(
-            _amount + previousWithdrawals <=
-                lottery.ticketCostCoins * lottery.numTicketsWithCoins,
-            "Not enough funds"
-        );
+    function withdraw(address payable _to, uint256 _amount) external onlyAdmin {
         (bool sent, ) = _to.call{value: _amount}("");
-        require(sent, "withdraw failed");
+        require(sent, "Withdrawal failed");
     }
+}
+
+interface IBalanceOf {
+    /**
+     * @dev Returns the number of tokens in ``owner``'s account.
+     */
+    function balanceOf(address owner) external view returns (uint256 balance);
 }
