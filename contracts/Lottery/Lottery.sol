@@ -13,6 +13,7 @@ import "../../interfaces/IMemeXWhitelist.sol";
 
 contract MemeXLottery is AccessControl, ILottery, Initializable {
     IBalanceOf public currentMembershipAddress;
+
     bytes32 internal requestId_;
 
     // Address of the randomness generator
@@ -44,19 +45,22 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     mapping(uint256 => mapping(address => ParticipantInfo)) public participants;
 
     struct ParticipantInfo {
-        uint16 ticketsAsVIP;
-        uint16 ticketsAsMember;
-        uint16 ticketsAsNonMember;
+        uint16 totalTicketsBought;
         bool claimedPrize;
         uint256 refundablePoints;
         uint256 refundableValue;
+    }
+
+    struct Ticket {
+        uint256 ticketValue;
+        address ticketOwner;
     }
 
     //loteryId => randomNumber received from RNG
     mapping(uint256 => uint256) public randomSeeds;
 
     //lotteryId => address array
-    mapping(uint256 => address[]) public lotteryTickets;
+    mapping(uint256 => Ticket[]) public lotteryTickets;
 
     //lotteryId => value already withdrawed from the lottery
     mapping(uint256 => uint256) public withdrawals;
@@ -128,6 +132,19 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
      */
     modifier onlyAdmin() {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
+        _;
+    }
+
+    modifier isWhitelisted(uint256 _lotteryId) {
+        if (whitelists[_lotteryId] != address(0)) {
+            require(
+                IMemeXWhitelist(whitelists[_lotteryId]).isWhitelisted(
+                    msg.sender,
+                    _lotteryId
+                ),
+                "Not whitelisted"
+            );
+        }
         _;
     }
 
@@ -436,7 +453,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     function getLotteryTickets(uint256 _lotteryId)
         public
         view
-        returns (address[] memory)
+        returns (Ticket[] memory)
     {
         return lotteryTickets[_lotteryId];
     }
@@ -478,7 +495,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
      */
     function claimPointsAndBuyTickets(
         uint256 _lotteryId,
-        uint16 numberOfTickets,
+        uint256 numberOfTickets,
         uint256 _points,
         bytes32[] calldata _proof,
         PriceTier _tier
@@ -492,43 +509,35 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     /**
      * @notice Function called by users to buy lottery tickets using PINA points or FTM
      * @param _lotteryId ID of the lottery to buy tickets for
-     * @param numberOfTickets Number of tickets to buy
+     * @param _numberOfTickets Number of tickets to buy
+     * @param _tier Price tier to buy tickets with
      */
     function buyTickets(
         uint256 _lotteryId,
-        uint16 numberOfTickets,
+        uint256 _numberOfTickets,
         PriceTier _tier
-    ) public payable returns (uint256) {
+    ) public payable isWhitelisted(_lotteryId) returns (uint256) {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         uint256 remainingPoints;
         uint256 totalCostInCoins;
         uint256 totalCostInPoints;
+        uint256 costPerTicketCoins;
 
         if (lottery.maxTickets != 0) {
             require(
-                lottery.numTicketsSold + numberOfTickets <= lottery.maxTickets,
+                lottery.numTicketsSold + _numberOfTickets <= lottery.maxTickets,
                 "Tickets sold out"
             );
         }
 
-        if (whitelists[_lotteryId] != address(0)) {
-            require(
-                IMemeXWhitelist(whitelists[_lotteryId]).isWhitelisted(
-                    msg.sender,
-                    _lotteryId
-                ),
-                "Not whitelisted"
-            );
-        }
         ParticipantInfo storage participantInfo = participants[_lotteryId][
             msg.sender
         ];
-        uint256 numTicketsBought = participantInfo.ticketsAsVIP +
-            participantInfo.ticketsAsMember +
-            participantInfo.ticketsAsNonMember;
+        uint256 numTicketsBought = participantInfo.totalTicketsBought;
         if (lottery.maxTicketsPerUser > 0) {
             require(
-                numTicketsBought + numberOfTickets <= lottery.maxTicketsPerUser,
+                numTicketsBought + _numberOfTickets <=
+                    lottery.maxTicketsPerUser,
                 "Can't buy this amount of tickets"
             );
         }
@@ -542,27 +551,23 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
                 currentMembershipAddress.balanceOf(msg.sender) > 0,
                 "Not a VIP"
             );
-            totalCostInCoins = numberOfTickets * lottery.vipTicketCostCoins;
-            totalCostInPoints = numberOfTickets * lottery.vipTicketCostPoints;
+            costPerTicketCoins = lottery.vipTicketCostCoins;
+            totalCostInPoints = _numberOfTickets * lottery.vipTicketCostPoints;
             remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
-            participantInfo.ticketsAsVIP += numberOfTickets;
             participantInfo.refundablePoints += totalCostInPoints;
         } else if (_tier == PriceTier.Member) {
-            totalCostInCoins = numberOfTickets * lottery.memberTicketCostCoins;
+            costPerTicketCoins = lottery.memberTicketCostCoins;
             totalCostInPoints =
-                numberOfTickets *
+                _numberOfTickets *
                 lottery.memberTicketCostPoints;
             participantInfo.refundablePoints += totalCostInPoints;
             remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
-            participantInfo.ticketsAsMember += numberOfTickets;
         } else {
-            totalCostInCoins =
-                numberOfTickets *
-                lottery.nonMemberTicketCostCoins;
-            participantInfo.ticketsAsNonMember += numberOfTickets;
+            costPerTicketCoins = lottery.nonMemberTicketCostCoins;
         }
+        totalCostInCoins = _numberOfTickets * costPerTicketCoins;
         participantInfo.refundableValue += totalCostInCoins;
-        lottery.numTicketsSold += numberOfTickets;
+        lottery.numTicketsSold += uint32(_numberOfTickets);
         require(
             msg.value >= totalCostInCoins,
             "Didn't transfer enough funds to buy tickets"
@@ -572,8 +577,14 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             ++lottery.participantsCount;
             participants[_lotteryId][msg.sender] = participantInfo;
         }
-        for (uint256 i; i < numberOfTickets; ++i) {
-            assignNewTicketToParticipant(_lotteryId, msg.sender, _tier);
+        participantInfo.totalTicketsBought += uint16(_numberOfTickets);
+        for (uint256 i; i < _numberOfTickets; ++i) {
+            assignNewTicketToParticipant(
+                _lotteryId,
+                msg.sender,
+                costPerTicketCoins,
+                _tier
+            );
         }
         return remainingPoints;
     }
@@ -586,9 +597,11 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     function assignNewTicketToParticipant(
         uint256 _lotteryId,
         address _participantAddress,
+        uint256 _ticketValue,
         PriceTier _tier
     ) private {
-        lotteryTickets[_lotteryId].push(_participantAddress);
+        Ticket memory ticket = Ticket(_ticketValue, _participantAddress);
+        lotteryTickets[_lotteryId].push(ticket);
         emit NewEntry(
             _lotteryId,
             lotteryTickets[_lotteryId].length,
