@@ -52,8 +52,8 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     }
 
     struct Ticket {
-        uint256 ticketValue;
-        address ticketOwner;
+        uint256 ticketCostInCoins;
+        address owner;
     }
 
     //loteryId => randomNumber received from RNG
@@ -110,9 +110,9 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint256 lotteryId,
         uint256 priceOfTicket
     );
-    event NewEntry(
+    event TicketSold(
         uint256 indexed lotteryId,
-        uint256 number,
+        uint256 ticketNumber,
         address indexed participantAddress,
         PriceTier tier
     );
@@ -128,15 +128,20 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     );
 
     /**
-     * @dev Throws if not called by an admin account.
+     * @notice Throws if not called by an admin account.
      */
     modifier onlyAdmin() {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
         _;
     }
 
+    /**
+     * @notice Throws an error if the lottery has a whitelist and the msg.sender is not whitelisted.
+     */
     modifier isWhitelisted(uint256 _lotteryId) {
+        // checks if the lottery has a whitelist
         if (whitelists[_lotteryId] != address(0)) {
+            // if lottery has a whitelist, requires msg.sender to be whitelisted, else throws
             require(
                 IMemeXWhitelist(whitelists[_lotteryId]).isWhitelisted(
                     msg.sender,
@@ -509,12 +514,12 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     /**
      * @notice Function called by users to buy lottery tickets using PINA points or FTM
      * @param _lotteryId ID of the lottery to buy tickets for
-     * @param _numberOfTickets Number of tickets to buy
+     * @param _numberOfTicketsToBuy Number of tickets to buy
      * @param _tier Price tier to buy tickets with
      */
     function buyTickets(
         uint256 _lotteryId,
-        uint256 _numberOfTickets,
+        uint256 _numberOfTicketsToBuy,
         PriceTier _tier
     ) public payable isWhitelisted(_lotteryId) returns (uint256) {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
@@ -525,7 +530,8 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
 
         if (lottery.maxTickets != 0) {
             require(
-                lottery.numTicketsSold + _numberOfTickets <= lottery.maxTickets,
+                lottery.numTicketsSold + _numberOfTicketsToBuy <=
+                    lottery.maxTickets,
                 "Tickets sold out"
             );
         }
@@ -536,7 +542,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint256 numTicketsBought = participantInfo.totalTicketsBought;
         if (lottery.maxTicketsPerUser > 0) {
             require(
-                numTicketsBought + _numberOfTickets <=
+                numTicketsBought + _numberOfTicketsToBuy <=
                     lottery.maxTicketsPerUser,
                 "Can't buy this amount of tickets"
             );
@@ -552,22 +558,24 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
                 "Not a VIP"
             );
             costPerTicketCoins = lottery.vipTicketCostCoins;
-            totalCostInPoints = _numberOfTickets * lottery.vipTicketCostPoints;
+            totalCostInPoints =
+                _numberOfTicketsToBuy *
+                lottery.vipTicketCostPoints;
             remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
             participantInfo.refundablePoints += totalCostInPoints;
         } else if (_tier == PriceTier.Member) {
             costPerTicketCoins = lottery.memberTicketCostCoins;
             totalCostInPoints =
-                _numberOfTickets *
+                _numberOfTicketsToBuy *
                 lottery.memberTicketCostPoints;
             participantInfo.refundablePoints += totalCostInPoints;
             remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
         } else {
             costPerTicketCoins = lottery.nonMemberTicketCostCoins;
         }
-        totalCostInCoins = _numberOfTickets * costPerTicketCoins;
+        totalCostInCoins = _numberOfTicketsToBuy * costPerTicketCoins;
         participantInfo.refundableValue += totalCostInCoins;
-        lottery.numTicketsSold += uint32(_numberOfTickets);
+        lottery.numTicketsSold += uint32(_numberOfTicketsToBuy);
         require(
             msg.value >= totalCostInCoins,
             "Didn't transfer enough funds to buy tickets"
@@ -577,8 +585,8 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             ++lottery.participantsCount;
             participants[_lotteryId][msg.sender] = participantInfo;
         }
-        participantInfo.totalTicketsBought += uint16(_numberOfTickets);
-        for (uint256 i; i < _numberOfTickets; ++i) {
+        participantInfo.totalTicketsBought += uint16(_numberOfTicketsToBuy);
+        for (uint256 i; i < _numberOfTicketsToBuy; ++i) {
             assignNewTicketToParticipant(
                 _lotteryId,
                 msg.sender,
@@ -602,7 +610,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     ) private {
         Ticket memory ticket = Ticket(_ticketValue, _participantAddress);
         lotteryTickets[_lotteryId].push(ticket);
-        emit NewEntry(
+        emit TicketSold(
             _lotteryId,
             lotteryTickets[_lotteryId].length,
             _participantAddress,
@@ -614,25 +622,29 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint256 _lotteryId,
         address _winner,
         uint256 _prizeId,
-        uint256 _ticketValue,
+        uint256 _ticketNumber,
         bytes32[] calldata _proof
     ) public {
         ParticipantInfo storage participantInfo = participants[_lotteryId][
             _winner
         ];
+
+        uint256 ticketValue = lotteryTickets[_lotteryId][_ticketNumber]
+            .ticketCostInCoins;
+
         require(
             claimedPrizes[_winner][_prizeId] == false,
             "Participant already claimed prize"
         );
         require(
-            participantInfo.refundableValue >= _ticketValue,
+            participantInfo.refundableValue >= ticketValue,
             "Participant has requested a refund"
         );
-        participantInfo.refundableValue -= _ticketValue;
-        // TODO: include ticketValue as part of the leaf to be verified
+        participantInfo.refundableValue -= ticketValue;
+
         require(
             _verify(
-                _leaf(_lotteryId, _winner, _prizeId),
+                _leaf(_lotteryId, _winner, _prizeId, _ticketNumber),
                 prizeMerkleRoots[_lotteryId],
                 _proof
             ),
@@ -650,9 +662,11 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     function _leaf(
         uint256 _lotteryId,
         address _winner,
-        uint256 _prizeId
+        uint256 _prizeId,
+        uint256 _ticketNumber
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(_lotteryId, _winner, _prizeId));
+        return
+            keccak256(abi.encode(_lotteryId, _winner, _prizeId, _ticketNumber));
     }
 
     function _verify(
