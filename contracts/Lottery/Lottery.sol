@@ -494,13 +494,13 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     /**
      * @notice Function called by users to claim points and buy lottery tickets on same tx
      * @param _lotteryId ID of the lottery to buy tickets for
-     * @param numberOfTickets Number of tickets to buy
+     * @param _numberOfTicketsToBuy Number of tickets to buy
      * @param _points Total user claimable points
      * @param _proof Proof of the user's claimable points
      */
     function claimPointsAndBuyTickets(
         uint256 _lotteryId,
-        uint256 numberOfTickets,
+        uint256 _numberOfTicketsToBuy,
         uint256 _points,
         bytes32[] calldata _proof,
         PriceTier _tier
@@ -508,7 +508,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         if (rewardsContract.totalPointsEarned(msg.sender) < _points) {
             rewardsContract.claimPointsWithProof(msg.sender, _points, _proof);
         }
-        return buyTickets(_lotteryId, numberOfTickets, _tier);
+        return buyTickets(_lotteryId, _numberOfTicketsToBuy, _tier);
     }
 
     /**
