@@ -303,18 +303,17 @@ describe("Lottery Contract", function () {
         beforeEach(async () => {
             abiCoder = ethers.utils.defaultAbiCoder;
             leafA = abiCoder.encode(["uint256", "address", "uint256", "uint256"], [1, addr1.address, 1, 0]);
-            leafB = abiCoder.encode(["uint256", "address", "uint256", "uint256"], [1, addr2.address, 2, 0]);
-            leafC = abiCoder.encode(["uint256", "address", "uint256", "uint256"], [1, addr3.address, 3, 0]);
-            leafD = abiCoder.encode(["uint256", "address", "uint256", "uint256"], [1, addr4.address, 4, 0]);
-            leafE = abiCoder.encode(["uint256", "address", "uint256", "uint256"], [1, addr1.address, 2, 0]);
+            leafB = abiCoder.encode(["uint256", "address", "uint256", "uint256"], [1, addr2.address, 2, 1]);
+            leafC = abiCoder.encode(["uint256", "address", "uint256", "uint256"], [1, addr1.address, 2, 2]);
             buf2hex = x => '0x' + x.toString('hex');
-            leaves = [leafA, leafB, leafC, leafD, leafE].map(leaf => keccak256(leaf));
+            leaves = [leafA, leafB, leafC].map(leaf => keccak256(leaf));
             tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
             // get the merkle root and store in the contract 
             root = tree.getHexRoot().toString('hex');
             await lottery.setPrizeMerkleRoot(1, root);
             prizeProofA = tree.getProof(keccak256(leafA)).map(x => buf2hex(x.data));
-            prizeProofE = tree.getProof(keccak256(leafE)).map(x => buf2hex(x.data));
+            prizeProofB = tree.getProof(keccak256(leafB)).map(x => buf2hex(x.data));
+            prizeProofC = tree.getProof(keccak256(leafC)).map(x => buf2hex(x.data));
         });
 
         it("Should retrieve merkle root", async function () {
@@ -330,13 +329,14 @@ describe("Lottery Contract", function () {
         it("Should allow to claim more than one prize", async function () {
             await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 1, { value: TWO_ETH });
             await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 1, { value: TWO_ETH });
-            expect(await lottery.prizeClaimed(1, addr1.address)).to.equal(false);
+            await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 1500, hexproofB, 1, { value: TWO_ETH });
+            expect(await lottery.prizeClaimed(1, 0)).to.equal(false);
             await lottery.connect(addr1).claimPrize(1, addr1.address, 1, 0, prizeProofA);
-            expect(await lottery.prizeClaimed(1, addr1.address)).to.equal(true);
+            expect(await lottery.prizeClaimed(1, 0)).to.equal(true);
 
-            expect(await lottery.prizeClaimed(2, addr1.address)).to.equal(false);
-            await lottery.connect(addr1).claimPrize(1, addr1.address, 2, 0, prizeProofE);
-            expect(await lottery.prizeClaimed(2, addr1.address)).to.equal(true);
+            expect(await lottery.prizeClaimed(1, 2)).to.equal(false);
+            await lottery.connect(addr1).claimPrize(1, addr1.address, 2, 2, prizeProofC);
+            expect(await lottery.prizeClaimed(1, 2)).to.equal(true);
         });
 
         it("Should throw trying to claim twice", async function () {

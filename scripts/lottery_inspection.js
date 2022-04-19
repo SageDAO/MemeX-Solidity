@@ -81,15 +81,15 @@ async function fetchApprovedDrops() {
     });
 }
 
-async function getTotalAmountOfPrizes(dropId, totalParticipants) {
+async function getTotalAmountOfPrizes(dropId, numberOfTicketsSold) {
     prizes = await lotteryContract.getPrizes(dropId);
     var totalPrizes = 0;
     // iterate the prize array getting the number of prizes for each entry
     for (let i = 0; i < prizes.length; i++) {
         totalPrizes += prizes[i].maxSupply;
     }
-    if (totalPrizes > totalParticipants) {
-        totalPrizes = totalParticipants;
+    if (totalPrizes > numberOfTicketsSold) {
+        totalPrizes = numberOfTicketsSold;
     }
     return totalPrizes;
 }
@@ -98,26 +98,29 @@ async function inspectLotteryState(lottery) {
     const blockNum = await ethers.provider.getBlockNumber();
     const block = await ethers.provider.getBlock(blockNum);
     lotteryInfo = await lotteryContract.getLotteryInfo(lottery.dropId);
-    participants = lotteryInfo.participantsCount;
+    numberOfTicketsSold = lotteryInfo.numberOfTicketsSold;
 
+    // if the lottery has finished but still has the status of "open"
     if (lotteryInfo.status == 0 && lotteryInfo.closeTime < block.timestamp) {
-        if (participants > 0) {
+        if (numberOfTicketsSold > 0) {
             logger.info(`Drop #${lottery.dropId} is closed, requesting random number.`);
             await lotteryContract.requestRandomNumber(collectionId);
             return;
-        } else {
+        } else { // there were no tickets sold
             logger.info(`Drop #${lottery.dropId} was canceled. Closed without participants.`);
             await lotteryContract.cancelLottery(lottery.dropId);
             return;
         }
     }
 
+    // if the lottery is completed
     if (lotteryInfo.status == 3) {
-        if (participants > 0) {
+        if (numberOfTicketsSold > 0) {
             // check if there are prizeProofs stored in the DB for that lottery
             // if there aren't any, create the proofs
             logger.info(`Drop #${lottery.dropId} is closed but has no prizes yet`);
-            entries = await lotteryContract.getLotteryTickets(lottery.dropId, { gasLimit: 500000000 });
+
+            entries = await lotteryContract.getLotteryTickets(lottery.dropId, 0, numberOfTicketsSold - 1, { gasLimit: 500000000 });
             totalEntries = entries.length;
             logger.info(`A total of ${totalEntries} entries for dropId ${lottery.dropId}`);
 
@@ -126,16 +129,16 @@ async function inspectLotteryState(lottery) {
             randomSeed = await lotteryContract.randomSeeds(lottery.dropId);
             logger.info(`Random seed stored for this lottery: ${randomSeed}`);
 
-            logger.info(`Total participants: ${participants}`);
+            logger.info(`Number of tickets sold: ${numberOfTicketsSold}`);
 
             logger.info(`Getting prize info`);
-            let totalPrizes = await getTotalAmountOfPrizes(lottery.dropId, participants);
+            let totalPrizes = await getTotalAmountOfPrizes(lottery.dropId, numberOfTicketsSold);
 
             logger.info(`Total prizes: ${totalPrizes}`);
             var prizesAwarded = 0;
 
             logger.info(`Drop #${lottery.dropId} starting prize distribution`);
-            const winners = new Set();
+            const winnerTicketNumbers = new Set();
             var leaves = new Array();
 
             for (prizeIndex in prizes) {
@@ -148,17 +151,17 @@ async function inspectLotteryState(lottery) {
                     // convert hash into a number
                     randomPosition = ethers.BigNumber.from(hashOfSeed).mod(totalEntries);
                     logger.info(`Generated random position ${randomPosition}`);
-                    while (winners.has(entries[randomPosition])) {
-                        logger.info(`${entries[randomPosition]} already won a prize, checking next position in array`);
+                    while (winnerTicketNumbers.has(randomPosition)) {
+                        logger.info(`${randomPosition} already won a prize, checking next position in array`);
                         randomPosition++;
                         randomPosition = randomPosition % totalEntries;
                     }
-                    winners.add(entries[randomPosition]);
+                    winnerTicketNumbers.add(randomPosition);
                     prizesAwarded++;
                     logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${entries[randomPosition]}`);
 
                     var leaf = {
-                        lotteryId: Number(lottery.id), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), proof: "", createdAt: new Date()
+                        lotteryId: Number(lottery.id), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), ticketNumber: randomPosition, proof: "", createdAt: new Date()
                     };
                     leaves.push(leaf);
                 }
@@ -167,11 +170,11 @@ async function inspectLotteryState(lottery) {
             // if lottery has defaultPrize, distribute it to all participants who did not win a prize above
             if (defaultPrizeId != 0) {
                 for (i = 0; i < entries.length; i++) {
-                    if (!winners.has(entries[i])) {
+                    if (!winnerTicketNumbers.has(i)) {
                         var leaf = {
-                            lotteryId: Number(lottery.id), winnerAddress: entries[i], nftId: defaultPrizeId.toNumber(), proof: "", createdAt: new Date()
+                            lotteryId: Number(lottery.id), winnerAddress: entries[i], nftId: defaultPrizeId.toNumber(), ticketNumber: i, proof: "", createdAt: new Date()
                         };
-                        winners.add(entries[i]);
+                        winnerTicketNumbers.add(i);
                         leaves.push(leaf);
                     }
                 }
@@ -205,7 +208,7 @@ async function generateAndStoreProofs(leaves, tree, dropId) {
     for (index in leaves) {
         leaf = leaves[index];
         leaf.proof = tree.getProof(getEncodedLeaf(dropId, leaf)).map(x => buf2hex(x.data)).toString();
-        logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`);
+        logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Ticket Number: ${leaft.ticketNumber} Proof: ${leaf.proof}`);
     }
     // store proofs on the DB so they can be easily queried
     if (hre.network.name != "hardhat") {
@@ -258,8 +261,8 @@ main()
 
 function getEncodedLeaf(collectionId, leaf) {
     logger.info(`Encoding leaf: ${leaf.winnerAddress} ${leaf.nftId}`);
-    return keccak256(abiCoder.encode(["uint256", "address", "uint256"],
-        [collectionId, leaf.winnerAddress, leaf.nftId]));
+    return keccak256(abiCoder.encode(["uint256", "address", "uint256", "uint256"],
+        [collectionId, leaf.winnerAddress, leaf.nftId, leaf.ticketNumber]));
 }
 
 async function deploySplitter(dropId, splitId) {

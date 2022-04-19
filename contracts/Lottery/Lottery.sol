@@ -1,3 +1,16 @@
+/*
+ .----------------.  .----------------.  .----------------.  .----------------.  .----------------.
+| .--------------. || .--------------. || .--------------. || .--------------. || .--------------. |
+| | ____    ____ | || |  _________   | || | ____    ____ | || |  _________   | || |  ____  ____  | |
+| ||_   \  /   _|| || | |_   ___  |  | || ||_   \  /   _|| || | |_   ___  |  | || | |_  _||_  _| | |
+| |  |   \/   |  | || |   | |_  \_|  | || |  |   \/   |  | || |   | |_  \_|  | || |   \ \  / /   | |
+| |  | |\  /| |  | || |   |  _|  _   | || |  | |\  /| |  | || |   |  _|  _   | || |    > `' <    | |
+| | _| |_\/_| |_ | || |  _| |___/ |  | || | _| |_\/_| |_ | || |  _| |___/ |  | || |  _/ /'`\ \_  | |
+| ||_____||_____|| || | |_________|  | || ||_____||_____|| || | |_________|  | || | |____||____| | |
+| |              | || |              | || |              | || |              | || |              | |
+| '--------------' || '--------------' || '--------------' || '--------------' || '--------------' |
+ '----------------'  '----------------'  '----------------'  '----------------'  '----------------'
+*/
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -20,12 +33,15 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     IRandomNumberGenerator public randomGenerator;
     IRewards public rewardsContract;
 
-    mapping(uint256 => LotteryInfo) internal lotteryHistory;
-
     uint256[] public lotteries;
 
+    //lotteryId => LotteryInfo
+    mapping(uint256 => LotteryInfo) internal lotteryHistory;
+
+    // lotteryId => whitelist contract address
     mapping(uint256 => address) public whitelists;
 
+    // loteryId => merkle tree root
     mapping(uint256 => bytes32) public prizeMerkleRoots;
 
     // participant address => lottery ids he entered
@@ -34,27 +50,11 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     //lotteryid => prizeIds
     mapping(uint256 => PrizeInfo[]) public prizes;
 
-    struct PrizeInfo {
-        uint256 prizeId;
-        uint16 maxSupply;
-    }
-
-    mapping(address => mapping(uint256 => bool)) public claimedPrizes;
+    // lotteryId => ticketNumber => claimed state
+    mapping(uint256 => mapping(uint256 => bool)) public claimedPrizes;
 
     //lotteryid => address => participantInfo
     mapping(uint256 => mapping(address => ParticipantInfo)) public participants;
-
-    struct ParticipantInfo {
-        uint16 totalTicketsBought;
-        bool claimedPrize;
-        uint256 refundablePoints;
-        uint256 refundableValue;
-    }
-
-    struct Ticket {
-        uint256 ticketCostInCoins;
-        address owner;
-    }
 
     //loteryId => randomNumber received from RNG
     mapping(uint256 => uint256) public randomSeeds;
@@ -64,6 +64,43 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
 
     //lotteryId => value already withdrawed from the lottery
     mapping(uint256 => uint256) public withdrawals;
+
+    // Information about lotteries
+    struct LotteryInfo {
+        uint32 startTime; // Timestamp where users can start buying tickets
+        uint32 closeTime; // Timestamp where ticket sales end
+        uint32 participantsCount; // number of participants
+        uint32 maxTickets; // max number of tickets for the lottery
+        uint32 maxTicketsPerUser; // max number of tickets per user
+        uint32 numberOfTicketsSold; // number of tickets sold
+        Status status; // Status for lotto
+        IMemeXNFT nftContract; // reference to the NFT Contract
+        bool isRefundable; // if true, users who don't win can withdraw their FTM back
+        uint256 lotteryID; // ID for lotto
+        uint256 vipTicketCostPoints; // Cost per ticket in points for VIPs
+        uint256 vipTicketCostCoins; // Cost per ticket in FTM for VIPs
+        uint256 memberTicketCostPoints; // Cost per ticket in points for member users (who eaarned Pina points)
+        uint256 memberTicketCostCoins; // Cost per ticket in FTM for member users (who earned Pina points)
+        uint256 nonMemberTicketCostCoins; // Cost per ticket in FTM for regular users
+        uint256 defaultPrizeId; // prize all participants win if no other prizes are given
+    }
+
+    struct ParticipantInfo {
+        uint16 totalTicketsBought;
+        bool claimedPrize;
+        uint256 refundablePoints;
+        uint256 refundableValue;
+    }
+
+    struct PrizeInfo {
+        uint256 prizeId;
+        uint16 maxSupply;
+    }
+
+    struct Ticket {
+        uint256 ticketCostInCoins;
+        address owner;
+    }
 
     enum Status {
         Created, // The lottery has been created
@@ -76,26 +113,6 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         VIP,
         Member,
         NonMember
-    }
-
-    // Information about lotteries
-    struct LotteryInfo {
-        uint32 startTime; // Timestamp where users can start buying tickets
-        uint32 closeTime; // Timestamp where ticket sales end
-        uint32 participantsCount; // number of participants
-        uint32 maxTickets; // max number of tickets for the lottery
-        uint32 maxTicketsPerUser; // max number of tickets per user
-        uint32 numTicketsSold; // number of tickets sold
-        Status status; // Status for lotto
-        IMemeXNFT nftContract; // reference to the NFT Contract
-        bool isRefundable; // if true, users who don't win can withdraw their FTM back
-        uint256 lotteryID; // ID for lotto
-        uint256 vipTicketCostPoints; // Cost per ticket in points for VIPs
-        uint256 vipTicketCostCoins; // Cost per ticket in FTM for VIPs
-        uint256 memberTicketCostPoints; // Cost per ticket in points for member users (who eaarned Pina points)
-        uint256 memberTicketCostCoins; // Cost per ticket in FTM for member users (who earned Pina points)
-        uint256 nonMemberTicketCostCoins; // Cost per ticket in FTM for regular users
-        uint256 defaultPrizeId; // prize all participants win if no other prizes are given
     }
 
     event ResponseReceived(bytes32 indexed requestId);
@@ -254,12 +271,12 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         return prizes[_lotteryId];
     }
 
-    function prizeClaimed(uint256 _prizeId, address _participant)
+    function prizeClaimed(uint256 _lotteryId, uint256 _ticketNumber)
         public
         view
         returns (bool)
     {
-        return claimedPrizes[_participant][_prizeId];
+        return claimedPrizes[_lotteryId][_ticketNumber];
     }
 
     /**
@@ -451,16 +468,22 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     }
 
     /**
-     * @notice Returns de array of tickets (each purchase and boost provide a ticket).
+     * @notice Returns an array of tickets sold for a lottery within a range.
      * @param _lotteryId The lottery ID
-     * @return Array with tickets for a lottery
+     * @param _from The start index of the array
+     * @param _to The end index of the array
+     * @return Array with tickets for a lottery inside the requested range
      */
-    function getLotteryTickets(uint256 _lotteryId)
-        public
-        view
-        returns (Ticket[] memory)
-    {
-        return lotteryTickets[_lotteryId];
+    function getLotteryTickets(
+        uint256 _lotteryId,
+        uint256 _from,
+        uint256 _to
+    ) public view returns (Ticket[] memory) {
+        Ticket[] memory result = new Ticket[](_to - _from + 1);
+        for (uint256 i = _from; i <= _to; i++) {
+            result[i] = lotteryTickets[_lotteryId][i];
+        }
+        return result;
     }
 
     /**
@@ -530,7 +553,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
 
         if (lottery.maxTickets != 0) {
             require(
-                lottery.numTicketsSold + _numberOfTicketsToBuy <=
+                lottery.numberOfTicketsSold + _numberOfTicketsToBuy <=
                     lottery.maxTickets,
                 "Tickets sold out"
             );
@@ -575,7 +598,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         }
         totalCostInCoins = _numberOfTicketsToBuy * costPerTicketCoins;
         participantInfo.refundableValue += totalCostInCoins;
-        lottery.numTicketsSold += uint32(_numberOfTicketsToBuy);
+        lottery.numberOfTicketsSold += uint32(_numberOfTicketsToBuy);
         require(
             msg.value >= totalCostInCoins,
             "Didn't transfer enough funds to buy tickets"
@@ -629,18 +652,21 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             _winner
         ];
 
-        uint256 ticketValue = lotteryTickets[_lotteryId][_ticketNumber]
-            .ticketCostInCoins;
-
         require(
-            claimedPrizes[_winner][_prizeId] == false,
+            !claimedPrizes[_lotteryId][_ticketNumber],
             "Participant already claimed prize"
         );
-        require(
-            participantInfo.refundableValue >= ticketValue,
-            "Participant has requested a refund"
-        );
-        participantInfo.refundableValue -= ticketValue;
+        if (lotteryHistory[_lotteryId].isRefundable) {
+            uint256 ticketValue = lotteryTickets[_lotteryId][_ticketNumber]
+                .ticketCostInCoins;
+
+            require(
+                participantInfo.refundableValue >= ticketValue,
+                "Participant has requested a refund"
+            );
+            // make the claimed ticket value non-refundable
+            participantInfo.refundableValue -= ticketValue;
+        }
 
         require(
             _verify(
@@ -654,7 +680,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         participants[_lotteryId][_winner].claimedPrize = true;
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
-        claimedPrizes[_winner][_prizeId] = true;
+        claimedPrizes[_lotteryId][_ticketNumber] = true;
         nftContract.mint(_winner, _prizeId, 1, _lotteryId, "");
         emit PrizeClaimed(_lotteryId, _winner, _prizeId);
     }
