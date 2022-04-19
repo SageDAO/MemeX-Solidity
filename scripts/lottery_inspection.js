@@ -314,8 +314,11 @@ async function createLottery(lottery, nftContractAddress) {
     logger.info("Collection created");
     const tx = await lotteryContract.createNewLottery(
         lottery.dropId,
-        lottery.costPerTicketPoints,
-        ethers.utils.parseEther(lottery.costPerTicketCoins.toString()),
+        lottery.vipCostPerTicketPoints,
+        ethers.utils.parseEther(lottery.vipCostPerTicketCoins.toString()),
+        lottery.memberCostPerTicketPoints,
+        ethers.utils.parseEther(lottery.memberCostPerTicketCoins.toString()),
+        ethers.utils.parseEther(lottery.nonMemberCostPerTicketCoins.toString()),
         lottery.startTime,
         lottery.endTime,
         nftContractAddress,
