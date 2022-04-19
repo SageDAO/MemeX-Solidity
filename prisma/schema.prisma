@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider          = "postgresql"
-  url               = env("DATABASE_URL")
+  url               = env("DATABASE_CONNECTION_POOL_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
@@ -37,19 +37,22 @@ model Drop {
 }
 
 model Lottery {
-  id                  Int        @id @default(autoincrement()) 
-  dropId              Int        
-  blockchainCreatedAt DateTime?
-  costPerTicketCoins  Float      @default(0.0)
-  costPerTicketPoints Int        @default(0)
-  defaultPrizeId      Int?
-  maxTickets          Int        @default(0)
-  finished            Boolean    @default(false)
-  endTime             Int
-  startTime           Int
-  Drop                Drop       @relation(fields: [dropId], references: [id])
-  DefaultPrize        Nft?       @relation("defaultPrize", fields: [defaultPrizeId], references: [id])
-  Nfts                Nft[]
+  id                          Int        @id @default(autoincrement()) 
+  dropId                      Int        
+  blockchainCreatedAt         DateTime?
+  vipCostPerTicketCoins       Float      @default(0.0)
+  vipcostPerTicketPoints      Int        @default(0)
+  memberCostPerTicketCoins    Float      @default(0.0)
+  membercostPerTicketPoints   Int        @default(0)
+  nonMemberCostPerTicketCoins Float      @default(0.0)
+  defaultPrizeId              Int?
+  maxTickets                  Int        @default(0)
+  finished                    Boolean    @default(false)
+  endTime                     Int
+  startTime                   Int
+  Drop                        Drop       @relation(fields: [dropId], references: [id])
+  DefaultPrize                Nft?       @relation("defaultPrize", fields: [defaultPrizeId], references: [id])
+  Nfts                        Nft[]
 }
 
 model Auction {
