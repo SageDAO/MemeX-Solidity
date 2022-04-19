@@ -85,7 +85,7 @@ describe("Lottery Contract", function () {
         expect(await lottery.getParticipantsCount(1)).to.equal(2);
         expect(await lottery.getLotteryTicketCount(1)).to.equal(3);
         lottery = await lottery.getLotteryInfo(1);
-        expect(lottery.numTicketsSold).to.equal(3);
+        expect(lottery.numberOfTicketsSold).to.equal(3);
     });
 
     it("Should allow non member to buy tickets with coins", async function () {
