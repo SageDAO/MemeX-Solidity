@@ -94,7 +94,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
 
     struct PrizeInfo {
         uint256 prizeId;
-        uint16 maxSupply;
+        uint16 numberOfEditions;
     }
 
     struct Ticket {

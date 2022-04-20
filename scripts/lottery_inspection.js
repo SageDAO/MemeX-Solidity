@@ -86,7 +86,7 @@ async function getTotalAmountOfPrizes(dropId, numberOfTicketsSold) {
     var totalPrizes = 0;
     // iterate the prize array getting the number of prizes for each entry
     for (let i = 0; i < prizes.length; i++) {
-        totalPrizes += prizes[i].maxSupply;
+        totalPrizes += prizes[i].numberOfEditions;
     }
     if (totalPrizes > numberOfTicketsSold) {
         totalPrizes = numberOfTicketsSold;
@@ -142,7 +142,7 @@ async function inspectLotteryState(lottery) {
             var leaves = new Array();
 
             for (prizeIndex in prizes) {
-                for (i = 0; i < prizes[prizeIndex].maxSupply; i++) {
+                for (i = 0; i < prizes[prizeIndex].numberOfEditions; i++) {
                     if (prizesAwarded == totalPrizes) {
                         break;
                     }
