@@ -105,12 +105,11 @@ async function inspectLotteryState(lottery) {
         if (numberOfTicketsSold > 0) {
             logger.info(`Drop #${lottery.dropId} is closed, requesting random number.`);
             await lotteryContract.requestRandomNumber(collectionId);
-            return;
         } else { // there were no tickets sold
             logger.info(`Drop #${lottery.dropId} was canceled. Closed without participants.`);
             await lotteryContract.cancelLottery(lottery.dropId);
-            return;
         }
+        return;
     }
 
     // if the lottery is completed
