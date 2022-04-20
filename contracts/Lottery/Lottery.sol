@@ -116,7 +116,10 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     }
 
     event ResponseReceived(bytes32 indexed requestId);
-    event PrizesChanged(uint256 indexed lotteryId, uint256 numberOfPrizes);
+    event NumberOfPrizesChanged(
+        uint256 indexed lotteryId,
+        uint256 numberOfPrizes
+    );
     event LotteryStatusChanged(
         uint256 indexed lotteryId,
         Status indexed status
@@ -345,7 +348,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             prizes[_lotteryId].push(PrizeInfo(_prizeIds[i], _prizeAmounts[i]));
         }
 
-        emit PrizesChanged(_lotteryId, _prizeIds.length);
+        emit NumberOfPrizesChanged(_lotteryId, _prizeIds.length);
     }
 
     function updateLottery(
@@ -520,6 +523,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
      * @param _numberOfTicketsToBuy Number of tickets to buy
      * @param _points Total user claimable points
      * @param _proof Proof of the user's claimable points
+     * @param _tier Price tier to buy tickets with. Could be VIP, Member or NonMember
      */
     function claimPointsAndBuyTickets(
         uint256 _lotteryId,
@@ -538,7 +542,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
      * @notice Function called by users to buy lottery tickets using PINA points or FTM
      * @param _lotteryId ID of the lottery to buy tickets for
      * @param _numberOfTicketsToBuy Number of tickets to buy
-     * @param _tier Price tier to buy tickets with
+     * @param _tier Price tier to buy tickets with. Could be VIP, Member or NonMember
      */
     function buyTickets(
         uint256 _lotteryId,
