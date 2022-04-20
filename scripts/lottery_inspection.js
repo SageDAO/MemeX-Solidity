@@ -120,16 +120,16 @@ async function inspectLotteryState(lottery) {
             // if there aren't any, create the proofs
             logger.info(`Drop #${lottery.dropId} is closed but has no prizes yet`);
 
-            entries = await lotteryContract.getLotteryTickets(lottery.dropId, 0, numberOfTicketsSold - 1, { gasLimit: 500000000 });
-            totalEntries = entries.length;
-            logger.info(`A total of ${totalEntries} entries for dropId ${lottery.dropId}`);
+            var ticketArray = await lotteryContract.getLotteryTickets(lottery.dropId, 0, numberOfTicketsSold - 1, { gasLimit: 500000000 });
+            // map the ticket struct array to an array with only the ticket owner addresses
+            var tickets = ticketArray.map(x => x.owner);
+
+            logger.info(`A total of ${numberOfTicketsSold} tickets for dropId ${lottery.dropId}`);
 
             defaultPrizeId = lotteryInfo.defaultPrizeId;
 
             randomSeed = await lotteryContract.randomSeeds(lottery.dropId);
             logger.info(`Random seed stored for this lottery: ${randomSeed}`);
-
-            logger.info(`Number of tickets sold: ${numberOfTicketsSold}`);
 
             logger.info(`Getting prize info`);
             let totalPrizes = await getTotalAmountOfPrizes(lottery.dropId, numberOfTicketsSold);
@@ -149,19 +149,19 @@ async function inspectLotteryState(lottery) {
                     hashOfSeed = keccak256(abiCoder.encode(['uint256', 'uint256'], [randomSeed, prizesAwarded]));
 
                     // convert hash into a number
-                    randomPosition = ethers.BigNumber.from(hashOfSeed).mod(totalEntries);
+                    randomPosition = ethers.BigNumber.from(hashOfSeed).mod(numberOfTicketsSold);
                     logger.info(`Generated random position ${randomPosition}`);
                     while (winnerTicketNumbers.has(randomPosition)) {
                         logger.info(`${randomPosition} already won a prize, checking next position in array`);
                         randomPosition++;
-                        randomPosition = randomPosition % totalEntries;
+                        randomPosition = randomPosition % numberOfTicketsSold;
                     }
                     winnerTicketNumbers.add(randomPosition);
                     prizesAwarded++;
-                    logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${entries[randomPosition]}`);
+                    logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${tickets[randomPosition]}`);
 
                     var leaf = {
-                        lotteryId: Number(lottery.id), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), ticketNumber: randomPosition, proof: "", createdAt: new Date()
+                        lotteryId: Number(lottery.id), winnerAddress: tickets[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), ticketNumber: randomPosition, proof: "", createdAt: new Date()
                     };
                     leaves.push(leaf);
                 }
@@ -169,10 +169,10 @@ async function inspectLotteryState(lottery) {
 
             // if lottery has defaultPrize, distribute it to all participants who did not win a prize above
             if (defaultPrizeId != 0) {
-                for (i = 0; i < entries.length; i++) {
+                for (i = 0; i < tickets.length; i++) {
                     if (!winnerTicketNumbers.has(i)) {
                         var leaf = {
-                            lotteryId: Number(lottery.id), winnerAddress: entries[i], nftId: defaultPrizeId.toNumber(), ticketNumber: i, proof: "", createdAt: new Date()
+                            lotteryId: Number(lottery.id), winnerAddress: tickets[i], nftId: defaultPrizeId.toNumber(), ticketNumber: i, proof: "", createdAt: new Date()
                         };
                         winnerTicketNumbers.add(i);
                         leaves.push(leaf);
