@@ -88,7 +88,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     struct ParticipantInfo {
         uint16 totalTicketsBought;
         bool claimedPrize;
-        uint256 refundablePoints;
+        uint256 refundablePoints; // points are only refunded in case of a cancellation
         uint256 refundableValue;
     }
 
@@ -116,7 +116,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     }
 
     event ResponseReceived(bytes32 indexed requestId);
-    event NumberOfPrizesChanged(
+    event LotteryPrizesCountChanged(
         uint256 indexed lotteryId,
         uint256 numberOfPrizes
     );
@@ -348,7 +348,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             prizes[_lotteryId].push(PrizeInfo(_prizeIds[i], _prizeAmounts[i]));
         }
 
-        emit NumberOfPrizesChanged(_lotteryId, _prizeIds.length);
+        emit LotteryPrizesCountChanged(_lotteryId, _prizeIds.length);
     }
 
     function updateLottery(
@@ -579,6 +579,9 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
                 lottery.closeTime > block.timestamp,
             "Lottery is not open"
         );
+        // VIPs (those who hold a membership card NFT) will have the best price tier, paying in Pina points + FTM
+        // Members (those who hold Meme Inu or provide liquidity) will have the second-best price tier and also pay in points + FTM
+        // NonMembers (those who don't fit the previous descriptions) will have the third-best price tier and will only have the option to use FTM
         if (_tier == PriceTier.VIP) {
             require(
                 currentMembershipAddress.balanceOf(msg.sender) > 0,
@@ -600,6 +603,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         } else {
             costPerTicketCoins = lottery.nonMemberTicketCostCoins;
         }
+
         totalCostInCoins = _numberOfTicketsToBuy * costPerTicketCoins;
         participantInfo.refundableValue += totalCostInCoins;
         lottery.numberOfTicketsSold += uint32(_numberOfTicketsToBuy);

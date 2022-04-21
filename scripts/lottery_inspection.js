@@ -32,7 +32,7 @@ async function main() {
 
     }
     logger.info('Searching for lotteries that require action');
-    let lotteries = await fetchApprovedDrops();
+    let lotteries = await fetchApprovedLotteries();
 
     const now = Math.floor(Date.now() / 1000);
     for (const lottery of lotteries) {
@@ -62,7 +62,7 @@ async function main() {
     logger.info('Lottery inspection finished successfully');
 }
 
-async function fetchApprovedDrops() {
+async function fetchApprovedLotteries() {
     return await prisma.lottery.findMany({
         where: {
             approvedAt: {
