@@ -14,7 +14,7 @@ CONTRACTS = {
         "auctionAddress": "0x1039D11D083d6Fc2a3a8322a7CB8b061A9a7E606",
     },
     "dev": {
-        "lotteryAddress": "0xF9BB5e5b37A82ef0058B6ADb8383b5733534AA7D",
+        "lotteryAddress": "0x4563e9F515B98084E44b676554723939344Cd392",
         "nftAddress": "0xD5d21823AFd1f5a15bA4E032E4f452170b97703C",
         "randomnessAddress": "0x9b3D01F0B013e1d25B645A00938E64614F30b8a6",
         "rewardsAddress": "0x395FcDFd955737a5b2f0eb34A38cD085134aCf44",

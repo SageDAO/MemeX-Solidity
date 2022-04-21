@@ -14,47 +14,47 @@ const CONTRACTS = require('../contracts.js');
 
 var abiCoder = ethers.utils.defaultAbiCoder;
 let logger;
-let lottery;
+let lotteryContract;
 
 async function main() {
     await hre.run('compile');
     logger = createLogger(`memex_scripts_${hre.network.name}`, `lottery_inspection_${hre.network.name}`);
     logger.info(`Starting the lottery inspection script on ${hre.network.name}`);
-    
+
     const Lottery = await ethers.getContractFactory("MemeXLottery");
 
-    if (hre.network.name == "hardhat") { 
+    if (hre.network.name == "hardhat") {
         await hardhatTests(Lottery);
     } else {
         lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
-        lottery = await Lottery.attach(lotteryAddress);
+        lotteryContract = await Lottery.attach(lotteryAddress);
 
 
     }
     logger.info('Searching for lotteries that require action');
-    let collections = await fetchApprovedDrops();
-    
+    let lotteries = await fetchApprovedLotteries();
+
     const now = Math.floor(Date.now() / 1000);
-    for (const collection of collections) {
-        if (collection.Lottery.finished ) {
+    for (const lottery of lotteries) {
+        if (lottery.finished) {
             continue;
         }
-        let primarySplitterAddress = collection.PrimarySplitter?.splitterAddress;
-        if (collection.primarySplitterId != null && primarySplitterAddress == null) {
-            collection.PrimarySplitter.splitterAddress = await deploySplitter(collection, collection.primarySplitterId);
-        }
-        
-        let secondarySplitterAddress = collection.SecondarySplitter?.splitterAddress;
-        if (collection.secondarySplitterId != null && secondarySplitterAddress == null) {
-            collection.SecondarySplitter.splitterAddress = await deploySplitter(collection, collection.secondarySplitterId);   
+        let primarySplitterAddress = lottery.Drop.PrimarySplitter?.splitterAddress;
+        if (lottery.Drop.primarySplitterId != null && primarySplitterAddress == null) {
+            lottery.Drop.PrimarySplitter.splitterAddress = await deploySplitter(lottery.dropId, lottery.Drop.primarySplitterId);
         }
 
-        if (collection.Lottery.blockchainCreatedAt == null) {
-            await createLottery(collection, lottery, CONTRACTS[hre.network.name]["nftAddress"]);
+        let secondarySplitterAddress = lottery.Drop.SecondarySplitter?.splitterAddress;
+        if (lottery.Drop.secondarySplitterId != null && secondarySplitterAddress == null) {
+            lottery.SecondarySplitter.splitterAddress = await deploySplitter(lottery.dropId, lottery.Drop.secondarySplitterId);
+        }
+
+        if (lottery.Drop.blockchainCreatedAt == null) {
+            await createLottery(lottery, CONTRACTS[hre.network.name]["nftAddress"]);
         } else {
             // if we're past endTime, inspect the lottery and take the required actions
-            if (now >= collection.Lottery.endTime) {
-                await inspectLotteryState(collection.id, lottery, collection);
+            if (now >= lottery.endTime) {
+                await inspectLotteryState(lottery);
             }
         }
     }
@@ -62,100 +62,105 @@ async function main() {
     logger.info('Lottery inspection finished successfully');
 }
 
-async function fetchApprovedDrops() {
-    return await prisma.collection.findMany({
+async function fetchApprovedLotteries() {
+    return await prisma.lottery.findMany({
         where: {
             approvedAt: {
                 not: null
             },
         },
         include: {
-            PrimarySplitter: true,
-            SecondarySplitter: true,
-            Artist: true,
-            Lottery: true,
-        }      
+            Drop: {
+                include: {
+                    PrimarySplitter: true,
+                    SecondarySplitter: true,
+                    Artist: true,
+                },
+            },
+        }
     });
 }
 
-async function getTotalAmountOfPrizes(collectionId, totalParticipants) {
-    prizes = await lottery.getPrizes(collectionId);
+async function getTotalAmountOfPrizes(dropId, numberOfTicketsSold) {
+    prizes = await lotteryContract.getPrizes(dropId);
     var totalPrizes = 0;
     // iterate the prize array getting the number of prizes for each entry
     for (let i = 0; i < prizes.length; i++) {
-        totalPrizes += prizes[i].maxSupply;
+        totalPrizes += prizes[i].numberOfEditions;
     }
-    if (totalPrizes > totalParticipants) {
-        totalPrizes = totalParticipants;
+    if (totalPrizes > numberOfTicketsSold) {
+        totalPrizes = numberOfTicketsSold;
     }
     return totalPrizes;
 }
 
-async function inspectLotteryState(collectionId, lottery, collection) {
+async function inspectLotteryState(lottery) {
     const blockNum = await ethers.provider.getBlockNumber();
     const block = await ethers.provider.getBlock(blockNum);
-    lotteryInfo = await lottery.getLotteryInfo(collectionId);
-    participants = lotteryInfo.participantsCount;
-    
+    lotteryInfo = await lotteryContract.getLotteryInfo(lottery.dropId);
+    numberOfTicketsSold = lotteryInfo.numberOfTicketsSold;
+
+    // if the lottery has finished but still has the status of "open"
     if (lotteryInfo.status == 0 && lotteryInfo.closeTime < block.timestamp) {
-        if (participants > 0) {
-            logger.info(`Drop #${collection.id} is closed, requesting random number.`);
-            await lottery.requestRandomNumber(collectionId);
-            return;
-        } else {
-            logger.info(`Drop #${collection.id} was canceled. Closed without participants.`);
-            await lottery.cancelLottery(collectionId);
-            return;
+        if (numberOfTicketsSold > 0) {
+            logger.info(`Drop #${lottery.dropId} is closed, requesting random number.`);
+            await lotteryContract.requestRandomNumber(collectionId);
+        } else { // there were no tickets sold
+            logger.info(`Drop #${lottery.dropId} was canceled. Closed without participants.`);
+            await lotteryContract.cancelLottery(lottery.dropId);
         }
+        return;
     }
 
+    // if the lottery is completed
     if (lotteryInfo.status == 3) {
-        if (participants > 0) {
+        if (numberOfTicketsSold > 0) {
             // check if there are prizeProofs stored in the DB for that lottery
             // if there aren't any, create the proofs
-            logger.info(`Drop #${collection.id} is closed but has no prizes yet`);
-            entries = await lottery.getLotteryTickets(collectionId, { gasLimit: 500000000 });
-            totalEntries = entries.length;
-            logger.info(`A total of ${totalEntries} entries for collectionId ${collectionId}`);
+            logger.info(`Drop #${lottery.dropId} is closed but has no prizes yet`);
+
+            var ticketArray = await lotteryContract.getLotteryTickets(lottery.dropId, 0, numberOfTicketsSold - 1, { gasLimit: 500000000 });
+            // map the ticket struct array to an array with only the ticket owner addresses
+            var tickets = ticketArray.map(x => x.owner);
+
+            logger.info(`A total of ${numberOfTicketsSold} tickets for dropId ${lottery.dropId}`);
 
             defaultPrizeId = lotteryInfo.defaultPrizeId;
 
-            randomSeed = await lottery.randomSeeds(collectionId);
+            randomSeed = await lotteryContract.randomSeeds(lottery.dropId);
             logger.info(`Random seed stored for this lottery: ${randomSeed}`);
 
-            logger.info(`Total participants: ${participants}`);
-
             logger.info(`Getting prize info`);
-            let totalPrizes = await getTotalAmountOfPrizes(collectionId, participants);
+            let totalPrizes = await getTotalAmountOfPrizes(lottery.dropId, numberOfTicketsSold);
 
             logger.info(`Total prizes: ${totalPrizes}`);
             var prizesAwarded = 0;
 
-            logger.info(`Drop #${collection.id} starting prize distribution`);
-            const winners = new Set();
+            logger.info(`Drop #${lottery.dropId} starting prize distribution`);
+            const winnerTicketNumbers = new Set();
             var leaves = new Array();
 
             for (prizeIndex in prizes) {
-                for (i = 0; i < prizes[prizeIndex].maxSupply; i++) {
+                for (i = 0; i < prizes[prizeIndex].numberOfEditions; i++) {
                     if (prizesAwarded == totalPrizes) {
                         break;
                     }
                     hashOfSeed = keccak256(abiCoder.encode(['uint256', 'uint256'], [randomSeed, prizesAwarded]));
 
                     // convert hash into a number
-                    randomPosition = ethers.BigNumber.from(hashOfSeed).mod(totalEntries);
+                    randomPosition = ethers.BigNumber.from(hashOfSeed).mod(numberOfTicketsSold);
                     logger.info(`Generated random position ${randomPosition}`);
-                    while (winners.has(entries[randomPosition])) {
-                        logger.info(`${entries[randomPosition]} already won a prize, checking next position in array`);
+                    while (winnerTicketNumbers.has(randomPosition)) {
+                        logger.info(`${randomPosition} already won a prize, checking next position in array`);
                         randomPosition++;
-                        randomPosition = randomPosition % totalEntries;
+                        randomPosition = randomPosition % numberOfTicketsSold;
                     }
-                    winners.add(entries[randomPosition]);
+                    winnerTicketNumbers.add(randomPosition);
                     prizesAwarded++;
-                    logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${entries[randomPosition]}`);
+                    logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${tickets[randomPosition]}`);
 
                     var leaf = {
-                        collectionId: Number(collectionId), winnerAddress: entries[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), proof: "", createdAt: new Date()
+                        lotteryId: Number(lottery.id), winnerAddress: tickets[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), ticketNumber: randomPosition, proof: "", createdAt: new Date()
                     };
                     leaves.push(leaf);
                 }
@@ -163,46 +168,46 @@ async function inspectLotteryState(collectionId, lottery, collection) {
 
             // if lottery has defaultPrize, distribute it to all participants who did not win a prize above
             if (defaultPrizeId != 0) {
-                for (i = 0; i < entries.length; i++) {
-                    if (!winners.has(entries[i])) {
+                for (i = 0; i < tickets.length; i++) {
+                    if (!winnerTicketNumbers.has(i)) {
                         var leaf = {
-                            collectionId: Number(collectionId), winnerAddress: entries[i], nftId: defaultPrizeId.toNumber(), proof: "", createdAt: new Date()
+                            lotteryId: Number(lottery.id), winnerAddress: tickets[i], nftId: defaultPrizeId.toNumber(), ticketNumber: i, proof: "", createdAt: new Date()
                         };
-                        winners.add(entries[i]);
+                        winnerTicketNumbers.add(i);
                         leaves.push(leaf);
                     }
                 }
             }
             logger.info(`All prizes awarded. Building the merkle tree`);
-            hashedLeaves = leaves.map(leaf => getEncodedLeaf(collectionId, leaf));
+            hashedLeaves = leaves.map(leaf => getEncodedLeaf(lottery.dropId, leaf));
             const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
 
             const root = tree.getHexRoot().toString('hex');
             logger.info(`Storing the Merkle tree root in the contract: ${root}`);
-            await lottery.setPrizeMerkleRoot(collectionId, root);
+            await lotteryContract.setPrizeMerkleRoot(lottery.dropId, root);
 
             // generate and store proofs for each winner
-            await generateAndStoreProofs(leaves, tree, collectionId);
+            await generateAndStoreProofs(leaves, tree, lottery.dropId);
 
             await prisma.lottery.update({
                 where: {
-                    collectionId: collection.id
+                    id: lottery.id
                 },
                 data: {
                     finished: true,
                 }
             });
 
-            logger.info(`Drop #${collection.id} had ${leaves.length} prizes distributed.`);
+            logger.info(`Drop #${lottery.dropId} had ${leaves.length} prizes distributed.`);
         }
     }
 }
 
-async function generateAndStoreProofs(leaves, tree, collectionId) {
+async function generateAndStoreProofs(leaves, tree, dropId) {
     for (index in leaves) {
         leaf = leaves[index];
-        leaf.proof = tree.getProof(getEncodedLeaf(collectionId, leaf)).map(x => buf2hex(x.data)).toString();
-        logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Proof: ${leaf.proof}`);
+        leaf.proof = tree.getProof(getEncodedLeaf(dropId, leaf)).map(x => buf2hex(x.data)).toString();
+        logger.info(`NFT id: ${leaf.nftId} Winner: ${leaf.winnerAddress} Ticket Number: ${leaft.ticketNumber} Proof: ${leaf.proof}`);
     }
     // store proofs on the DB so they can be easily queried
     if (hre.network.name != "hardhat") {
@@ -255,24 +260,24 @@ main()
 
 function getEncodedLeaf(collectionId, leaf) {
     logger.info(`Encoding leaf: ${leaf.winnerAddress} ${leaf.nftId}`);
-    return keccak256(abiCoder.encode(["uint256", "address", "uint256"],
-        [collectionId, leaf.winnerAddress, leaf.nftId]));
+    return keccak256(abiCoder.encode(["uint256", "address", "uint256", "uint256"],
+        [collectionId, leaf.winnerAddress, leaf.nftId, leaf.ticketNumber]));
 }
 
-async function deploySplitter(collection, splitId) {
+async function deploySplitter(dropId, splitId) {
     let owner = await ethers.getSigner();
-    let splitEntries =  await prisma.splitEntry.findMany({
+    let splitEntries = await prisma.splitEntry.findMany({
         where: {
             splitterId: splitId
         }
     });
     if (splitEntries.length == 0) {
-        logger.error(`No split addresses found for Drop #${collection.id}`);
+        logger.error(`No split addresses found for Drop #${dropId}`);
         return null;
     }
     let splitAddress;
     if (splitEntries.length == 1) {
-        logger.info(`Only one split address found for Drop #${collection.id}. No splitter needed.`);
+        logger.info(`Only one split address found for Drop #${dropId}. No splitter needed.`);
         splitAddress = splitEntries[0].destinationAddress;
     } else {
         logger.info(`Deploying splitter for splitId #${splitId}`);
@@ -280,12 +285,12 @@ async function deploySplitter(collection, splitId) {
         let weights = new Array();
         for (i = 0; i < splitEntries.length; i++) {
             destinations.push(splitEntries[i].destinationAddress);
-            weights.push(parseInt(splitEntries[i].percent * 100) );// royalty percentage using basis points. 1% = 100
+            weights.push(parseInt(splitEntries[i].percent * 100));// royalty percentage using basis points. 1% = 100
         }
         const Splitter = await ethers.getContractFactory("MemeXSplitter");
         const splitter = await Splitter.deploy(owner.address, destinations, weights);
         splitAddress = splitter.address;
-        logger.info(`Splitter deployed to ${splitAddress}`);           
+        logger.info(`Splitter deployed to ${splitAddress}`);
     }
     await prisma.splitter.update({
         where: { id: splitId },
@@ -294,73 +299,84 @@ async function deploySplitter(collection, splitId) {
     return splitAddress;
 }
 
-async function createLottery(collection, lottery, nftContractAddress) {
-    logger.info("Creating lottery for drop #id: " + collection.id);
+async function createLottery(lottery, nftContractAddress) {
+    logger.info("Creating lottery for drop #id: " + lottery.dropId);
     const Nft = await ethers.getContractFactory("MemeXNFT");
     const nft = await Nft.attach(nftContractAddress);
-    let royaltyAddress = collection.secondarySplitterId != null ? collection.SecondarySplitter.splitterAddress : collection.Collection.artistAddress; 
-    let primarySalesDestination = collection.primarySplitterId != null ? collection.PrimarySplitter.splitterAddress : collection.Collection.artistAddress;
+    let royaltyAddress = lottery.Drop.secondarySplitterId != null ? lottery.Drop.SecondarySplitter.splitterAddress : lottery.Drop.artistAddress;
+    let primarySalesDestination = lottery.Drop.primarySplitterId != null ? lottery.Drop.PrimarySplitter.splitterAddress : lottery.Drop.artistAddress;
     // percentage in basis points (200 = 2.00%)
-    let royaltyPercentageBasisPoints = parseInt(collection.royaltyPercentage * 100);
+    let royaltyPercentageBasisPoints = parseInt(lottery.Drop.royaltyPercentage * 100);
     await nft.createCollection(
-        collection.id, 
-        royaltyAddress, 
-        royaltyPercentageBasisPoints, 
-        "https://" + collection.collectionMetadataCid + ".ipfs.dweb.link/",
+        lottery.dropId,
+        royaltyAddress,
+        royaltyPercentageBasisPoints,
+        "https://" + lottery.Drop.dropMetadataCid + ".ipfs.dweb.link/",
         primarySalesDestination);
     logger.info("Collection created");
-    const tx = await lottery.createNewLottery(
-        collection.id,
-        collection.Lottery.costPerTicketPoints,
-        ethers.utils.parseEther(collection.Lottery.costPerTicketCoins.toString()),
-        collection.Lottery.startTime,
-        collection.Lottery.endTime,
+    const tx = await lotteryContract.createNewLottery(
+        lottery.dropId,
+        lottery.vipCostPerTicketPoints,
+        ethers.utils.parseEther(lottery.vipCostPerTicketCoins.toString()),
+        lottery.memberCostPerTicketPoints,
+        ethers.utils.parseEther(lottery.memberCostPerTicketCoins.toString()),
+        ethers.utils.parseEther(lottery.nonMemberCostPerTicketCoins.toString()),
+        lottery.startTime,
+        lottery.endTime,
         nftContractAddress,
-        collection.Lottery.defaultPrizeId || 0
+        lottery.isRefundable,
+        lottery.defaultPrizeId || 0
     );
     logger.info("Lottery created");
 
-    if (collection.Lottery.maxParticipants > 0) {
-        logger.info("Setting max participants to " + collection.Lottery.maxParticipants);
-        await lottery.setMaxParticipants(collection.id, collection.Lottery.maxParticipants);
+    if (lottery.maxTickets > 0) {
+        logger.info("Setting max tickets to " + lottery.maxTickets);
+        await lottery.setMaxTickets(lottery.dropId, lottery.maxTickets);
     }
-    collection.Lottery.blockchainCreatedAt = new Date();
+    lottery.Drop.blockchainCreatedAt = new Date();
     await prisma.lottery.update({
         where: {
-            collectionId: collection.id
+            id: lottery.id
         },
         data: {
-            blockchainCreatedAt: collection.Lottery.blockchainCreatedAt,
             isLive: true
         }
     });
-    await addPrizes(collection, lottery);
+    await prisma.drop.update({
+        where: {
+            id: lottery.dropId
+        },
+        data: {
+            blockchainCreatedAt: lottery.Drop.blockchainCreatedAt,
+        }
+    });
+    await addPrizes(lottery);
 
-    logger.info(`Lottery created with id: ${collection.collectionId} | costPoints: ${collection.Lottery.costPerTicketPoints} | costCoins: ${collection.Lottery.costPerTicketCoins} | startTime: ${collection.Lottery.startTime} | endTime: ${collection.Lottery.endTime} | maxParticipants: ${collection.Lottery.maxParticipants} | 
-    CreatedBy: ${collection.artistAddress} | defaultPrizeId: ${collection.Lottery.defaultPrizeId} | royaltyPercentageBasePoints: ${royaltyPercentageBasisPoints} | metadataIpfsPath: ${collection.collectionMetadataCid}`);
+    logger.info(`Lottery created with drop id: ${lottery.dropId} | costPoints: ${lottery.costPerTicketPoints} | costCoins: ${lottery.costPerTicketCoins} | startTime: ${lottery.startTime} | endTime: ${lottery.endTime} | maxTickets: ${lottery.maxParticipants} | 
+    CreatedBy: ${lottery.Drop.artistAddress} | defaultPrizeId: ${lottery.defaultPrizeId} | royaltyPercentageBasePoints: ${royaltyPercentageBasisPoints} | metadataIpfsPath: ${lottery.Drop.dropMetadataCid}`);
 }
 
 const buf2hex = x => '0x' + x.toString('hex');
 
-async function addPrizes(collection, lottery) {
+async function addPrizes(lottery) {
     let prizes = await prisma.nft.findMany({
         where: {
-            collectionId: collection.id
+            lotteryId: lottery.dropId
         },
         orderBy: {
-            numberOfMints: "asc"
+            numberOfEditions: "asc"
         }
     });
     let prizeIds = Array();
     let prizeAmounts = Array();
     for (prize of prizes) {
-        if (prize.numberOfMints > 0 ) {
+        if (prize.numberOfEditions > 0) {
             prizeIds.push(prize.id);
-            prizeAmounts.push(prize.numberOfMints);
+            prizeAmounts.push(prize.numberOfEditions);
         }
     }
     if (prizeIds.length > 0) {
-        await lottery.addPrizes(parseInt(collection.id), prizeIds, prizeAmounts);
+        await lotteryContract.addPrizes(parseInt(lottery.dropId), prizeIds, prizeAmounts);
     }
 }
 
