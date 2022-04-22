@@ -97,6 +97,13 @@ describe("Lottery Contract", function () {
         expect(await lottery.getLotteryTicketCount(1)).to.equal(1);
     });
 
+    it("Should allow to mix tiers", async function () {
+        expect(await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof,
+            0, { value: ONE_ETH })).to.have.emit(lottery, "TicketSold");
+        expect(await lottery.connect(addr1).buyTickets(1, 1, 2,
+            { value: THREE_ETH })).to.have.emit(lottery, "TicketSold");
+    });
+
     it("Should throw if trying to buy as VIP while missing VIP contract", async function () {
         await lottery.setCurrentMembershipAddress('0x0000000000000000000000000000000000000000');
         await expect(lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof,
@@ -381,7 +388,18 @@ describe("Lottery Contract", function () {
             await expect(lottery.connect(addr1).claimPrize(1, addr1.address, 1, 0, prizeProofA)).to.be.revertedWith("Participant has requested a refund");
         });
 
-        it("Should revert if asking for a refund after claiming a prize", async function () {
+        it.only("Should allow refund of non winning tickets after claiming prize", async function () {
+            expect(await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof,
+                0, { value: ONE_ETH })).to.have.emit(lottery, "TicketSold");
+            expect(await lottery.connect(addr1).buyTickets(1, 1, 2,
+                { value: THREE_ETH })).to.have.emit(lottery, "TicketSold");
+            await lottery.updateLottery(1, 5, ethers.utils.parseEther("1"), 10, TWO_ETH, THREE_ETH, block.timestamp, block.timestamp + 86400 * 3,
+                nft.address, 0, 0, 3, true); // "force" a lottery completion (status = 3)
+            await lottery.connect(addr1).claimPrize(1, addr1.address, 1, 0, prizeProofA);
+            expect(await lottery.connect(addr1).askForRefund(1)).to.have.emit(lottery, "Refunded");
+        });
+
+        it("Should revert if asking for a refund after claiming a prize from a single ticket", async function () {
             await lottery.connect(addr1).buyTickets(1, 1, 2,
                 { value: THREE_ETH });
             await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
