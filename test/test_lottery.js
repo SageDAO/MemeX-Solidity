@@ -35,6 +35,11 @@ describe("Lottery Contract", function () {
         mockERC20 = await MockERC20.deploy();
         mockERC20.transfer(addr1.address, 1000);
 
+        MockERC721 = await ethers.getContractFactory("MockERC721");
+        mockERC721 = await MockERC721.deploy();
+        await mockERC721.mint(addr1.address, 0);
+        await lottery.setCurrentMembershipAddress(mockERC721.address);
+
         Whitelist = await ethers.getContractFactory("MemeXWhitelist");
         whitelist = await Whitelist.deploy(owner.address);
 
@@ -84,8 +89,23 @@ describe("Lottery Contract", function () {
         await lottery.connect(addr2).claimPointsAndBuyTickets(1, 2, 1500, hexproofB, 1, { value: FOUR_ETH });
         expect(await lottery.getParticipantsCount(1)).to.equal(2);
         expect(await lottery.getLotteryTicketCount(1)).to.equal(3);
-        lottery = await lottery.getLotteryInfo(1);
-        expect(lottery.numberOfTicketsSold).to.equal(3);
+    });
+
+    it("Should allow VIPs to buy tickets with points and coins", async function () {
+        expect(await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof,
+            0, { value: ONE_ETH })).to.have.emit(lottery, "TicketSold");
+        expect(await lottery.getLotteryTicketCount(1)).to.equal(1);
+    });
+
+    it("Should throw if trying to buy as VIP while missing VIP contract", async function () {
+        await lottery.setCurrentMembershipAddress('0x0000000000000000000000000000000000000000');
+        await expect(lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof,
+            0, { value: ONE_ETH })).to.be.revertedWith("VIP contract missing");
+    });
+
+    it("Should throw if trying to buy as VIP while not having the NFT", async function () {
+        await expect(lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 1500, hexproofB,
+            0, { value: ONE_ETH })).to.be.revertedWith("VIP Membership card not found");
     });
 
     it("Should allow non member to buy tickets with coins", async function () {
@@ -173,9 +193,12 @@ describe("Lottery Contract", function () {
 
     it("Should allow refunds on a refundable lottery", async function () {
         await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 1500, hexproofB, 1, { value: TWO_ETH });
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 0, { value: ONE_ETH });
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 2, { value: THREE_ETH });
         await lottery.updateLottery(1, 5, ethers.utils.parseEther("1"), 10, TWO_ETH, THREE_ETH, block.timestamp, block.timestamp + 86400 * 3,
             nft.address, 0, 0, 3, true); // "force" a lottery completion (status = 3)
         expect(await lottery.connect(addr2).askForRefund(1)).to.have.emit(lottery, "Refunded");
+        expect(await lottery.connect(addr1).askForRefund(1)).to.have.emit(lottery, "Refunded");
     });
 
     it("Should revert if asking for a refund before the lottery ends", async function () {

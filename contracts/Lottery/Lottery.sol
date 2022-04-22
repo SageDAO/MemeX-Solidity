@@ -584,8 +584,12 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         // NonMembers (those who don't fit the previous descriptions) will have the third-best price tier and will only have the option to use FTM
         if (_tier == PriceTier.VIP) {
             require(
+                currentMembershipAddress != IBalanceOf(address(0)),
+                "VIP contract missing"
+            );
+            require(
                 currentMembershipAddress.balanceOf(msg.sender) > 0,
-                "Not a VIP"
+                "VIP Membership card not found"
             );
             costPerTicketCoins = lottery.vipTicketCostCoins;
             totalCostInPoints =
