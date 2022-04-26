@@ -7,68 +7,64 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract JuiceBox is ERC1155Supply, Ownable {
     using Strings for uint256;
 
-    string private baseURI;
+    string public baseURI;
 
-    bool private doneMinting;
-
-    uint256 public constant MAX_JUICES = 3555;
-
-    uint256[] public TIER_CAPS = [
-        0, // unused position so we can have index 1 == tier 1 and so on
-        1500, // TIER 1
-        1000, // TIER 2
-        750, // TIER 3
-        350, // TIER 4
-        55 // TIER 5
+    uint256[] private TIER_CAPS = [
+        2000, // TIER 1
+        1375, // TIER 2
+        700, // TIER 3
+        73, // TIER 4
+        4 // TIER 5
     ];
 
-    // support ERC-2981 Royalty Standard
-    bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a;
+    uint256[] private AMOUNT_REQUIRED_TO_UPGRADE_PER_TIER = [
+        2, // TIER 1 (2 tier 1 tokens burned = 1 tier 2)
+        2, // TIER 2 (2 tier 2 tokens burned = 1 tier 3)
+        5, // TIER 3 (5 tier 3 tokens burned = 1 tier 4)
+        10 // TIER 4 (10 tier 4 tokens burned = 1 tier 5)
+    ];
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(ERC1155)
-        returns (bool)
-    {
-        return
-            interfaceId == type(IERC1155).interfaceId ||
-            interfaceId == INTERFACE_ID_ERC2981 ||
-            super.supportsInterface(interfaceId);
+    event UpgradeTier(
+        address indexed userAddress,
+        uint256 tier,
+        uint256 numberOfUpgrades
+    );
+
+    constructor(
+        address _to,
+        uint256[] memory _tiers,
+        uint256[] memory _amounts
+    ) ERC1155("") {
+        _mintBatch(_to, _tiers, _amounts, "");
     }
 
-    constructor() ERC1155("") {}
-
-    function mintBatch(uint256[] memory _tiers, uint256[] memory _amounts)
+    function upgradeTier(uint256 _tier, uint256 _amountOfTokensToMint)
         external
-        onlyOwner
     {
-        require(!doneMinting, "JuiceBox already minted");
-        doneMinting = true;
-
-        uint256 total;
-        for (uint256 i = 0; i < _tiers.length; i++) {
-            total += _amounts[i];
-        }
-        require(
-            total == MAX_JUICES,
-            "Total amount of juices must be exactly 3555"
-        );
-        _mintBatch(owner(), _tiers, _amounts, "");
-    }
-
-    function upgradeTier(uint256 _tier) external {
+        // only tiers 1 to 4 are upgradeable
         require(_tier > 0 && _tier < 5, "Invalid tier");
         require(
-            balanceOf(msg.sender, _tier) >= 10,
+            _amountOfTokensToMint > 0,
+            "Number of upgrades must be greater than 0"
+        );
+
+        uint256 amountToBurn = AMOUNT_REQUIRED_TO_UPGRADE_PER_TIER[_tier - 1] *
+            _amountOfTokensToMint;
+
+        require(
+            balanceOf(msg.sender, _tier) >= amountToBurn,
             "Not enough tokens to upgrade"
         );
-        uint256 nextTier = _tier + 1;
-        require(totalSupply(nextTier) < TIER_CAPS[nextTier], "Tier is full");
 
-        _burn(msg.sender, _tier, 10);
-        _mint(msg.sender, nextTier, 1, "");
+        uint256 nextTier = _tier + 1;
+        require(
+            totalSupply(nextTier) + _amountOfTokensToMint <= TIER_CAPS[_tier],
+            "Tier is full"
+        );
+
+        _burn(msg.sender, _tier, amountToBurn);
+        _mint(msg.sender, nextTier, _amountOfTokensToMint, "");
+        emit UpgradeTier(msg.sender, _tier, _amountOfTokensToMint);
     }
 
     function setBaseURI(string memory _baseURI) external onlyOwner {

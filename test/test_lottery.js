@@ -388,7 +388,7 @@ describe("Lottery Contract", function () {
             await expect(lottery.connect(addr1).claimPrize(1, addr1.address, 1, 0, prizeProofA)).to.be.revertedWith("Participant has requested a refund");
         });
 
-        it.only("Should allow refund of non winning tickets after claiming prize", async function () {
+        it("Should allow refund of non winning tickets after claiming prize", async function () {
             expect(await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof,
                 0, { value: ONE_ETH })).to.have.emit(lottery, "TicketSold");
             expect(await lottery.connect(addr1).buyTickets(1, 1, 2,
