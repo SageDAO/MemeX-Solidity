@@ -77,6 +77,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         IMemeXNFT nftContract; // reference to the NFT Contract
         bool isRefundable; // if true, users who don't win can withdraw their FTM back
         uint256 lotteryID; // ID for lotto
+        uint256 dropId;
         uint256 vipTicketCostPoints; // Cost per ticket in points for VIPs
         uint256 vipTicketCostCoins; // Cost per ticket in FTM for VIPs
         uint256 memberTicketCostPoints; // Cost per ticket in points for member users (who eaarned Pina points)
@@ -392,6 +393,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
      * @param _defaultPrizeId default prize id
      */
     function createNewLottery(
+        uint256 _lotteryId,
         uint256 _collectionId,
         uint256 _vipTicketCostPoints,
         uint256 _vipTicketCostCoins,
@@ -420,6 +422,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             Status.Created,
             _nftContract,
             _isRefundable,
+            _lotteryId,
             _collectionId,
             _vipTicketCostPoints,
             _vipTicketCostCoins,
@@ -663,12 +666,12 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         ParticipantInfo storage participantInfo = participants[_lotteryId][
             _winner
         ];
-
+        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(
             !claimedPrizes[_lotteryId][_ticketNumber],
             "Participant already claimed prize"
         );
-        if (lotteryHistory[_lotteryId].isRefundable) {
+        if (lottery.isRefundable) {
             uint256 ticketValue = lotteryTickets[_lotteryId][_ticketNumber]
                 .ticketCostInCoins;
 
@@ -693,7 +696,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
         claimedPrizes[_lotteryId][_ticketNumber] = true;
-        nftContract.mint(_winner, _prizeId, 1, _lotteryId, "");
+        nftContract.mint(_winner, _prizeId, 1, lottery.dropId, "");
         emit PrizeClaimed(_lotteryId, _winner, _prizeId);
     }
 

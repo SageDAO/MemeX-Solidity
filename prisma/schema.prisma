@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider          = "postgresql"
-  url               = env("DATABASE_CONNECTION_POOL_URL")
+  url               = env("DATABASE_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
@@ -23,8 +23,6 @@ model Drop {
   description                      String
   metadataS3Path                   String
   tags                             String
-  isLive                           Boolean
-  isRefundable                     Boolean
   artistAddress                    String      @db.Char(42)
   Artist                           User        @relation("ArtistDrops", fields: [artistAddress], references: [walletAddress])
   ApprovedByUser                   User?       @relation("Drop_approvedByToUser", fields: [approvedBy], references: [walletAddress])
@@ -38,18 +36,21 @@ model Drop {
 
 model Lottery {
   id                          Int        @id @default(autoincrement()) 
-  dropId                      Int        
+  dropId                      Int    
+  isRefundable                Boolean    @default(false) 
+  isLive                      Boolean    @default(false)
   blockchainCreatedAt         DateTime?
   vipCostPerTicketCoins       Float      @default(0.0)
-  vipcostPerTicketPoints      Int        @default(0)
+  vipCostPerTicketPoints      Int        @default(0)
   memberCostPerTicketCoins    Float      @default(0.0)
-  membercostPerTicketPoints   Int        @default(0)
+  memberCostPerTicketPoints   Int        @default(0)
   nonMemberCostPerTicketCoins Float      @default(0.0)
   defaultPrizeId              Int?
   maxTickets                  Int        @default(0)
+  maxTicketsPerUser           Int        @default(0)
   finished                    Boolean    @default(false)
-  endTime                     Int
-  startTime                   Int
+  endTime                     DateTime
+  startTime                   DateTime
   Drop                        Drop       @relation(fields: [dropId], references: [id])
   DefaultPrize                Nft?       @relation("defaultPrize", fields: [defaultPrizeId], references: [id])
   Nfts                        Nft[]
@@ -60,11 +61,12 @@ model Auction {
   dropId                Int        
   erc20Address          String     @db.Char(42)
   buyNowPrice           String?
-  lastUpdatedAt         DateTime
+  lastUpdatedAt         DateTime?
   minimumPrice          String?
-  settled               Boolean
+  settled               Boolean    @default(false)
   startTime             DateTime
   endTime               DateTime
+  isLive                Boolean    @default(false)  
   Drop                  Drop @relation(fields: [dropId], references: [id])
   Nfts                  Nft[]
 }

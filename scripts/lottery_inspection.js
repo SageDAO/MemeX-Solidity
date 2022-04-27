@@ -1,5 +1,6 @@
 
 const { assert } = require("chai");
+
 const hre = require("hardhat");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require('keccak256');
@@ -46,10 +47,10 @@ async function main() {
 
         let secondarySplitterAddress = lottery.Drop.SecondarySplitter?.splitterAddress;
         if (lottery.Drop.secondarySplitterId != null && secondarySplitterAddress == null) {
-            lottery.SecondarySplitter.splitterAddress = await deploySplitter(lottery.dropId, lottery.Drop.secondarySplitterId);
+            lottery.Drop.SecondarySplitter.splitterAddress = await deploySplitter(lottery.dropId, lottery.Drop.secondarySplitterId);
         }
 
-        if (lottery.Drop.blockchainCreatedAt == null) {
+        if (lottery.blockchainCreatedAt == null) {
             await createLottery(lottery, CONTRACTS[hre.network.name]["nftAddress"]);
         } else {
             // if we're past endTime, inspect the lottery and take the required actions
@@ -65,8 +66,10 @@ async function main() {
 async function fetchApprovedLotteries() {
     return await prisma.lottery.findMany({
         where: {
-            approvedAt: {
-                not: null
+            Drop: {
+                approvedAt: {
+                    not: null
+                },
             },
         },
         include: {
@@ -216,34 +219,34 @@ async function generateAndStoreProofs(leaves, tree, dropId) {
     }
 }
 
-async function hardhatTests(Lottery, block) {
+async function hardhatTests(Lottery) {
     // if running on the hardhat network, deploy the contracts and initialize 
     let owner = await ethers.getSigner();
     const Rewards = await ethers.getContractFactory('Rewards');
     const Nft = await ethers.getContractFactory("MemeXNFT");
     const rewards = await Rewards.deploy(owner.address);
-    const lottery = await Lottery.deploy(rewards.address);
-    await rewards.addSmartContractRole(lottery.address);
+    const lottery = await hre.upgrades.deployProxy(Lottery, [rewards.address, owner.address])
 
     nft = await Nft.deploy("Memex", "MEMEX", owner.address);
-    nft.addMinterRole(owner.address);
-    nft.addMinterRole(lottery.address);
-    nft.addSmartContractRole(lottery.address);
     MockRNG = await ethers.getContractFactory("MockRNG");
     mockRng = await MockRNG.deploy(lottery.address);
     await lottery.setRandomGenerator(mockRng.address);
-    await lottery.createNewLottery(0, 1, block.timestamp, block.timestamp + 1100,
-        nft.address, 0, owner.address, "ipfs://path/");
-    await lottery.addPrizes(1, [1, 2], [1, 1000]);
-    accounts = await ethers.getSigners();
-    for (i = 0; i < 100; i++) {
-        logger.info(`Buying ticket with account ${i}`);
-        await lottery.connect(accounts[i]).buyTickets(1, 1, false, { value: 1 });
-    }
-    await ethers.provider.send("evm_increaseTime", [1500]); // long wait, enough to be after the end of the lottery
-    await ethers.provider.send("evm_mine", []);
-    await lottery.requestRandomNumber(1);
-    await mockRng.fulfillRequest(1, 1);
+    // get current timestamp
+    const blockNumber = await ethers.provider.getBlockNumber();
+    const block = await ethers.provider.getBlock(blockNumber);
+
+    // await lottery.createNewLottery(0, 1, block.timestamp, block.timestamp + 1100,
+    //     nft.address, 0, owner.address, "ipfs://path/");
+    // await lottery.addPrizes(1, [1, 2], [1, 1000]);
+    // accounts = await ethers.getSigners();
+    // for (i = 0; i < 100; i++) {
+    //     logger.info(`Buying ticket with account ${i}`);
+    //     await lottery.connect(accounts[i]).buyTickets(1, 1, false, { value: 1 });
+    // }
+    // await ethers.provider.send("evm_increaseTime", [1500]); // long wait, enough to be after the end of the lottery
+    // await ethers.provider.send("evm_mine", []);
+    // await lottery.requestRandomNumber(1);
+    // await mockRng.fulfillRequest(1, 1);
 }
 
 function exit(code) {
@@ -303,26 +306,42 @@ async function createLottery(lottery, nftContractAddress) {
     logger.info("Creating lottery for drop #id: " + lottery.dropId);
     const Nft = await ethers.getContractFactory("MemeXNFT");
     const nft = await Nft.attach(nftContractAddress);
+
     let royaltyAddress = lottery.Drop.secondarySplitterId != null ? lottery.Drop.SecondarySplitter.splitterAddress : lottery.Drop.artistAddress;
     let primarySalesDestination = lottery.Drop.primarySplitterId != null ? lottery.Drop.PrimarySplitter.splitterAddress : lottery.Drop.artistAddress;
+
     // percentage in basis points (200 = 2.00%)
     let royaltyPercentageBasisPoints = parseInt(lottery.Drop.royaltyPercentage * 100);
-    await nft.createCollection(
-        lottery.dropId,
-        royaltyAddress,
-        royaltyPercentageBasisPoints,
-        "https://" + lottery.Drop.dropMetadataCid + ".ipfs.dweb.link/",
-        primarySalesDestination);
-    logger.info("Collection created");
+    try {
+        await nft.createCollection(
+            lottery.dropId,
+            royaltyAddress,
+            royaltyPercentageBasisPoints,
+            "https://" + lottery.Drop.dropMetadataCid + ".ipfs.dweb.link/",
+            primarySalesDestination);
+        logger.info("Collection created");
+    } catch (error) {
+        if (error.message.includes("Collection already exists")) {
+            logger.info("Collection already exists");
+        } else {
+            logger.error(error);
+            return;
+        }
+    }
+
+    let startTime = new Date(lottery.startTime).getTime() / 1000;
+    let endTime = new Date(lottery.endTime).getTime() / 1000;
+
     const tx = await lotteryContract.createNewLottery(
+        lottery.id,
         lottery.dropId,
         lottery.vipCostPerTicketPoints,
         ethers.utils.parseEther(lottery.vipCostPerTicketCoins.toString()),
         lottery.memberCostPerTicketPoints,
         ethers.utils.parseEther(lottery.memberCostPerTicketCoins.toString()),
         ethers.utils.parseEther(lottery.nonMemberCostPerTicketCoins.toString()),
-        lottery.startTime,
-        lottery.endTime,
+        startTime,
+        endTime,
         nftContractAddress,
         lottery.isRefundable,
         lottery.defaultPrizeId || 0
@@ -331,28 +350,21 @@ async function createLottery(lottery, nftContractAddress) {
 
     if (lottery.maxTickets > 0) {
         logger.info("Setting max tickets to " + lottery.maxTickets);
-        await lottery.setMaxTickets(lottery.dropId, lottery.maxTickets);
+        await lotteryContract.setMaxTickets(lottery.id, lottery.maxTickets);
     }
-    lottery.Drop.blockchainCreatedAt = new Date();
+    lottery.blockchainCreatedAt = new Date();
     await prisma.lottery.update({
         where: {
             id: lottery.id
         },
         data: {
-            isLive: true
-        }
-    });
-    await prisma.drop.update({
-        where: {
-            id: lottery.dropId
-        },
-        data: {
-            blockchainCreatedAt: lottery.Drop.blockchainCreatedAt,
+            blockchainCreatedAt: lottery.blockchainCreatedAt,
+            isLive: true,
         }
     });
     await addPrizes(lottery);
 
-    logger.info(`Lottery created with drop id: ${lottery.dropId} | costPoints: ${lottery.costPerTicketPoints} | costCoins: ${lottery.costPerTicketCoins} | startTime: ${lottery.startTime} | endTime: ${lottery.endTime} | maxTickets: ${lottery.maxParticipants} | 
+    logger.info(`Lottery created with drop id: ${lottery.dropId} | costPoints: ${lottery.costPerTicketPoints} | costCoins: ${lottery.costPerTicketCoins} | startTime: ${lottery.startTime} | endTime: ${lottery.endTime} | maxTickets: ${lottery.maxTickets} | 
     CreatedBy: ${lottery.Drop.artistAddress} | defaultPrizeId: ${lottery.defaultPrizeId} | royaltyPercentageBasePoints: ${royaltyPercentageBasisPoints} | metadataIpfsPath: ${lottery.Drop.dropMetadataCid}`);
 }
 

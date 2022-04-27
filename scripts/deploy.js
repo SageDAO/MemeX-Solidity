@@ -41,7 +41,7 @@ replaceAddress = async (oldAddress, newAddress) => {
     const newContract = contracts.replace(oldAddress, newAddress);
     fse.writeFileSync(configPath, newContract);
 
-    const webAssetPath = path.join('..', 'MemeX-UI', 'constants', 'config.ts');
+    const webAssetPath = path.join('..', 'MemeX-UI', 'src', 'constants', 'config.ts');
     const webAsset = fse.readFileSync(webAssetPath, 'utf8');
     const count = (webAsset.match(new RegExp(oldAddress, 'g')) || []).length;
     if (count > 0) {
