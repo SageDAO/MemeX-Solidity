@@ -54,7 +54,7 @@ replaceAddress = async (oldAddress, newAddress) => {
 }
 
 deployRewards = async (deployer) => {
-  rewards_address = CONTRACTS[hre.network.name]["rewardsAddress"];
+  const rewardsAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
   const Rewards = await hre.ethers.getContractFactory("Rewards");
   if (shouldDeployContract("Rewards")) {
     rewards = await Rewards.deploy(deployer.address);
@@ -65,16 +65,16 @@ deployRewards = async (deployer) => {
     //   address: rewards.address,
     //   constructorArguments: [deployer.address],
     // });
-    replaceAddress(rewards_address, rewards.address);
+    replaceAddress(rewardsAddress, rewards.address);
     return [rewards, true];
   } else {
-    rewards = Rewards.attach(rewards_address);
+    rewards = Rewards.attach(rewardsAddress);
   }
   return [rewards, false];
 };
 
 deployNFT = async (deployer, lottery) => {
-  nft_address = CONTRACTS[hre.network.name]["nftAddress"];
+  const nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
   const Nft = await hre.ethers.getContractFactory("MemeXNFT");
   if (shouldDeployContract("MemeXNFT")) {
     console.log("deploying NFT contract");
@@ -86,37 +86,43 @@ deployNFT = async (deployer, lottery) => {
     //   address: nft.address,
     //   constructorArguments: ["MemeX NFTs", "MemeXNFT", deployer.address],
     // });
-    replaceAddress(nft_address, nft.address);
+    replaceAddress(nftAddress, nft.address);
     return [nft, true];
   } else {
-    nft = Nft.attach(nft_address);
+    nft = Nft.attach(nftAddress);
   }
   return [nft, false];
 };
 
 deployLottery = async (rewards, deployer) => {
-  lottery_address = CONTRACTS[hre.network.name]["lotteryAddress"];
+
+  const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
+  const membershipAddress = CONTRACTS[hre.network.name]["currentMembershipAddress"];
   const Lottery = await hre.ethers.getContractFactory("MemeXLottery");
+
   if (shouldDeployContract("MemeXLottery")) {
     // lottery = await Lottery.deploy(rewards.address, deployer.address);
-    const lottery = await upgrades.deployProxy(Lottery, [rewards.address, deployer.address]);
+    lotteryImp = await Lottery.deploy();
+    console.log("Lottery deployed to:", lotteryImp.address);
+    await lotteryImp.deployed();
+    const lottery = await upgrades.deployProxy(Lottery, [membershipAddress, rewards.address, deployer.address], { kinds: 'uups' });
     await lottery.deployed();
-    console.log("Lottery deployed to:", lottery.address);
+    console.log("Proxy deployed to:", lottery.address);
     // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
     // await hre.run("verify:verify", {
     //   address: lottery.address,
     //   constructorArguments: [rewards.address, deployer.address],
     // });
-    replaceAddress(lottery_address, lottery.address);
+    replaceAddress(lotteryAddress, lottery.address);
     return [lottery, true];
   } else {
-    lottery = Lottery.attach(lottery_address);
+    lottery = Lottery.attach(lotteryAddress);
   }
   return [lottery, false];
 };
 
 deployRandomness = async () => {
-  rand_address = CONTRACTS[hre.network.name]["randomnessAddress"];
+  const randAddress = CONTRACTS[hre.network.name]["randomnessAddress"];
   const Randomness = await hre.ethers.getContractFactory("RandomNumberConsumer");
   if (shouldDeployContract("RandomNumberConsumer")) {
     _vrfCoordinator = "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B";
@@ -131,17 +137,17 @@ deployRandomness = async () => {
     //   address: randomness.address,
     //   constructorArguments: [_vrfCoordinator, _linkToken, _lotteryAddr, _keyHash, _fee],
     // });
-    replaceAddress(rand_address, randomness.address);
+    replaceAddress(randAddress, randomness.address);
     return [randomness, true];
   } else {
-    randomness = await Randomness.attach(rand_address);
+    randomness = await Randomness.attach(randAddress);
   }
 
   return [randomness, false];
 };
 
 deployAuction = async (deployer) => {
-  auction_address = CONTRACTS[hre.network.name]["auctionAddress"];
+  const auctionAddress = CONTRACTS[hre.network.name]["auctionAddress"];
   const Auction = await hre.ethers.getContractFactory("MemeXAuction");
   if (shouldDeployContract("MemeXAuction")) {
     const auction = await Auction.deploy(deployer.address);
@@ -152,17 +158,17 @@ deployAuction = async (deployer) => {
     //   address: auction.address,
     //   constructorArguments: [deployer.address],
     // });
-    replaceAddress(auction_address, auction.address);
+    replaceAddress(auctionAddress, auction.address);
     return [auction, true];
   } else {
-    auction = Auction.attach(auction_address);
+    auction = Auction.attach(auctionAddress);
 
   }
   return [auction, false];
 }
 
 deployRNGTemp = async (_lotteryAddr) => {
-  rand_address = CONTRACTS[hre.network.name]["randomnessAddress"];
+  const randAddress = CONTRACTS[hre.network.name]["randomnessAddress"];
   const Randomness = await hre.ethers.getContractFactory("RNGTemp");
   if (shouldDeployContract("RNGTemp")) {
     randomness = await Randomness.deploy(_lotteryAddr);
@@ -172,10 +178,10 @@ deployRNGTemp = async (_lotteryAddr) => {
     //   address: randomness.address,
     //   constructorArguments: [_lotteryAddr],
     // });
-    replaceAddress(rand_address, randomness.address);
+    replaceAddress(randAddress, randomness.address);
     return [randomness, true];
   } else {
-    randomness = await Randomness.attach(rand_address);
+    randomness = await Randomness.attach(randAddress);
   }
 
   return [randomness, false];

@@ -14,19 +14,26 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/IMemeXNFT.sol";
 import "../../interfaces/ILottery.sol";
 import "../../interfaces/IMemeXWhitelist.sol";
 
-contract MemeXLottery is AccessControl, ILottery, Initializable {
+contract MemeXLottery is
+    Initializable,
+    AccessControlUpgradeable,
+    ILottery,
+    UUPSUpgradeable,
+    PausableUpgradeable
+{
     IBalanceOf public currentMembershipAddress;
-
     bytes32 internal requestId_;
 
     // Address of the randomness generator
@@ -177,11 +184,16 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
     /**
      * @dev Constructor for an upgradable contract
      */
-    function initialize(address _rewardsContract, address _admin)
-        public
-        initializer
-    {
+    function initialize(
+        address _membershipContract,
+        address _rewardsContract,
+        address _admin
+    ) public initializer {
+        __AccessControl_init();
+        __Pausable_init();
+        __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        currentMembershipAddress = IBalanceOf(_membershipContract);
         rewardsContract = IRewards(_rewardsContract);
     }
 
@@ -431,7 +443,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
             _nonMemberTicketCostCoins,
             _defaultPrizeId
         );
-        lotteryHistory[_collectionId] = newLottery;
+        lotteryHistory[_lotteryId] = newLottery;
         emit LotteryStatusChanged(_collectionId, Status.Created);
     }
 
@@ -551,7 +563,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint256 _lotteryId,
         uint256 _numberOfTicketsToBuy,
         PriceTier _tier
-    ) public payable isWhitelisted(_lotteryId) returns (uint256) {
+    ) public payable whenNotPaused isWhitelisted(_lotteryId) returns (uint256) {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         uint256 remainingPoints;
         uint256 totalCostInCoins;
@@ -662,7 +674,7 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         uint256 _prizeId,
         uint256 _ticketNumber,
         bytes32[] calldata _proof
-    ) public {
+    ) public whenNotPaused {
         ParticipantInfo storage participantInfo = participants[_lotteryId][
             _winner
         ];
@@ -715,10 +727,10 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         bytes32 _root,
         bytes32[] memory _proof
     ) internal pure returns (bool) {
-        return MerkleProof.verify(_proof, _root, _leafHash);
+        return MerkleProofUpgradeable.verify(_proof, _root, _leafHash);
     }
 
-    function askForRefund(uint256 _lotteryId) public {
+    function askForRefund(uint256 _lotteryId) public whenNotPaused {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
 
         // get the ParticipantInfo
@@ -759,6 +771,20 @@ contract MemeXLottery is AccessControl, ILottery, Initializable {
         (bool sent, ) = _to.call{value: _amount}("");
         require(sent, "Withdrawal failed");
     }
+
+    function pause() external onlyAdmin {
+        _pause();
+    }
+
+    function unpause() external onlyAdmin {
+        _unpause();
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyAdmin
+    {}
 }
 
 interface IBalanceOf {

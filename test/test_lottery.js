@@ -15,10 +15,15 @@ describe("Lottery Contract", function () {
     beforeEach(async () => {
         [owner, addr1, addr2, addr3, addr4, ...addrs] = await ethers.getSigners();
         artist = addr1;
+
+        MockERC721 = await ethers.getContractFactory("MockERC721");
+        mockERC721 = await MockERC721.deploy();
+        await mockERC721.mint(addr1.address, 0);
+
         Rewards = await ethers.getContractFactory('Rewards');
         rewards = await Rewards.deploy(owner.address);
         Lottery = await ethers.getContractFactory("MemeXLottery");
-        lottery = await upgrades.deployProxy(Lottery, [rewards.address, owner.address]);
+        lottery = await upgrades.deployProxy(Lottery, [mockERC721.address, rewards.address, owner.address], { kind: 'uups' });
         await lottery.deployed();
         await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
         await rewards.grantRole(MANAGE_POINTS_ROLE, owner.address);
@@ -35,11 +40,6 @@ describe("Lottery Contract", function () {
         mockERC20 = await MockERC20.deploy();
         mockERC20.transfer(addr1.address, 1000);
 
-        MockERC721 = await ethers.getContractFactory("MockERC721");
-        mockERC721 = await MockERC721.deploy();
-        await mockERC721.mint(addr1.address, 0);
-        await lottery.setCurrentMembershipAddress(mockERC721.address);
-
         Whitelist = await ethers.getContractFactory("MemeXWhitelist");
         whitelist = await Whitelist.deploy(owner.address);
 
@@ -48,7 +48,7 @@ describe("Lottery Contract", function () {
         block = await ethers.provider.getBlock(blockNum);
         await nft.createCollection(1, artist.address, 200, "ipfs://path/", artist.address);
         await nft.createCollection(2, artist.address, 200, "ipfs://path/collection2", artist.address)
-        await lottery.createNewLottery(1, 5, ethers.utils.parseEther("1"), 10, TWO_ETH, THREE_ETH, block.timestamp, block.timestamp + 86400 * 3,
+        await lottery.createNewLottery(1, 1, 5, ethers.utils.parseEther("1"), 10, TWO_ETH, THREE_ETH, block.timestamp, block.timestamp + 86400 * 3,
             nft.address, true, 0);
         lottery.addPrizes(1, [1, 2], [1, 100]);
 
@@ -246,7 +246,7 @@ describe("Lottery Contract", function () {
         const blockNum = await ethers.provider.getBlockNumber();
         const block = await ethers.provider.getBlock(blockNum);
         // create a second lottery
-        await lottery.createNewLottery(2, 5, ethers.utils.parseEther("1"), 10, TWO_ETH, THREE_ETH, block.timestamp, block.timestamp + 86400 * 3,
+        await lottery.createNewLottery(2, 2, 5, ethers.utils.parseEther("1"), 10, TWO_ETH, THREE_ETH, block.timestamp, block.timestamp + 86400 * 3,
             nft.address, true, 0);
         lottery.addPrizes(2, [3, 4], [1, 1]);
         await lottery.connect(addr2).claimPointsAndBuyTickets(2, 1, 1500, hexproofB, 1, { value: TWO_ETH });
@@ -306,7 +306,7 @@ describe("Lottery Contract", function () {
     });
 
     it("Should not call createNewLottery if not admin", async function () {
-        await expect(lottery.connect(addr1).createNewLottery(1, 5, ethers.utils.parseEther("1"), 10, TWO_ETH, THREE_ETH, block.timestamp, block.timestamp + 86400 * 3,
+        await expect(lottery.connect(addr1).createNewLottery(1, 1, 5, ethers.utils.parseEther("1"), 10, TWO_ETH, THREE_ETH, block.timestamp, block.timestamp + 86400 * 3,
             nft.address, true, 0)).to.be.revertedWith("Admin calls only");
     });
 
