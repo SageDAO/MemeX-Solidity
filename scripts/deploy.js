@@ -264,7 +264,7 @@ async function main() {
   }
 
   const artifactsPath = path.join('.', 'artifacts', 'contracts');
-  const webAssetPath = path.join('..', 'MemeX-UI', 'constants', 'abis');
+  const webAssetPath = path.join('..', 'MemeX-UI', 'src', 'constants', 'abis');
 
   fse.copySync(artifactsPath, webAssetPath, { overwrite: true });
 
