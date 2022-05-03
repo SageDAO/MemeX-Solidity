@@ -22,7 +22,7 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
 module.exports = {
   networks: {
     mainnet: {
-      url: "http://127.0.0.1:8547",
+      url: "http://127.0.0.1:8545",
       accounts: [process.env.DEPLOYER_PK],
     },
     rinkeby: {
@@ -30,6 +30,11 @@ module.exports = {
       accounts: [process.env.DEPLOYER_PK],
     },
     fantomtestnet: {
+      url: process.env.PROVIDER_URL,
+      accounts: [process.env.DEPLOYER_PK],
+      chainId: 0xfa2,
+    },
+    dev: {
       url: process.env.PROVIDER_URL,
       accounts: [process.env.DEPLOYER_PK],
       chainId: 0xfa2,
@@ -59,8 +64,9 @@ module.exports = {
     },
   },
   solidity: {
-    version: "0.8.12",
+    version: "0.8.13",
     settings: {
+      viaIR: true,
       optimizer: {
         enabled: true,
         runs: 200,
