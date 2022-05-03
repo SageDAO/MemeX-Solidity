@@ -51,11 +51,6 @@ contract JuiceBox is ERC1155Supply, Ownable {
         uint256 amountToBurn = AMOUNT_REQUIRED_TO_UPGRADE_PER_TIER[_tier - 1] *
             _amountOfTokensToMint;
 
-        require(
-            balanceOf(msg.sender, _tier) >= amountToBurn,
-            "Not enough tokens to upgrade"
-        );
-
         uint256 nextTier = _tier + 1;
         require(
             totalSupply(nextTier) + _amountOfTokensToMint <= TIER_CAPS[_tier],
