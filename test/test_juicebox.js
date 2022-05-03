@@ -67,7 +67,8 @@ describe("JuiceBox Contract", function () {
     });
 
     it("Should throw if trying to upgrade tiers without owning enough tokens", async function () {
-        await expect(juiceBox.upgradeTier(4, 10)).to.be.revertedWith("Not enough tokens to upgrade");
+        await juiceBox.safeTransferFrom(owner.address, addr1.address, 1, 1, []);
+        await expect(juiceBox.connect(addr1).upgradeTier(1, 1)).to.be.revertedWith("ERC1155: burn amount exceeds balance");
     });
 
     it("Should set baseURI", async function () {
