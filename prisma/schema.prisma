@@ -48,7 +48,7 @@ model Lottery {
   defaultPrizeId              Int?
   maxTickets                  Int        @default(0)
   maxTicketsPerUser           Int        @default(0)
-  finished                    Boolean    @default(false)
+  prizesAwardedAt             DateTime?
   endTime                     DateTime
   startTime                   DateTime
   Drop                        Drop       @relation(fields: [dropId], references: [id])
@@ -67,6 +67,7 @@ model Auction {
   startTime             DateTime
   endTime               DateTime
   isLive                Boolean    @default(false)  
+  blockchainCreatedAt   DateTime?
   Drop                  Drop @relation(fields: [dropId], references: [id])
   Nfts                  Nft[]
 }
@@ -173,7 +174,8 @@ model User {
   role                          Role          @default(USER)
   bio                           String?       @db.VarChar(200)
   profilePicture                String?
-  username                      String?
+  username                      String?       @db.VarChar(40)
+  displayName                   String?       @db.VarChar(40)
   DropsApproved                 Drop[]  @relation("Drop_approvedByToUser")
   ArtistDrops                   Drop[]  @relation("ArtistDrops")
   EarnedPoints                  EarnedPoints?
