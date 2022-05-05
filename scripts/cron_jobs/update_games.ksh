@@ -19,7 +19,7 @@ case "$SCRIPTDIR" in
   *staging*) export HARDHAT_NETWORK=fantomtestnet ;;
   *)         export HARDHAT_NETWORK=fantom ;;
 esac
-/home/ubuntu/.nvm/versions/node/v16.13.0/bin/node scripts/lottery_inspection.js
+/home/ubuntu/.nvm/versions/node/v16.13.0/bin/node scripts/update_games.js
 
 rm -f $pid # remove pid file before exiting
 exit
