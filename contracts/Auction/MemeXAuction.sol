@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract MemeXAuction is AccessControl, ReentrancyGuard {
-    uint256 public auctionCount;
-
     mapping(uint256 => Auction) public auctions;
 
     mapping(address => uint256) withdrawCredits;
@@ -24,7 +22,7 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
         IMemeXNFT nftContract;
         uint32 startTime;
         uint32 endTime;
-        bool finished;
+        bool settled;
         uint256 collectionId;
         uint256 nftId;
         uint256 buyNowPrice;
@@ -34,6 +32,7 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
 
     event AuctionCreated(
         uint256 indexed collectionId,
+        uint256 auctionId,
         uint256 nftId,
         address erc20Token
     );
@@ -65,11 +64,6 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
-    function incrementAuctionCount() internal returns (uint256) {
-        auctionCount++;
-        return auctionCount;
-    }
-
     function setDefaultTimeExtension(uint16 _timeExtension) public onlyAdmin {
         defaultTimeExtension = _timeExtension;
     }
@@ -83,6 +77,7 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
 
     function createAuction(
         uint256 _collectionId,
+        uint256 _auctionId,
         uint256 _nftId,
         uint256 _buyNowPrice,
         uint256 _minimumPrice,
@@ -101,8 +96,6 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
             "Collection does not exist"
         );
 
-        auctionId = incrementAuctionCount();
-
         Auction memory auction = Auction(
             _token,
             address(0),
@@ -117,9 +110,9 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
             0
         );
 
-        auctions[auctionId] = auction;
+        auctions[_auctionId] = auction;
 
-        emit AuctionCreated(_collectionId, _nftId, _token);
+        emit AuctionCreated(_collectionId, _auctionId, _nftId, _token);
 
         return auctionId;
     }
@@ -137,7 +130,7 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
 
     function settleAuction(uint256 _auctionId) public {
         Auction storage auction = auctions[_auctionId];
-        require(!auction.finished, "Auction is already finished");
+        require(!auction.settled, "Auction already settled");
         uint256 highestBid = auction.highestBid;
         address highestBidder = auction.highestBidder;
         require(
@@ -146,7 +139,7 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
             "Auction is still running"
         );
 
-        auction.finished = true;
+        auction.settled = true;
         if (highestBidder != address(0)) {
             auction.nftContract.mint(
                 highestBidder,
@@ -185,7 +178,7 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
         address _token,
         uint32 _endTime
     ) public onlyAdmin {
-        require(!auctions[_auctionId].finished, "Auction is already finished");
+        require(!auctions[_auctionId].settled, "Auction lready settled");
         require(auctions[_auctionId].endTime > 0, "Auction not found");
         Auction storage auction = auctions[_auctionId];
         auction.buyNowPrice = _buyNowPrice;
@@ -196,9 +189,9 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
 
     function cancelAuction(uint256 _auctionId) public onlyAdmin {
         Auction storage auction = auctions[_auctionId];
-        require(!auction.finished, "Auction is already finished");
+        require(!auction.settled, "Auction is already finished");
         reverseLastBid(_auctionId, auction.erc20Token != address(0));
-        auctions[_auctionId].finished = true;
+        auctions[_auctionId].settled = true;
         emit AuctionCancelled(_auctionId);
     }
 
@@ -208,7 +201,7 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
         nonReentrant
     {
         Auction storage auction = auctions[_auctionId];
-        require(!auction.finished, "Auction is already finished");
+        require(!auction.settled, "Auction already settled");
         uint32 endTime = auction.endTime;
         require(endTime > block.timestamp, "Auction has ended");
         require(
