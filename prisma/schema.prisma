@@ -66,10 +66,11 @@ model Auction {
   settled               Boolean    @default(false)
   startTime             DateTime
   endTime               DateTime
-  isLive                Boolean    @default(false)  
+  isLive                Boolean    @default(false) 
+  nftId                 Int 
   blockchainCreatedAt   DateTime?
   Drop                  Drop @relation(fields: [dropId], references: [id])
-  Nfts                  Nft[]
+  Nft                   Nft  @relation(fields: [nftId], references: [id])
 }
 
 model SplitEntry {
@@ -119,7 +120,7 @@ model Nft {
   auctionId                Int?
   DefaultPrizeInLotteries  Lottery[] @relation("defaultPrize")
   PrizeProof               PrizeProof[]
-  Auction                  Auction?  @relation(fields: [auctionId], references: [id])
+  Auction                  Auction?  
   Lottery                  Lottery?  @relation(fields: [lotteryId], references: [id])
 }
 
