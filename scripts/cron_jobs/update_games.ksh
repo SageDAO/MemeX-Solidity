@@ -16,6 +16,7 @@ fi
 cd $SCRIPTDIR; cd ../..
 git pull
 case "$SCRIPTDIR" in
+  *dev*)     export HARDHAT_NETWORK=dev ;;
   *staging*) export HARDHAT_NETWORK=fantomtestnet ;;
   *)         export HARDHAT_NETWORK=fantom ;;
 esac
