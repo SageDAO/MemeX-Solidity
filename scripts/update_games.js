@@ -20,7 +20,7 @@ let lotteryContract;
 async function main() {
     await hre.run('compile');
     logger = createLogger(`memex_scripts_${hre.network.name}`, `lottery_inspection_${hre.network.name}`);
-    logger.info(`Starting the lottery inspection script on ${hre.network.name}`);
+    logger.info(`Starting the game inspection script on ${hre.network.name}`);
 
     const Lottery = await ethers.getContractFactory("MemeXLottery");
     const Auction = await ethers.getContractFactory("MemeXAuction");
@@ -66,8 +66,21 @@ async function updateAuctions() {
                 continue;
             }
             await createAuction(auction, CONTRACTS[hre.network.name]["nftAddress"]);
+        } else {
+            const endTime = Math.floor(auction.endTime / 1000);
+            // if we're past endTime, inspect the lottery and take the required actions
+            if (now >= endTime) {
+                await settleAuction(auction);
+            }
         }
     }
+}
+
+async function settleAuction(auction) {
+    logger.info(`Settling auction ${auction.id}`);
+    let blockchainAuction = await auction.getAuction(auction.id);
+    console.log(blockchainAuction);
+    //await auction.settleAuction(auction.id);
 
 }
 
@@ -459,6 +472,9 @@ async function createAuction(auction, nftContractAddress) {
 
     let startTime = parseInt(new Date(auction.startTime).getTime() / 1000);
     let endTime = parseInt(new Date(auction.endTime).getTime() / 1000);
+    if (auction.buyNowPrice == null || auction.buyNowPrice == "") {
+        auction.buyNowPrice = '0';
+    }
     let buyNowPrice = ethers.utils.parseEther(auction.buyNowPrice);
     let minimumPrice = ethers.utils.parseEther(auction.minimumPrice);
     if (auction.erc20Address == null || auction.erc20Address == "") {
