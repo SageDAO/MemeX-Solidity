@@ -15,11 +15,11 @@ CONTRACTS = {
         "currentMembershipAddress": "0x0000000000000000000000000000000000000000",
     },
     "dev": {
-        "lotteryAddress": "0x288601B1972C32A99F6284a6d2AB44a3e72e54A3",
-        "nftAddress": "0x5CBaEd483ed8c09D659e7F5172A3024e0a6A9CA1",
+        "lotteryAddress": "0xf29eF0306B9f49061ac178331F85A6FF5c16228f",
+        "nftAddress": "0xBB9c16F0A8dF5C9c10c26280Db4Ce8ec51aB17e9",
         "randomnessAddress": "0xe827372E205234c3324eaA6079ee1F71F41f4210",
         "rewardsAddress": "0x7674bCE109c482ae4b80Ef3E86C1093C3b403105",
-        "auctionAddress": "0x93824fF6f4bD1c73cb5Ad3849FB4b60c86aF28F9",
+        "auctionAddress": "0x17AeF36E87885016bfb7eA495c0abff726f2c9a4",
         "currentMembershipAddress": "0x0000000000000000000000000000000000000000",
     },
     "fantom": {
