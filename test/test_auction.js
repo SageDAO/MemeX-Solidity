@@ -70,7 +70,7 @@ describe("Auction Contract", function () {
     it("Should finalize auction on buy now - FTM", async function () {
         await auction.connect(addr2).bid(1, 1000, { value: 1000 });
         let resp = await auction.getAuction(1);
-        expect(resp.finished).to.equal(true);
+        expect(resp.settled).to.equal(true);
         balance = await nft.balanceOf(addr2.address, 1);
         expect(balance).to.equal(1);
     });
@@ -79,7 +79,7 @@ describe("Auction Contract", function () {
         await mockERC20.connect(addr2).approve(auction.address, 1000);
         await auction.connect(addr2).bid(2, 1000);
         let resp = await auction.getAuction(2);
-        expect(resp.finished).to.equal(true);
+        expect(resp.settled).to.equal(true);
         balance = await nft.balanceOf(addr2.address, 2);
         expect(balance).to.equal(1);
     });
@@ -219,7 +219,7 @@ describe("Auction Contract", function () {
 
     it("Should revert if trying to settle auction already finished", async function () {
         await auction.cancelAuction(1);
-        await expect(auction.settleAuction(1)).to.be.revertedWith("Auction is already finished");
+        await expect(auction.settleAuction(1)).to.be.revertedWith("Auction already settled");
     });
 
     it("Should receive a bid from a contract", async () => {
