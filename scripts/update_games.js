@@ -47,7 +47,7 @@ async function updateAuctions() {
 
     const now = Math.floor(Date.now() / 1000);
     for (const auction of auctions) {
-        if (auction.settled) {
+        if (auction.claimedAt != null) {
             continue;
         }
         let primarySplitterAddress = auction.Drop.PrimarySplitter?.splitterAddress;
@@ -59,7 +59,7 @@ async function updateAuctions() {
         if (auction.Drop.secondarySplitterId != null && secondarySplitterAddress == null) {
             auction.Drop.SecondarySplitter.splitterAddress = await deploySplitter(auction.dropId, auction.Drop.secondarySplitterId);
         }
-
+        const endTime = Math.floor(auction.endTime / 1000);
         if (auction.blockchainCreatedAt == null) {
             if (auction.endTime < now) {
                 // ignore an auction with an expired end time
@@ -67,7 +67,6 @@ async function updateAuctions() {
             }
             await createAuction(auction, CONTRACTS[hre.network.name]["nftAddress"]);
         } else {
-            const endTime = Math.floor(auction.endTime / 1000);
             // if we're past endTime, inspect the lottery and take the required actions
             if (now >= endTime) {
                 await settleAuction(auction);
@@ -78,10 +77,24 @@ async function updateAuctions() {
 
 async function settleAuction(auction) {
     logger.info(`Settling auction ${auction.id}`);
-    let blockchainAuction = await auction.getAuction(auction.id);
-    console.log(blockchainAuction);
-    //await auction.settleAuction(auction.id);
+    let blockchainAuction = await auctionContract.getAuction(auction.id);
+    if (!blockchainAuction.settled) {
+        await auctionContract.settleAuction(auction.id);
+    }
+    updateAuctionAsSettled(auction, blockchainAuction.highestBidder);
+}
 
+async function updateAuctionAsSettled(auction, winnerAddress) {
+    await prisma.auction.update({
+        where: {
+            id: auction.id
+        },
+        data: {
+            settled: true,
+            claimedAt: new Date(),
+            winnerAddress: winnerAddress,
+        }
+    });
 }
 
 async function updateLotteries() {

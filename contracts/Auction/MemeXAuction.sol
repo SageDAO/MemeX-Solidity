@@ -148,16 +148,19 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
                 auction.collectionId,
                 ""
             );
-        }
 
-        (, , , address salesDestination) = auction
-            .nftContract
-            .getCollectionInfo(auction.collectionId);
-        if (auction.erc20Token != address(0)) {
-            IERC20(auction.erc20Token).transfer(salesDestination, highestBid);
-        } else {
-            (bool sent, ) = salesDestination.call{value: highestBid}("");
-            require(sent, "Failed to send FTM to sales destination");
+            (, , , address salesDestination) = auction
+                .nftContract
+                .getCollectionInfo(auction.collectionId);
+            if (auction.erc20Token != address(0)) {
+                IERC20(auction.erc20Token).transfer(
+                    salesDestination,
+                    highestBid
+                );
+            } else {
+                (bool sent, ) = salesDestination.call{value: highestBid}("");
+                require(sent, "Failed to send FTM to sales destination");
+            }
         }
 
         emit AuctionSettled(_auctionId, highestBidder, highestBid);
@@ -178,7 +181,7 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
         address _token,
         uint32 _endTime
     ) public onlyAdmin {
-        require(!auctions[_auctionId].settled, "Auction lready settled");
+        require(!auctions[_auctionId].settled, "Auction already settled");
         require(auctions[_auctionId].endTime > 0, "Auction not found");
         Auction storage auction = auctions[_auctionId];
         auction.buyNowPrice = _buyNowPrice;
