@@ -204,8 +204,9 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
         nonReentrant
     {
         Auction storage auction = auctions[_auctionId];
-        require(!auction.settled, "Auction already settled");
         uint32 endTime = auction.endTime;
+        require(endTime > 0, "Auction not found");
+        require(!auction.settled, "Auction already settled");
         require(endTime > block.timestamp, "Auction has ended");
         require(
             _amount > 0 && _amount >= auction.minimumPrice,
