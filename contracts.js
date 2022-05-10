@@ -19,7 +19,7 @@ CONTRACTS = {
         "nftAddress": "0xBB9c16F0A8dF5C9c10c26280Db4Ce8ec51aB17e9",
         "randomnessAddress": "0xe827372E205234c3324eaA6079ee1F71F41f4210",
         "rewardsAddress": "0x7674bCE109c482ae4b80Ef3E86C1093C3b403105",
-        "auctionAddress": "0x4a959392a7EF9a835490Bb7331684b9869169687",
+        "auctionAddress": "0xb640C9952BD6917D6473ec3802FC162707283891",
         "currentMembershipAddress": "0x0000000000000000000000000000000000000000",
     },
     "fantom": {
