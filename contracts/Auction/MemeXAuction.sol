@@ -1,18 +1,40 @@
+/*
+ .----------------.  .----------------.  .----------------.  .----------------.  .----------------.
+| .--------------. || .--------------. || .--------------. || .--------------. || .--------------. |
+| | ____    ____ | || |  _________   | || | ____    ____ | || |  _________   | || |  ____  ____  | |
+| ||_   \  /   _|| || | |_   ___  |  | || ||_   \  /   _|| || | |_   ___  |  | || | |_  _||_  _| | |
+| |  |   \/   |  | || |   | |_  \_|  | || |  |   \/   |  | || |   | |_  \_|  | || |   \ \  / /   | |
+| |  | |\  /| |  | || |   |  _|  _   | || |  | |\  /| |  | || |   |  _|  _   | || |    > `' <    | |
+| | _| |_\/_| |_ | || |  _| |___/ |  | || | _| |_\/_| |_ | || |  _| |___/ |  | || |  _/ /'`\ \_  | |
+| ||_____||_____|| || | |_________|  | || ||_____||_____|| || | |_________|  | || | |____||____| | |
+| |              | || |              | || |              | || |              | || |              | |
+| '--------------' || '--------------' || '--------------' || '--------------' || '--------------' |
+ '----------------'  '----------------'  '----------------'  '----------------'  '----------------'
+*/
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IMemeXNFT.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract MemeXAuction is AccessControl, ReentrancyGuard {
+contract MemeXAuction is
+    Initializable,
+    AccessControlUpgradeable,
+    UUPSUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
+{
     mapping(uint256 => Auction) public auctions;
 
     mapping(address => uint256) withdrawCredits;
 
-    uint32 public defaultTimeExtension = 3600;
-    uint16 public bidIncrementPercentage = 100; // 1,00% higher than the previous bid
+    uint256 public defaultTimeExtension;
+    uint256 public bidIncrementPercentage; // 100 = 1,00% higher than the previous bid
 
     struct Auction {
         // seller can define an ERC20 token to be used for the auction.
@@ -60,8 +82,20 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
         _;
     }
 
-    constructor(address _admin) {
-        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+    /**
+     * @dev Constructor for an upgradable contract
+     */
+    function initialize(
+        address _admin,
+        uint256 _defaultTimeExtension,
+        uint256 _bidIncrementPercentage
+    ) public initializer {
+        __AccessControl_init();
+        __Pausable_init();
+        __UUPSUpgradeable_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        defaultTimeExtension = _defaultTimeExtension;
+        bidIncrementPercentage = _bidIncrementPercentage;
     }
 
     function setDefaultTimeExtension(uint16 _timeExtension) public onlyAdmin {
@@ -128,7 +162,7 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
         require(sent, "withdraw credits failed");
     }
 
-    function settleAuction(uint256 _auctionId) public {
+    function settleAuction(uint256 _auctionId) public whenNotPaused {
         Auction storage auction = auctions[_auctionId];
         require(!auction.settled, "Auction already settled");
         uint256 highestBid = auction.highestBid;
@@ -202,9 +236,10 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
         public
         payable
         nonReentrant
+        whenNotPaused
     {
         Auction storage auction = auctions[_auctionId];
-        uint32 endTime = auction.endTime;
+        uint256 endTime = auction.endTime;
         require(endTime > 0, "Auction not found");
         require(!auction.settled, "Auction already settled");
         require(endTime > block.timestamp, "Auction has ended");
@@ -237,11 +272,11 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
         auction.highestBidder = msg.sender;
         auction.highestBid = _amount;
 
-        uint32 timeExtension = defaultTimeExtension;
+        uint256 timeExtension = defaultTimeExtension;
 
         if (endTime - block.timestamp < timeExtension) {
-            endTime = uint32(block.timestamp) + timeExtension;
-            auction.endTime = endTime;
+            endTime = block.timestamp + timeExtension;
+            auction.endTime = uint32(endTime);
         }
 
         if (auction.buyNowPrice != 0 && _amount == auction.buyNowPrice) {
@@ -278,4 +313,18 @@ contract MemeXAuction is AccessControl, ReentrancyGuard {
     {
         return auctions[_auctionId];
     }
+
+    function pause() external onlyAdmin {
+        _pause();
+    }
+
+    function unpause() external onlyAdmin {
+        _unpause();
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyAdmin
+    {}
 }

@@ -17,7 +17,7 @@ describe("Auction Contract", function () {
         mockERC20.transfer(addr3.address, 1000);
 
         Auction = await ethers.getContractFactory('MemeXAuction');
-        auction = await Auction.deploy(owner.address);
+        auction = await upgrades.deployProxy(Auction, [owner.address, 3600, 100], { kind: 'uups' });
 
         ContractBidder = await ethers.getContractFactory('MockAuctionBidder');
         contractBidder = await ContractBidder.deploy(auction.address);
