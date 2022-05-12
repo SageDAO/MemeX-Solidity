@@ -15,7 +15,7 @@ CONTRACTS = {
         "currentMembershipAddress": "0x0000000000000000000000000000000000000000",
     },
     "dev": {
-        "lotteryAddress": "0x6B0e1eF14c73579A1185DD1fa8085814D53Fd952",
+        "lotteryAddress": "0xba908E277944030e948e502b02B528715C044b7e",
         "nftAddress": "0xBB9c16F0A8dF5C9c10c26280Db4Ce8ec51aB17e9",
         "randomnessAddress": "0xe827372E205234c3324eaA6079ee1F71F41f4210",
         "rewardsAddress": "0x7674bCE109c482ae4b80Ef3E86C1093C3b403105",
