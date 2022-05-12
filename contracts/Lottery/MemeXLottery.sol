@@ -305,7 +305,7 @@ contract MemeXLottery is
         view
         returns (uint256)
     {
-        return lotteryTickets[_lotteryId].length;
+        return lotteryHistory[_lotteryId].numberOfTicketsSold;
     }
 
     function getLotteryCount() public view returns (uint256) {
@@ -757,14 +757,6 @@ contract MemeXLottery is
             _user
         ];
         return participantInfo.totalTicketsBought;
-    }
-
-    function getTicketCountPerLottery(uint256 _lotteryId)
-        public
-        view
-        returns (uint256)
-    {
-        return lotteryHistory[_lotteryId].numberOfTicketsSold;
     }
 
     function askForRefund(uint256 _lotteryId) public whenNotPaused {
