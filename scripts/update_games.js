@@ -39,10 +39,11 @@ async function main() {
     await updateAuctions();
 
     await prisma.$disconnect();
-    logger.info('Lottery inspection finished successfully');
+    logger.info('Game inspection script finished successfully');
 }
 
 async function updateAuctions() {
+    logger.info('Searching for auctions that require action');
     let auctions = await fetchApprovedAuctions();
 
     const now = Math.floor(Date.now() / 1000);
