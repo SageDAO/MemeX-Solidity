@@ -1,11 +1,8 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
-require("@nomiclabs/hardhat-truffle4");
 require("hardhat-gas-reporter");
 require("@nomiclabs/hardhat-solhint");
 require("@typechain/hardhat");
-require("@nomiclabs/hardhat-ethers");
-require("@nomiclabs/hardhat-waffle");
 require("dotenv").config();
 require("@openzeppelin/hardhat-upgrades");
 
