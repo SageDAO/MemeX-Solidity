@@ -445,6 +445,11 @@ async function createLottery(lottery, nftContractAddress) {
         logger.info("Setting max tickets to " + lottery.maxTickets);
         await lotteryContract.setMaxTickets(lottery.id, lottery.maxTickets);
     }
+    if (lottery.maxTicketsPerUser > 0) {
+        logger.info("Setting max tickets per user to " + lottery.maxTicketsPerUser);
+        await lotteryContract.setMaxTicketsPerUser(lottery.id, lottery.maxTicketsPerUser);
+    }
+
     lottery.blockchainCreatedAt = new Date();
     await prisma.lottery.update({
         where: {
