@@ -18,10 +18,13 @@ describe("Lottery Contract", function () {
 
         MockERC721 = await ethers.getContractFactory("MockERC721");
         mockERC721 = await MockERC721.deploy();
+        await mockERC721.deployed();
         await mockERC721.mint(addr1.address, 0);
 
         Rewards = await ethers.getContractFactory('Rewards');
         rewards = await Rewards.deploy(owner.address);
+        await rewards.deployed();
+
         Lottery = await ethers.getContractFactory("MemeXLottery");
         lottery = await upgrades.deployProxy(Lottery, [mockERC721.address, rewards.address, owner.address], { kind: 'uups' });
         await lottery.deployed();
