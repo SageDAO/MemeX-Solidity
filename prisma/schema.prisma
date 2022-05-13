@@ -11,6 +11,7 @@ datasource db {
 
 model Drop {
   id                               Int         @id @default(autoincrement())
+  name                             String
   primarySplitterId                Int?
   secondarySplitterId              Int?
   whitelistId                      Int?
@@ -54,6 +55,7 @@ model Lottery {
   Drop                        Drop       @relation(fields: [dropId], references: [id])
   DefaultPrize                Nft?       @relation("defaultPrize", fields: [defaultPrizeId], references: [id])
   Nfts                        Nft[]
+  PrizeProofs                 PrizeProof[]   
 }
 
 model Auction {
@@ -134,8 +136,9 @@ model PrizeProof {
   lotteryId     Int
   ticketNumber  Int 
   Nft           Nft       @relation(fields: [nftId], references: [id])
-
-  @@id([lotteryId, winnerAddress, nftId])
+  Lottery       Lottery   @relation(fields: [lotteryId], references: [id])
+  
+  @@id([lotteryId, winnerAddress, nftId, ticketNumber])
 }
 
 model MemeTransactions {
