@@ -3,6 +3,7 @@ const ethers = hre.ethers;
 require("dotenv").config();
 const createLogger = require("./logs.js");
 const CONTRACTS = require('../contracts.js');
+const { logger } = require("ethers");
 
 const timer = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -73,6 +74,6 @@ async function main() {
 main()
     .then(() => process.exit(0))
     .catch((error) => {
-        console.error(error.stack);
+        logger.error(error.stack);
         process.exit(1);
     });
