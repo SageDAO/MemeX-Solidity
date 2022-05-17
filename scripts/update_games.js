@@ -405,7 +405,8 @@ async function createLottery(lottery, nftContractAddress) {
 
     // percentage in basis points (200 = 2.00%)
     let royaltyPercentageBasisPoints = parseInt(lottery.Drop.royaltyPercentage * 100);
-    try {
+    let collectionExists = await nft.collectionExists(lottery.dropId);
+    if (!collectionExists) {
         await nft.createCollection(
             lottery.dropId,
             royaltyAddress,
@@ -413,13 +414,8 @@ async function createLottery(lottery, nftContractAddress) {
             "https://" + lottery.Drop.dropMetadataCid + ".ipfs.dweb.link/",
             primarySalesDestination);
         logger.info("Collection created");
-    } catch (error) {
-        if (error.message.includes("Collection already exists")) {
-            logger.info("Collection already exists");
-        } else {
-            logger.error(error);
-            return;
-        }
+    } else {
+        logger.info("Collection already exists");
     }
 
     let startTime = parseInt(new Date(lottery.startTime).getTime() / 1000);
