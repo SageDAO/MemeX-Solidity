@@ -3,12 +3,12 @@ const ethers = hre.ethers;
 require("dotenv").config();
 const createLogger = require("./logs.js");
 const CONTRACTS = require('../contracts.js');
-const { logger } = require("ethers");
 
 const timer = (ms) => new Promise((res) => setTimeout(res, ms));
+let logger;
 
 async function main() {
-    let logger = createLogger(`memex_scripts_${hre.network.name}`, `monitor_events_${hre.network.name}`);
+    logger = createLogger(`memex_scripts_${hre.network.name}`, `monitor_events_${hre.network.name}`);
     const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
     const Lottery = await hre.ethers.getContractFactory("MemeXLottery");
     const lottery = await Lottery.attach(lotteryAddress);
@@ -74,6 +74,6 @@ async function main() {
 main()
     .then(() => process.exit(0))
     .catch((error) => {
-        logger.error(error.stack);
+        logger.info(error.stack);
         process.exit(1);
     });
