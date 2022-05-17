@@ -17,7 +17,7 @@ async function main() {
     const Rewards = await hre.ethers.getContractFactory("Rewards");
     const rewards = await Rewards.attach(rewardAddress);
 
-    const auctionAddress = CONTRACTS[hre.network.name]["auctionsAddress"];
+    const auctionAddress = CONTRACTS[hre.network.name]["auctionAddress"];
     const Auction = await hre.ethers.getContractFactory("MemeXAuction");
     const auction = await Auction.attach(auctionAddress);
 
