@@ -70,32 +70,26 @@ async function updateAuctions() {
         } else {
             // if we're past endTime, inspect the lottery and take the required actions
             if (now >= endTime) {
-                await settleAuction(auction);
+                await updateAuctionInfo(auction);
             }
         }
     }
 }
 
-async function settleAuction(auction) {
-    logger.info(`Settling auction ${auction.id}`);
-    let blockchainAuction = await auctionContract.getAuction(auction.id);
-    if (!blockchainAuction.settled) {
-        await auctionContract.settleAuction(auction.id);
-    }
-    updateAuctionAsSettled(auction, blockchainAuction.highestBidder);
-}
+async function updateAuctionInfo(auction) {
 
-async function updateAuctionAsSettled(auction, winnerAddress) {
-    await prisma.auction.update({
-        where: {
-            id: auction.id
-        },
-        data: {
-            settled: true,
-            claimedAt: new Date(),
-            winnerAddress: winnerAddress,
-        }
-    });
+    let blockchainAuction = await auctionContract.getAuction(auction.id);
+    if (blockchainAuction.highestBidder != auction.highestBidder) {
+        logger.info(`Updating auction #${auction.id} with highest bidder ${auction.highestBidder}`);
+        await prisma.auction.update({
+            where: {
+                id: auction.id
+            },
+            data: {
+                winnerAddress: blockchainAuction.highestBidder,
+            }
+        });
+    }
 }
 
 async function updateLotteries() {
