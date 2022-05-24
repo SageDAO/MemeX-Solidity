@@ -150,7 +150,9 @@ deployAuction = async (deployer) => {
   const auctionAddress = CONTRACTS[hre.network.name]["auctionAddress"];
   const Auction = await hre.ethers.getContractFactory("MemeXAuction");
   if (shouldDeployContract("MemeXAuction")) {
-    const auction = await Auction.deploy(deployer.address);
+    const auctionImp = await Auction.deploy();
+    await auctionImp.deployed();
+    const auction = await upgrades.deployProxy(Auction, [deployer.address, 3600, 100], { kinds: 'uups' });
     await auction.deployed();
     console.log("Auction deployed to:", auction.address);
     // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code

@@ -11,6 +11,7 @@ datasource db {
 
 model Drop {
   id                               Int         @id @default(autoincrement())
+  name                             String
   primarySplitterId                Int?
   secondarySplitterId              Int?
   whitelistId                      Int?
@@ -48,12 +49,13 @@ model Lottery {
   defaultPrizeId              Int?
   maxTickets                  Int        @default(0)
   maxTicketsPerUser           Int        @default(0)
-  finished                    Boolean    @default(false)
+  prizesAwardedAt             DateTime?
   endTime                     DateTime
   startTime                   DateTime
   Drop                        Drop       @relation(fields: [dropId], references: [id])
   DefaultPrize                Nft?       @relation("defaultPrize", fields: [defaultPrizeId], references: [id])
   Nfts                        Nft[]
+  PrizeProofs                 PrizeProof[]   
 }
 
 model Auction {
@@ -66,9 +68,13 @@ model Auction {
   settled               Boolean    @default(false)
   startTime             DateTime
   endTime               DateTime
-  isLive                Boolean    @default(false)  
+  isLive                Boolean    @default(false) 
+  nftId                 Int 
+  winnerAddress         String?     @db.Char(42)
+  claimedAt             DateTime?
+  blockchainCreatedAt   DateTime?
   Drop                  Drop @relation(fields: [dropId], references: [id])
-  Nfts                  Nft[]
+  Nft                   Nft  @relation(fields: [nftId], references: [id])
 }
 
 model SplitEntry {
@@ -115,10 +121,9 @@ model Nft {
   numberOfEditions         Int          @default(0)
   isVideo                  Boolean      @default(false)
   lotteryId                Int?
-  auctionId                Int?
   DefaultPrizeInLotteries  Lottery[] @relation("defaultPrize")
   PrizeProof               PrizeProof[]
-  Auction                  Auction?  @relation(fields: [auctionId], references: [id])
+  Auction                  Auction?  
   Lottery                  Lottery?  @relation(fields: [lotteryId], references: [id])
 }
 
@@ -131,8 +136,9 @@ model PrizeProof {
   lotteryId     Int
   ticketNumber  Int 
   Nft           Nft       @relation(fields: [nftId], references: [id])
-
-  @@id([lotteryId, winnerAddress, nftId])
+  Lottery       Lottery   @relation(fields: [lotteryId], references: [id])
+  
+  @@id([lotteryId, winnerAddress, nftId, ticketNumber])
 }
 
 model MemeTransactions {
@@ -173,7 +179,8 @@ model User {
   role                          Role          @default(USER)
   bio                           String?       @db.VarChar(200)
   profilePicture                String?
-  username                      String?
+  username                      String?       @db.VarChar(40)
+  displayName                   String?       @db.VarChar(40)
   DropsApproved                 Drop[]  @relation("Drop_approvedByToUser")
   ArtistDrops                   Drop[]  @relation("ArtistDrops")
   EarnedPoints                  EarnedPoints?

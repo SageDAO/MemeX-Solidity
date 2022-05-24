@@ -18,10 +18,13 @@ describe("Lottery Contract", function () {
 
         MockERC721 = await ethers.getContractFactory("MockERC721");
         mockERC721 = await MockERC721.deploy();
+        await mockERC721.deployed();
         await mockERC721.mint(addr1.address, 0);
 
         Rewards = await ethers.getContractFactory('Rewards');
         rewards = await Rewards.deploy(owner.address);
+        await rewards.deployed();
+
         Lottery = await ethers.getContractFactory("MemeXLottery");
         lottery = await upgrades.deployProxy(Lottery, [mockERC721.address, rewards.address, owner.address], { kind: 'uups' });
         await lottery.deployed();
@@ -206,6 +209,24 @@ describe("Lottery Contract", function () {
             nft.address, 0, 0, 3, true); // "force" a lottery completion (status = 3)
         expect(await lottery.connect(addr2).askForRefund(1)).to.have.emit(lottery, "Refunded");
         expect(await lottery.connect(addr1).askForRefund(1)).to.have.emit(lottery, "Refunded");
+    });
+
+    it("Should get the user refundable balance", async function () {
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 1500, hexproofB, 1, { value: TWO_ETH });
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 0, { value: ONE_ETH });
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 2, { value: THREE_ETH });
+        await lottery.updateLottery(1, 5, ethers.utils.parseEther("1"), 10, TWO_ETH, THREE_ETH, block.timestamp, block.timestamp + 86400 * 3,
+            nft.address, 0, 0, 3, true); // "force" a lottery completion (status = 3)
+        expect(await lottery.connect(addr2).getRefundableCoinBalance(1, addr2.address)).to.equal(TWO_ETH);
+        expect(await lottery.connect(addr1).getRefundableCoinBalance(1, addr1.address)).to.equal(FOUR_ETH);
+    });
+
+    it("Should return the correct # of tickets bought", async function () {
+        await lottery.connect(addr2).claimPointsAndBuyTickets(1, 1, 1500, hexproofB, 1, { value: TWO_ETH });
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 0, { value: ONE_ETH });
+        await lottery.connect(addr1).claimPointsAndBuyTickets(1, 1, 150, hexproof, 2, { value: THREE_ETH });
+        expect(await lottery.connect(addr2).getTicketCountPerUser(1, addr2.address)).to.equal(1);
+        expect(await lottery.connect(addr1).getTicketCountPerUser(1, addr1.address)).to.equal(2);
     });
 
     it("Should revert if asking for a refund before the lottery ends", async function () {

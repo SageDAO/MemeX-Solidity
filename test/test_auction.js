@@ -17,7 +17,7 @@ describe("Auction Contract", function () {
         mockERC20.transfer(addr3.address, 1000);
 
         Auction = await ethers.getContractFactory('MemeXAuction');
-        auction = await Auction.deploy(owner.address);
+        auction = await upgrades.deployProxy(Auction, [owner.address, 3600, 100], { kind: 'uups' });
 
         ContractBidder = await ethers.getContractFactory('MockAuctionBidder');
         contractBidder = await ContractBidder.deploy(auction.address);
@@ -27,17 +27,17 @@ describe("Auction Contract", function () {
         block = await ethers.provider.getBlock(blockNum);
 
         await nft.createCollection(1, artist.address, 200, "ipfs://path/", artist.address)
-        await auction.createAuction(1, 1, 1000, 2, '0x0000000000000000000000000000000000000000', parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address);
-        await auction.createAuction(1, 2, 1000, 2, mockERC20.address, parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 2 * 86400, nft.address);
+        await auction.createAuction(1, 1, 1, 1000, 2, '0x0000000000000000000000000000000000000000', parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address);
+        await auction.createAuction(1, 2, 2, 1000, 2, mockERC20.address, parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 2 * 86400, nft.address);
     });
 
     it("Should create auction - FTM", async function () {
-        await expect(auction.createAuction(1, 1, 10, 2, '0x0000000000000000000000000000000000000000',
+        await expect(auction.createAuction(1, 3, 1, 10, 2, '0x0000000000000000000000000000000000000000',
             parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address)).to.emit(auction, 'AuctionCreated');
     });
 
     it("Should create auction - ERC20", async function () {
-        await expect(auction.createAuction(1, 1, 10, 2, mockERC20.address,
+        await expect(auction.createAuction(1, 3, 1, 10, 2, mockERC20.address,
             parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address)).to.emit(auction, 'AuctionCreated');
     });
 
@@ -70,7 +70,7 @@ describe("Auction Contract", function () {
     it("Should finalize auction on buy now - FTM", async function () {
         await auction.connect(addr2).bid(1, 1000, { value: 1000 });
         let resp = await auction.getAuction(1);
-        expect(resp.finished).to.equal(true);
+        expect(resp.settled).to.equal(true);
         balance = await nft.balanceOf(addr2.address, 1);
         expect(balance).to.equal(1);
     });
@@ -79,7 +79,7 @@ describe("Auction Contract", function () {
         await mockERC20.connect(addr2).approve(auction.address, 1000);
         await auction.connect(addr2).bid(2, 1000);
         let resp = await auction.getAuction(2);
-        expect(resp.finished).to.equal(true);
+        expect(resp.settled).to.equal(true);
         balance = await nft.balanceOf(addr2.address, 2);
         expect(balance).to.equal(1);
     });
@@ -104,7 +104,7 @@ describe("Auction Contract", function () {
     });
 
     it("Should revert if bid lower than higest bid increment", async function () {
-        await auction.createAuction(1, 1, 0, 0, '0x0000000000000000000000000000000000000000', parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address);
+        await auction.createAuction(1, 3, 1, 0, 0, '0x0000000000000000000000000000000000000000', parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address);
         await auction.connect(addr2).bid(3, 1000, { value: 1000 });
         await expect(auction.connect(addr2).bid(3, 1001, { value: 1001 })).to.be.revertedWith("Bid is lower than highest bid increment");
         await expect(auction.connect(addr2).bid(3, 1010, { value: 1010 })).to.emit(auction, 'BidPlaced');
@@ -120,7 +120,7 @@ describe("Auction Contract", function () {
     });
 
     it("Should revert if bid = 0", async function () {
-        await auction.createAuction(1, 1, 10, 0, '0x0000000000000000000000000000000000000000', parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address);
+        await auction.createAuction(1, 3, 1, 10, 0, '0x0000000000000000000000000000000000000000', parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address);
         await expect(auction.connect(addr2).bid(3, 0, { value: 0 })).to.be.revertedWith("Bid is lower than minimum");
     });
 
@@ -142,7 +142,7 @@ describe("Auction Contract", function () {
     });
 
     it("Should revert if calling create not being admin", async function () {
-        await expect(auction.connect(addr1).createAuction(1, 1, 10, 2, '0x0000000000000000000000000000000000000000', parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address)).to.be.revertedWith("Admin calls only");
+        await expect(auction.connect(addr1).createAuction(1, 3, 1, 10, 2, '0x0000000000000000000000000000000000000000', parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address)).to.be.revertedWith("Admin calls only");
     });
 
     it("Should revert if calling cancel not being admin", async function () {
@@ -187,9 +187,9 @@ describe("Auction Contract", function () {
         await expect(auction.connect(addr1).bid(2, 2)).to.be.revertedWith("Bid is lower than highest bid");
     });
 
-    it("Should revert if trying to bid on a finished auction", async function () {
+    it("Should revert if trying to bid on a settled auction", async function () {
         await auction.cancelAuction(1);
-        await expect(auction.connect(addr2).bid(1, 2, { value: 2 })).to.be.revertedWith("Auction is already finished");
+        await expect(auction.connect(addr2).bid(1, 2, { value: 2 })).to.be.revertedWith("Auction already settled");
     });
 
     it("Should reverse last bid - FTM", async function () {
@@ -219,7 +219,7 @@ describe("Auction Contract", function () {
 
     it("Should revert if trying to settle auction already finished", async function () {
         await auction.cancelAuction(1);
-        await expect(auction.settleAuction(1)).to.be.revertedWith("Auction is already finished");
+        await expect(auction.settleAuction(1)).to.be.revertedWith("Auction already settled");
     });
 
     it("Should receive a bid from a contract", async () => {

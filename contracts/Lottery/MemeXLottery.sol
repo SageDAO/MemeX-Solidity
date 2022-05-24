@@ -112,7 +112,7 @@ contract MemeXLottery is
 
     enum Status {
         Created, // The lottery has been created
-        Canceled, // A lottery that got canceled
+        Cancelled, // A lottery that got canceled
         Closed, // Entries are closed. Must be closed to draw numbers
         Completed // The lottery has been completed and the numbers drawn
     }
@@ -305,7 +305,7 @@ contract MemeXLottery is
         view
         returns (uint256)
     {
-        return lotteryTickets[_lotteryId].length;
+        return lotteryHistory[_lotteryId].numberOfTicketsSold;
     }
 
     function getLotteryCount() public view returns (uint256) {
@@ -528,7 +528,7 @@ contract MemeXLottery is
             "Lottery already completed"
         );
         // set status to canceled, allowing users to ask for a refund
-        lottery.status = Status.Canceled;
+        lottery.status = Status.Cancelled;
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
@@ -730,6 +730,35 @@ contract MemeXLottery is
         return MerkleProofUpgradeable.verify(_proof, _root, _leafHash);
     }
 
+    function getRefundableCoinBalance(uint256 _lotteryId, address _user)
+        public
+        view
+        returns (uint256)
+    {
+        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        ParticipantInfo storage participantInfo = participants[_lotteryId][
+            _user
+        ];
+        if (
+            (lottery.status == Status.Completed ||
+                lottery.status == Status.Cancelled) && lottery.isRefundable
+        ) {
+            return participantInfo.refundableValue;
+        }
+        return 0;
+    }
+
+    function getTicketCountPerUser(uint256 _lotteryId, address _user)
+        public
+        view
+        returns (uint256)
+    {
+        ParticipantInfo storage participantInfo = participants[_lotteryId][
+            _user
+        ];
+        return participantInfo.totalTicketsBought;
+    }
+
     function askForRefund(uint256 _lotteryId) public whenNotPaused {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
 
@@ -744,7 +773,7 @@ contract MemeXLottery is
                 lottery.isRefundable && participantInfo.refundableValue > 0,
                 "Participant has no refundable tickets"
             );
-        } else if (lottery.status == Status.Canceled) {
+        } else if (lottery.status == Status.Cancelled) {
             require(participantInfo.refundableValue > 0, "Already refunded");
             // points are only refunded if the lottery is canceled
             rewardsContract.refundPoints(
