@@ -1,11 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../Access/MemeXAccessControls.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../../interfaces/IRewards.sol";
 
-contract Rewards is MemeXAccessControls, IRewards {
+contract Rewards is AccessControl, IRewards {
+    bytes32 public constant MANAGE_POINTS_ROLE =
+        keccak256("MANAGE_POINTS_ROLE");
     bytes32 public pointsMerkleRoot;
 
     mapping(address => uint256) public totalPointsUsed;
@@ -35,8 +37,25 @@ contract Rewards is MemeXAccessControls, IRewards {
     event PointsUsed(address indexed user, uint256 amount, uint256 remaining);
     event PointsEarned(address indexed user, uint256 amount);
 
+    modifier onlyAdmin() {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
+        _;
+    }
+
     constructor(address _admin) {
-        initAccessControls(_admin);
+        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+    }
+
+    function getPointsUsedBatch(address[] calldata addresses)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        uint256[] memory result = new uint256[](addresses.length);
+        for (uint256 i; i < addresses.length; ++i) {
+            result[i] = totalPointsUsed[addresses[i]];
+        }
+        return result;
     }
 
     function setRewardRate(
@@ -45,8 +64,7 @@ contract Rewards is MemeXAccessControls, IRewards {
         uint256 _pinaRewardPerDay,
         uint256 _positionSize,
         uint256 _positionSizeLimit
-    ) public {
-        require(hasAdminRole(msg.sender), "Only admin calls");
+    ) public onlyAdmin {
         rewardInfo[_token] = RewardInfo(
             _chainId,
             _pinaRewardPerDay,
@@ -59,7 +77,7 @@ contract Rewards is MemeXAccessControls, IRewards {
             _positionSize,
             _positionSizeLimit
         );
-        for (uint16 i = 0; i < rewardTokenAddresses.length; i++) {
+        for (uint256 i = 0; i < rewardTokenAddresses.length; ++i) {
             if (rewardTokenAddresses[i] == _token) {
                 return;
             }
@@ -68,8 +86,7 @@ contract Rewards is MemeXAccessControls, IRewards {
         rewardTokenAddresses.push(_token);
     }
 
-    function removeReward(uint16 _index) public {
-        require(hasAdminRole(msg.sender), "Only admin calls");
+    function removeReward(uint256 _index) public onlyAdmin {
         require(_index < rewardTokenAddresses.length, "Index out of bounds");
         rewardTokenAddresses[_index] = rewardTokenAddresses[
             rewardTokenAddresses.length - 1
@@ -86,7 +103,7 @@ contract Rewards is MemeXAccessControls, IRewards {
         returns (uint256)
     {
         require(
-            hasSmartContractRole(msg.sender),
+            hasRole(MANAGE_POINTS_ROLE, msg.sender),
             "Smart contract role required"
         );
         uint256 available = totalPointsEarned[_account] -
@@ -101,7 +118,7 @@ contract Rewards is MemeXAccessControls, IRewards {
 
     function refundPoints(address _account, uint256 _points) public {
         require(
-            hasSmartContractRole(msg.sender) || hasAdminRole(msg.sender),
+            hasRole(MANAGE_POINTS_ROLE, msg.sender),
             "No role to do refunds"
         );
         require(_points > 0, "Can't refund 0 points");
@@ -110,8 +127,7 @@ contract Rewards is MemeXAccessControls, IRewards {
         totalPointsUsed[_account] = used - _points;
     }
 
-    function setPointsMerkleRoot(bytes32 _root) public {
-        require(hasAdminRole(msg.sender), "Only Admin can set the merkle root");
+    function setPointsMerkleRoot(bytes32 _root) public onlyAdmin {
         pointsMerkleRoot = _root;
     }
 

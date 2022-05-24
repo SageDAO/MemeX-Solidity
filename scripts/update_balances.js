@@ -292,38 +292,43 @@ async function main() {
         logger.info(`Storing Merkle tree root in the contract: ${root}`);
         const wallet = await ethers.getSigner();
         const nonce = await ethers.provider.getTransactionCount(wallet.address);
-        const tx = await rewardsContract.setPointsMerkleRoot(root, {
-            nonce: nonce
-        });
+        const storedRoot = await rewardsContract.pointsMerkleRoot();
+        if (storedRoot != root) {
+            const tx = await rewardsContract.setPointsMerkleRoot(root, {
+                nonce: nonce
+            });
 
-        //await rewardsContract.setPointsMerkleRoot(root, { nonce: getNonce() });
+            //await rewardsContract.setPointsMerkleRoot(root, { nonce: getNonce() });
 
-        // generate proofs for each reward
-        // store each proof in the DB so it can be easily queried when users claim points
-        // it needs to be run inside a transaction (all leafs of the tree update at the same time or roll back)
-        let updates = new Array();
-        for (index in leaves) {
-            leaf = leaves[index];
-            proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
-            logger.info(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
+            // generate proofs for each reward
+            // store each proof in the DB so it can be easily queried when users claim points
+            // it needs to be run inside a transaction (all leafs of the tree update at the same time or roll back)
+            let updates = new Array();
+            for (index in leaves) {
+                leaf = leaves[index];
+                proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
+                logger.info(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
 
-            updates.push(prisma.earnedPoints.upsert({
-                where: {
-                    address: leaf.address
-                },
-                update: {
-                    proof: proof,
-                    totalPointsEarned: leaf.points.toNumber(),
-                    updatedAt: new Date()
-                },
-                create: {
-                    proof: proof,
-                    totalPointsEarned: leaf.points.toNumber(),
-                    address: leaf.address,
-                },
-            }));
+                updates.push(prisma.earnedPoints.upsert({
+                    where: {
+                        address: leaf.address
+                    },
+                    update: {
+                        proof: proof,
+                        totalPointsEarned: leaf.points.toNumber(),
+                        updatedAt: new Date()
+                    },
+                    create: {
+                        proof: proof,
+                        totalPointsEarned: leaf.points.toNumber(),
+                        address: leaf.address,
+                    },
+                }));
+            }
+            await prisma.$transaction(updates);
+        } else {
+            logger.info(`Merkle tree root already stored in the contract: ${storedRoot}`);
         }
-        await prisma.$transaction(updates);
     }
     await prisma.$disconnect();
     logger.info('Update points finished successfully');
@@ -342,7 +347,7 @@ async function getUserEarnedPoints(rewardRateTypes, user) {
     for (let rewardRateType of rewardRateTypes) {
         earnedPoints = earnedPoints.plus(await getUserPointsAtTimestamp(user.walletAddress, rewardRateType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000)));
     }
-    if (earnedPoints == 0 && (hre.network.name == "rinkeby" || hre.network.name == "fantomtestnet")) {
+    if (earnedPoints == 0 && (hre.network.name != "fantom")) {
         logger.info(`This is a testnet and ${user.walletAddress} has 0 points. Adding some test points`);
         earnedPoints = BigNumber(150);
 

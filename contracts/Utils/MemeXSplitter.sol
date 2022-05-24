@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../Access/MemeXAccessControls.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract MemeXSplitter is MemeXAccessControls, ReentrancyGuard {
+contract MemeXSplitter is AccessControl, ReentrancyGuard {
     address[] public destinations;
 
     uint16[] public weights;
@@ -13,7 +13,7 @@ contract MemeXSplitter is MemeXAccessControls, ReentrancyGuard {
     uint16 totalWeight;
 
     modifier onlyAdmin() {
-        require(hasAdminRole(msg.sender), "Admin calls only");
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
         _;
     }
 
@@ -22,7 +22,8 @@ contract MemeXSplitter is MemeXAccessControls, ReentrancyGuard {
         address[] memory _destinations,
         uint16[] memory _weights
     ) {
-        initAccessControls(_admin);
+        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+
         destinations = _destinations;
         weights = _weights;
         for (uint256 i = 0; i < weights.length; i++) {

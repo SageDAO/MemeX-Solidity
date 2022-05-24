@@ -1,11 +1,8 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
-require("@nomiclabs/hardhat-truffle4");
 require("hardhat-gas-reporter");
 require("@nomiclabs/hardhat-solhint");
 require("@typechain/hardhat");
-require("@nomiclabs/hardhat-ethers");
-require("@nomiclabs/hardhat-waffle");
 require("dotenv").config();
 require("@openzeppelin/hardhat-upgrades");
 
@@ -21,11 +18,20 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
  */
 module.exports = {
   networks: {
+    mainnet: {
+      url: "http://127.0.0.1:8545",
+      accounts: [process.env.DEPLOYER_PK],
+    },
     rinkeby: {
       url: process.env.PROVIDER_URL,
       accounts: [process.env.DEPLOYER_PK],
     },
     fantomtestnet: {
+      url: process.env.PROVIDER_URL,
+      accounts: [process.env.DEPLOYER_PK],
+      chainId: 0xfa2,
+    },
+    dev: {
       url: process.env.PROVIDER_URL,
       accounts: [process.env.DEPLOYER_PK],
       chainId: 0xfa2,
@@ -55,8 +61,9 @@ module.exports = {
     },
   },
   solidity: {
-    version: "0.8.11",
+    version: "0.8.14",
     settings: {
+      viaIR: true,
       optimizer: {
         enabled: true,
         runs: 200,

@@ -9,14 +9,4 @@ interface ILottery {
         bytes32 _requestId,
         uint256 _randomNumber
     ) external;
-
-    function createNewLottery(
-        uint256 _collectionId,
-        uint256 _costPerTicketPinas,
-        uint256 _costPerTicketCoins,
-        uint32 _startTime,
-        uint32 _closeTime,
-        IMemeXNFT _nftContract,
-        uint256 _defaultPrizeId
-    ) external;
 }

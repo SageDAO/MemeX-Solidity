@@ -4,13 +4,15 @@ const { MerkleTree } = require("merkletreejs");
 const keccak256 = require('keccak256')
 const BigNumber = require('bignumber.js');
 
+const MANAGE_POINTS_ROLE = keccak256("MANAGE_POINTS_ROLE");
+
 describe("Rewards Contract", function () {
     beforeEach(async () => {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
         Rewards = await ethers.getContractFactory('Rewards');
         rewards = await Rewards.deploy(owner.address);
         // addr2 will simulate the lottery contract
-        await rewards.addSmartContractRole(addr2.address);
+        await rewards.grantRole(MANAGE_POINTS_ROLE, addr2.address);
     });
 
     it("Users start with 0 rewards", async function () {
@@ -74,8 +76,8 @@ describe("Rewards Contract", function () {
             await expect(rewards.connect(addr2).burnUserPoints(addr1.address, 3000000000)).to.be.revertedWith("Not enough points");
         });
     });
-    it("Should not call setLotteryAddress if not owner", async function () {
-        await expect(rewards.connect(addr1).addSmartContractRole(owner.address)).to.be.revertedWith("");
+    it("Should not call grantRole if doesn't have role", async function () {
+        await expect(rewards.connect(addr1).grantRole(MANAGE_POINTS_ROLE, owner.address)).to.be.revertedWith("");
     });
 });
 

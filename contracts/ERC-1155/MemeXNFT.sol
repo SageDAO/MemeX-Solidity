@@ -2,12 +2,13 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
-import "../Access/MemeXAccessControls.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../Utils/StringUtils.sol";
 import "../../interfaces/IMemeXNFT.sol";
 
-contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
+contract MemeXNFT is ERC1155Supply, AccessControl, IMemeXNFT {
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a;
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     string public name;
     // Contract symbol
@@ -29,10 +30,18 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         string baseMetadataURI
     );
     struct CollectionInfo {
-        address royaltyDestination;
         uint16 royalty;
-        string dropMetadataURI;
+        address royaltyDestination;
         address primarySalesDestination;
+        string dropMetadataURI;
+    }
+
+    /**
+     * @dev Throws if not called by an admin account.
+     */
+    modifier onlyAdmin() {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
+        _;
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -56,7 +65,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
     ) ERC1155("") {
         name = _name;
         symbol = _symbol;
-        initAccessControls(_admin);
+        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     function getCollectionInfo(uint256 _collectionId)
@@ -92,7 +101,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         string memory _dropMetadataURI
     ) public {
         require(
-            hasAdminRole(msg.sender),
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
             "MemeXNFT: Only Admin can set collection info"
         );
         require(_royaltyDestination != address(0));
@@ -117,9 +126,9 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         uint16 _royaltyPercentage,
         string memory _dropMetadataURI,
         address _primarySalesDestination
-    ) external returns (bool) {
+    ) external {
         require(
-            hasAdminRole(msg.sender) || hasSmartContractRole(msg.sender),
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
             "ERC1155.createCollection only Admin or Minter can create"
         );
         require(
@@ -131,10 +140,10 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
             "Royalty destination address can't be 0"
         );
         CollectionInfo memory collection = CollectionInfo(
-            _royaltyDestination,
             _royaltyPercentage,
-            _dropMetadataURI,
-            _primarySalesDestination
+            _royaltyDestination,
+            _primarySalesDestination,
+            _dropMetadataURI
         );
 
         collections[_collectionId] = collection;
@@ -145,7 +154,6 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
             _royaltyPercentage,
             _dropMetadataURI
         );
-        return true;
     }
 
     function collectionExists(uint256 _collectionId)
@@ -153,7 +161,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         view
         returns (bool)
     {
-        return collections[_collectionId].royaltyDestination != address(0);
+        return collections[_collectionId].primarySalesDestination != address(0);
     }
 
     /**
@@ -171,7 +179,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         bytes memory _data
     ) public {
         require(
-            hasSmartContractRole(msg.sender) || hasMinterRole(msg.sender),
+            hasRole(MINTER_ROLE, msg.sender),
             "MemeXNFT: No minting privileges"
         );
         if (tokenToCollection[_id] == 0) {
@@ -184,21 +192,18 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
     function setCollectionBaseMetadataURI(
         uint256 _collectionId,
         string memory _newBaseMetadataURI
-    ) public {
-        require(
-            hasAdminRole(msg.sender),
-            "MemeXNFT: Only Admin can change metadata"
-        );
+    ) public onlyAdmin {
         collections[_collectionId].dropMetadataURI = _newBaseMetadataURI;
     }
 
     function uri(uint256 _id) public view override returns (string memory) {
         require(exists(_id), "NONEXISTENT_TOKEN");
-        // fetch base URI for this collection
-        string memory baseURI = collections[tokenToCollection[_id]]
-            .dropMetadataURI;
 
-        return StringUtils.strConcat(baseURI, StringUtils.uint2str(_id));
+        return
+            string.concat(
+                collections[tokenToCollection[_id]].dropMetadataURI,
+                StringUtils.uint2str(_id)
+            );
     }
 
     /**
@@ -211,7 +216,7 @@ contract MemeXNFT is ERC1155Supply, MemeXAccessControls, IMemeXNFT {
         view
         returns (address, uint256)
     {
-        CollectionInfo memory collection = collections[
+        CollectionInfo storage collection = collections[
             tokenToCollection[tokenId]
         ];
         return (

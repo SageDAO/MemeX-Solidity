@@ -17,7 +17,7 @@ interface IMemeXNFT {
         uint16 _royaltyPercentage,
         string memory _dropMetadataURI,
         address _primarySalesDestination
-    ) external returns (bool);
+    ) external;
 
     function setCollectionBaseMetadataURI(
         uint256 _collectionId,

@@ -3,6 +3,7 @@ experiments/
 node_modules
 artifacts/
 cache/
+.openzeppelin/
 .env
 typechain-types/
 package-lock.json

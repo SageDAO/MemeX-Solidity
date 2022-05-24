@@ -31,9 +31,9 @@ async function main() {
         throw new Error("transaction failed");
     }
 
-    await prisma.drop.updateMany({
+    await prisma.lottery.updateMany({
         where: {
-            lotteryId: lotteryId
+            collectionId: lotteryId
         },
         data: {
             endTime: newEndTime
