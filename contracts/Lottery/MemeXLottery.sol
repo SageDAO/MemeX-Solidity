@@ -33,7 +33,6 @@ contract MemeXLottery is
     UUPSUpgradeable,
     PausableUpgradeable
 {
-    IBalanceOf public currentMembershipAddress;
     bytes32 internal requestId_;
 
     // Address of the randomness generator
@@ -184,24 +183,15 @@ contract MemeXLottery is
     /**
      * @dev Constructor for an upgradable contract
      */
-    function initialize(
-        address _membershipContract,
-        address _rewardsContract,
-        address _admin
-    ) public initializer {
+    function initialize(address _rewardsContract, address _admin)
+        public
+        initializer
+    {
         __AccessControl_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        currentMembershipAddress = IBalanceOf(_membershipContract);
         rewardsContract = IRewards(_rewardsContract);
-    }
-
-    /**
-     * @notice Updates the address for the current year's membership contract
-     */
-    function setCurrentMembershipAddress(address _address) public onlyAdmin {
-        currentMembershipAddress = IBalanceOf(_address);
     }
 
     function setPrizeMerkleRoot(uint256 _lotteryId, bytes32 _root)
@@ -594,25 +584,9 @@ contract MemeXLottery is
                 lottery.closeTime > block.timestamp,
             "Lottery is not open"
         );
-        // VIPs (those who hold a membership card NFT) will have the best price tier, paying in Pina points + FTM
         // Members (those who hold Meme Inu or provide liquidity) will have the second-best price tier and also pay in points + FTM
         // NonMembers (those who don't fit the previous descriptions) will have the third-best price tier and will only have the option to use FTM
-        if (_tier == PriceTier.VIP) {
-            require(
-                currentMembershipAddress != IBalanceOf(address(0)),
-                "VIP contract missing"
-            );
-            require(
-                currentMembershipAddress.balanceOf(msg.sender) > 0,
-                "VIP Membership card not found"
-            );
-            costPerTicketCoins = lottery.vipTicketCostCoins;
-            totalCostInPoints =
-                _numberOfTicketsToBuy *
-                lottery.vipTicketCostPoints;
-            remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
-            participantInfo.refundablePoints += totalCostInPoints;
-        } else if (_tier == PriceTier.Member) {
+        if (_tier == PriceTier.Member) {
             costPerTicketCoins = lottery.memberTicketCostCoins;
             totalCostInPoints =
                 _numberOfTicketsToBuy *

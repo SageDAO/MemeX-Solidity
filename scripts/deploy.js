@@ -97,7 +97,6 @@ deployNFT = async (deployer, lottery) => {
 deployLottery = async (rewards, deployer) => {
 
   const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
-  const membershipAddress = CONTRACTS[hre.network.name]["currentMembershipAddress"];
   const Lottery = await hre.ethers.getContractFactory("MemeXLottery");
 
   if (shouldDeployContract("MemeXLottery")) {
@@ -105,7 +104,7 @@ deployLottery = async (rewards, deployer) => {
     lotteryImp = await Lottery.deploy();
     console.log("Lottery deployed to:", lotteryImp.address);
     await lotteryImp.deployed();
-    const lottery = await upgrades.deployProxy(Lottery, [membershipAddress, rewards.address, deployer.address], { kinds: 'uups' });
+    const lottery = await upgrades.deployProxy(Lottery, [rewards.address, deployer.address], { kinds: 'uups' });
     await lottery.deployed();
     console.log("Proxy deployed to:", lottery.address);
     // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
