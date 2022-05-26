@@ -19,11 +19,11 @@ let lotteryContract;
 
 async function main() {
     await hre.run('compile');
-    logger = createLogger(`memex_scripts_${hre.network.name}`, `lottery_inspection_${hre.network.name}`);
+    logger = createLogger(`urn_scripts_${hre.network.name}`, `lottery_inspection_${hre.network.name}`);
     logger.info(`Starting the game inspection script on ${hre.network.name}`);
 
-    const Lottery = await ethers.getContractFactory("MemeXLottery");
-    const Auction = await ethers.getContractFactory("MemeXAuction");
+    const Lottery = await ethers.getContractFactory("Lottery");
+    const Auction = await ethers.getContractFactory("Auction");
 
     if (hre.network.name == "hardhat") {
         await hardhatTests(Lottery);
@@ -310,11 +310,11 @@ async function hardhatTests(Lottery) {
     // if running on the hardhat network, deploy the contracts and initialize 
     let owner = await ethers.getSigner();
     const Rewards = await ethers.getContractFactory('Rewards');
-    const Nft = await ethers.getContractFactory("MemeXNFT");
+    const Nft = await ethers.getContractFactory("NFT");
     const rewards = await Rewards.deploy(owner.address);
     const lottery = await hre.upgrades.deployProxy(Lottery, [rewards.address, owner.address])
 
-    nft = await Nft.deploy("Memex", "MEMEX", owner.address);
+    nft = await Nft.deploy("Urn", "URN", owner.address);
     MockRNG = await ethers.getContractFactory("MockRNG");
     mockRng = await MockRNG.deploy(lottery.address);
     await lottery.setRandomGenerator(mockRng.address);
@@ -377,7 +377,7 @@ async function deploySplitter(dropId, splitId) {
             destinations.push(splitEntries[i].destinationAddress);
             weights.push(parseInt(splitEntries[i].percent * 100));// royalty percentage using basis points. 1% = 100
         }
-        const Splitter = await ethers.getContractFactory("MemeXSplitter");
+        const Splitter = await ethers.getContractFactory("Splitter");
         const splitter = await Splitter.deploy(owner.address, destinations, weights);
         splitAddress = splitter.address;
         logger.info(`Splitter deployed to ${splitAddress}`);
@@ -391,7 +391,7 @@ async function deploySplitter(dropId, splitId) {
 
 async function createLottery(lottery, nftContractAddress) {
     logger.info("Creating lottery for drop #id: " + lottery.dropId);
-    const Nft = await ethers.getContractFactory("MemeXNFT");
+    const Nft = await ethers.getContractFactory("NFT");
     const nft = await Nft.attach(nftContractAddress);
 
     let royaltyAddress = lottery.Drop.secondarySplitterId != null ? lottery.Drop.SecondarySplitter.splitterAddress : lottery.Drop.artistAddress;
@@ -458,7 +458,7 @@ async function createLottery(lottery, nftContractAddress) {
 
 async function createAuction(auction, nftContractAddress) {
     logger.info("Creating auction for drop #id: " + auction.dropId);
-    const Nft = await ethers.getContractFactory("MemeXNFT");
+    const Nft = await ethers.getContractFactory("NFT");
     const nft = await Nft.attach(nftContractAddress);
 
     let royaltyAddress = auction.Drop.secondarySplitterId != null ? auction.Drop.SecondarySplitter.splitterAddress : auction.Drop.artistAddress;

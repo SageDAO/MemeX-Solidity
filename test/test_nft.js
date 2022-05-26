@@ -6,12 +6,12 @@ const MINTER_ROLE = keccak256("MINTER_ROLE");
 
 const basePath = "ipfs://path/";
 
-describe('MemeXNFT Contract', () => {
+describe('NFT Contract', () => {
     beforeEach(async () => {
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
-        NFT = await ethers.getContractFactory("MemeXNFT");
+        NFT = await ethers.getContractFactory("NFT");
         _lotteryAddress = addr1.address;
-        nft = await NFT.deploy("Memex", "MEMEX", owner.address);
+        nft = await NFT.deploy("Urn", "URN", owner.address);
         await nft.grantRole(MINTER_ROLE, _lotteryAddress);
 
         await nft.createCollection(1, addr1.address, 200, basePath, addr1.address);
@@ -37,7 +37,7 @@ describe('MemeXNFT Contract', () => {
 
     it("Should not mint without minter role", async function () {
         await expect(nft.connect(addr3).mint(addr2.address, 1, 1, 1, [])
-        ).to.be.revertedWith("MemeXNFT: No minting privileges");
+        ).to.be.revertedWith("NFT: No minting privileges");
     })
 
     it("Should calculate royalties", async function () {

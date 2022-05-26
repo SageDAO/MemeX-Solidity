@@ -16,17 +16,6 @@ const prisma = new PrismaClient();
 const CONTRACTS = require('../contracts.js');
 const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
-// const ASSETS = {
-//     ETH_MEMEINU: {
-//         chainId: "1",
-//         startingBlock: 13649693,
-//         assetType: "ETH_MEMEINU",
-//         contract: "0x74b988156925937bd4e082f0ed7429da8eaea8db",
-//         transferTopic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-//         rewardRate: 0.00000000000000000001157407407407407407,
-//     },
-// }
-
 let logger;
 
 /**
@@ -34,7 +23,7 @@ let logger;
  * @returns max(blockNumber) for that asset, or null if none is found
  */
 async function getLastBlockHeightInDatabase(assetType) {
-    const aggregations = await prisma.memeTransactions.aggregate({
+    const aggregations = await prisma.tokenTransactions.aggregate({
         _max: {
             blockNumber: true,
         },
@@ -128,7 +117,7 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
             };
         });
         // store the transactions in the database
-        let dbResult = await prisma.memeTransactions.createMany({
+        let dbResult = await prisma.tokenTransactions.createMany({
             data: mappedTransactions,
         });
         // store the last block number inspected in the DB
@@ -166,7 +155,7 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
 async function getUserPointsAtTimestamp(address, assetType, begin, end) {
     let assetBalance = await getUserBalanceAtTimestamp(address, assetType, begin);
     let refTimestamp = begin;
-    let pinaPoints = BigNumber(0);
+    let points = BigNumber(0);
     let limit = BigNumber(assetType.positionSizeLimit);
     let rewardRate = BigNumber(assetType.rewardRate);
 
@@ -174,7 +163,7 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end) {
 
     for (transaction of userTransactions) {
         if (transaction.from != transaction.to) {
-            pinaPoints = pinaPoints.plus(BigNumber.minimum(assetBalance, limit).multipliedBy(rewardRate).multipliedBy(transaction.blockTimestamp - refTimestamp));
+            points = points.plus(BigNumber.minimum(assetBalance, limit).multipliedBy(rewardRate).multipliedBy(transaction.blockTimestamp - refTimestamp));
             refTimestamp = transaction.blockTimestamp;
             if (transaction.from === address) {
                 assetBalance = assetBalance.minus(BigNumber(transaction.value));
@@ -183,12 +172,12 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end) {
             }
         }
     }
-    pinaPoints = pinaPoints.plus(BigNumber.minimum(assetBalance, limit).multipliedBy(rewardRate).multipliedBy(end - refTimestamp));
-    return pinaPoints.dp(0, 1);
+    points = points.plus(BigNumber.minimum(assetBalance, limit).multipliedBy(rewardRate).multipliedBy(end - refTimestamp));
+    return points.dp(0, 1);
 }
 
 async function getUserTransactions(address, assetType, begin, end) {
-    return await prisma.memeTransactions.findMany({
+    return await prisma.tokenTransactions.findMany({
         select: {
             blockNumber: true,
             blockTimestamp: true,
@@ -246,7 +235,7 @@ const buf2hex = x => '0x' + x.toString('hex');
 
 async function main() {
     await hre.run('compile');
-    logger = createLogger(`memex_scripts_${hre.network.name}`, `update_balances_${hre.network.name}`);
+    logger = createLogger(`urn_scripts_${hre.network.name}`, `update_balances_${hre.network.name}`);
     logger.info(`Started update_balances job on ${hre.network.name}`);
 
     const publishResults = process.argv.slice(2)[0];
@@ -343,7 +332,7 @@ function isValidAddress(address) {
 
 async function getUserEarnedPoints(rewardRateTypes, user) {
     let earnedPoints = new BigNumber(0);
-    // for each asset (Meme on Ethereum, Meme on Fantom, liquidity on Fantom) calculate the user's points
+    // for each asset ($ASH on Ethereum, liquidity) calculate the user's points
     for (let rewardRateType of rewardRateTypes) {
         earnedPoints = earnedPoints.plus(await getUserPointsAtTimestamp(user.walletAddress, rewardRateType, Date.parse(user.createdAt) / 1000, parseInt(Date.now() / 1000)));
     }

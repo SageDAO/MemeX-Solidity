@@ -10,7 +10,7 @@ const nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
 
 async function main() {
     await hre.run('compile');
-    
+
     const lotteryId = parseInt(process.argv.slice(2)[0]);
     if (isNaN(lotteryId)) {
         throw new Error("must provide the lottery id");
@@ -20,13 +20,13 @@ async function main() {
         throw new Error("must provide the new close time as a number");
     }
 
-    const Lottery = await ethers.getContractFactory("MemeXLottery");
+    const Lottery = await ethers.getContractFactory("Lottery");
     const lottery = await Lottery.attach(lotteryAddress);
 
     const tx = await lottery.changeCloseTime(lotteryId, newEndTime);
     const receipt = await tx.wait();
     console.log(receipt);
-    
+
     if (receipt.status !== 1) {
         throw new Error("transaction failed");
     }

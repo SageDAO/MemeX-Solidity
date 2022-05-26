@@ -4,9 +4,9 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../Utils/StringUtils.sol";
-import "../../interfaces/IMemeXNFT.sol";
+import "../../interfaces/INFT.sol";
 
-contract MemeXNFT is ERC1155Supply, AccessControl, IMemeXNFT {
+contract NFT is ERC1155Supply, AccessControl, INFT {
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
@@ -102,7 +102,7 @@ contract MemeXNFT is ERC1155Supply, AccessControl, IMemeXNFT {
     ) public {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "MemeXNFT: Only Admin can set collection info"
+            "NFT: Only Admin can set collection info"
         );
         require(_royaltyDestination != address(0));
         collections[_collectionId].royaltyDestination = _royaltyDestination;
@@ -178,10 +178,7 @@ contract MemeXNFT is ERC1155Supply, AccessControl, IMemeXNFT {
         uint256 _collectionId,
         bytes memory _data
     ) public {
-        require(
-            hasRole(MINTER_ROLE, msg.sender),
-            "MemeXNFT: No minting privileges"
-        );
+        require(hasRole(MINTER_ROLE, msg.sender), "NFT: No minting privileges");
         if (tokenToCollection[_id] == 0) {
             tokenToCollection[_id] = _collectionId;
             nftsInCollection[_collectionId].push(_id);

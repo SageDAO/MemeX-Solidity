@@ -1,12 +1,12 @@
-# MemeX Contracts
+# Contracts
 
 ## Overview
 
-MemeX is currently based on five contracts:
+We are currently basing our solution on five contracts:
 
-* MemeX NFT: ERC-1155 compatible Non Fungible Tokens;
+* NFT: ERC-1155 compatible Non Fungible Tokens;
 * Lottery: Manages all the lottery logic. Allows users to buy tickets and lets users claim their prizes.
-* Rewards: manages the MemeX rewards process. Awards users holding MEME or providing liquidity with PINAs, which on this iteration are points needed to enter lottery games. A future iteration will evolve PINA into an ERC-20 token. As we're not requesting users to stake their funds, there is an external job to monitor users balances and update the rewards contract accordingly;
+* Rewards: manages the rewards process. Awards users holding ASH or providing liquidity with Pixels, which on this iteration are points needed to enter lottery games. A future iteration will evolve Pixel into an ERC-20 token. As we're not requesting users to stake their funds, there is an external job to monitor users balances and update the rewards contract accordingly;
 * RandomNumberGenerator (RNG): adopts the trusted Chainlink VRF (Verifiable Random Function) oracle as a verifiable source of randomness to draw our lottery numbers.
 
 ## Setup instructions
@@ -17,7 +17,7 @@ To install all dependencias, run:
 npm install
 ```
 
-When interacting with contracts on testnets you'll need Alchemy and Etherscan API keys for the Ethereum network and ANKR, FTMScan keys for the Fantom network.
+When interacting with contracts on testnets you'll need Alchemy and Etherscan API keys for the Ethereum network.
 
 We store all used secrets in the `.env` file. This file structure can be found in the `.env.sample` file:
 
@@ -26,11 +26,6 @@ We store all used secrets in the `.env` file. This file structure can be found i
 During tests, contracts are deployed to the Rinkeby testnet or Fantom testnet and update their references to each other (only needs to run once):
 
 `npx hardhat run scripts/deploy.js --network rinkeby`
-
-or 
-
-`npx hardhat run scripts/deploy.js --network fantomtestnet`
-
 
 The `contracts.js` file contains the addresses of the already deployed contracts. If a contract address is in this file, the scripts would interact with the deployed contract, otherwhise a new contract will be deployed.
 
@@ -52,10 +47,9 @@ It will find prize winners, create the merkle tree and update the lottery contra
 
 ## Rewards
 
-Rewards are based on users holding the Meme Inu token on their wallet (either on Ethereum or Fantom), LP tokens possibly situations. We don't require users to stake those tokens, instead, there is a script to check and update all balances on a certain interval. To run it manually, use:
+Rewards are based on users holding the $ASH token on their wallet, LP tokens possibly situations. We don't require users to stake those tokens, instead, there is a script to check and update all balances on a certain interval. To run it manually, use:
 
 `export HARDHAT_NETWORK=rinkeby; node scripts/update_balances.js 1`
-
 
 ## Unit tests
 

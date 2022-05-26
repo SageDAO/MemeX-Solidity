@@ -24,11 +24,11 @@ function shouldDeployContract(name) {
       return true;
     case "RNGTemp":
       return true;
-    case "MemeXLottery":
+    case "Lottery":
       return true;
-    case "MemeXNFT":
+    case "NFT":
       return true;
-    case "MemeXAuction":
+    case "Auction":
       return true;
   }
   return false;
@@ -41,7 +41,7 @@ replaceAddress = async (oldAddress, newAddress) => {
     const newContract = contracts.replace(oldAddress, newAddress);
     fse.writeFileSync(configPath, newContract);
 
-    const webAssetPath = path.join('..', 'MemeX-UI', 'src', 'constants', 'config.ts');
+    const webAssetPath = path.join('..', 'URN-UI', 'src', 'constants', 'config.ts');
     const webAsset = fse.readFileSync(webAssetPath, 'utf8');
     const count = (webAsset.match(new RegExp(oldAddress, 'g')) || []).length;
     if (count > 0) {
@@ -75,16 +75,16 @@ deployRewards = async (deployer) => {
 
 deployNFT = async (deployer, lottery) => {
   const nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
-  const Nft = await hre.ethers.getContractFactory("MemeXNFT");
-  if (shouldDeployContract("MemeXNFT")) {
+  const Nft = await hre.ethers.getContractFactory("NFT");
+  if (shouldDeployContract("NFT")) {
     console.log("deploying NFT contract");
-    nft = await Nft.deploy("MemeX NFTs", "MemeXNFT", deployer.address);
+    nft = await Nft.deploy("Urn NFTs", "URN", deployer.address);
     await nft.deployed();
     console.log("NFT deployed to:", nft.address);
     // await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
     // await hre.run("verify:verify", {
     //   address: nft.address,
-    //   constructorArguments: ["MemeX NFTs", "MemeXNFT", deployer.address],
+    //   constructorArguments: ["Urn NFTs", "URN"", deployer.address],
     // });
     replaceAddress(nftAddress, nft.address);
     return [nft, true];
@@ -97,9 +97,9 @@ deployNFT = async (deployer, lottery) => {
 deployLottery = async (rewards, deployer) => {
 
   const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
-  const Lottery = await hre.ethers.getContractFactory("MemeXLottery");
+  const Lottery = await hre.ethers.getContractFactory("Lottery");
 
-  if (shouldDeployContract("MemeXLottery")) {
+  if (shouldDeployContract("Lottery")) {
     // lottery = await Lottery.deploy(rewards.address, deployer.address);
     lotteryImp = await Lottery.deploy();
     console.log("Lottery deployed to:", lotteryImp.address);
@@ -147,8 +147,8 @@ deployRandomness = async () => {
 
 deployAuction = async (deployer) => {
   const auctionAddress = CONTRACTS[hre.network.name]["auctionAddress"];
-  const Auction = await hre.ethers.getContractFactory("MemeXAuction");
-  if (shouldDeployContract("MemeXAuction")) {
+  const Auction = await hre.ethers.getContractFactory("Auction");
+  if (shouldDeployContract("Auction")) {
     const auctionImp = await Auction.deploy();
     await auctionImp.deployed();
     const auction = await upgrades.deployProxy(Auction, [deployer.address, 3600, 100], { kinds: 'uups' });
@@ -265,7 +265,7 @@ async function main() {
   }
 
   const artifactsPath = path.join('.', 'artifacts', 'contracts');
-  const webAssetPath = path.join('..', 'MemeX-UI', 'src', 'constants', 'abis');
+  const webAssetPath = path.join('..', 'URN-UI', 'src', 'constants', 'abis');
 
   fse.copySync(artifactsPath, webAssetPath, { overwrite: true });
 

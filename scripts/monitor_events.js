@@ -8,9 +8,9 @@ const timer = (ms) => new Promise((res) => setTimeout(res, ms));
 let logger;
 
 async function main() {
-    logger = createLogger(`memex_scripts_${hre.network.name}`, `monitor_events_${hre.network.name}`);
+    logger = createLogger(`urn_scripts_${hre.network.name}`, `monitor_events_${hre.network.name}`);
     const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
-    const Lottery = await hre.ethers.getContractFactory("MemeXLottery");
+    const Lottery = await hre.ethers.getContractFactory("Lottery");
     const lottery = await Lottery.attach(lotteryAddress);
 
     const rewardAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
@@ -18,7 +18,7 @@ async function main() {
     const rewards = await Rewards.attach(rewardAddress);
 
     const auctionAddress = CONTRACTS[hre.network.name]["auctionAddress"];
-    const Auction = await hre.ethers.getContractFactory("MemeXAuction");
+    const Auction = await hre.ethers.getContractFactory("Auction");
     const auction = await Auction.attach(auctionAddress);
 
     // listen to events

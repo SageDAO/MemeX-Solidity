@@ -1,16 +1,3 @@
-/*
- .----------------.  .----------------.  .----------------.  .----------------.  .----------------.
-| .--------------. || .--------------. || .--------------. || .--------------. || .--------------. |
-| | ____    ____ | || |  _________   | || | ____    ____ | || |  _________   | || |  ____  ____  | |
-| ||_   \  /   _|| || | |_   ___  |  | || ||_   \  /   _|| || | |_   ___  |  | || | |_  _||_  _| | |
-| |  |   \/   |  | || |   | |_  \_|  | || |  |   \/   |  | || |   | |_  \_|  | || |   \ \  / /   | |
-| |  | |\  /| |  | || |   |  _|  _   | || |  | |\  /| |  | || |   |  _|  _   | || |    > `' <    | |
-| | _| |_\/_| |_ | || |  _| |___/ |  | || | _| |_\/_| |_ | || |  _| |___/ |  | || |  _/ /'`\ \_  | |
-| ||_____||_____|| || | |_________|  | || ||_____||_____|| || | |_________|  | || | |____||____| | |
-| |              | || |              | || |              | || |              | || |              | |
-| '--------------' || '--------------' || '--------------' || '--------------' || '--------------' |
- '----------------'  '----------------'  '----------------'  '----------------'  '----------------'
-*/
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -20,9 +7,9 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../interfaces/IMemeXNFT.sol";
+import "../../interfaces/INFT.sol";
 
-contract MemeXAuction is
+contract Auction is
     Initializable,
     AccessControlUpgradeable,
     UUPSUpgradeable,
@@ -38,10 +25,10 @@ contract MemeXAuction is
 
     struct Auction {
         // seller can define an ERC20 token to be used for the auction.
-        // If not defined, the native token is used (FTM).
+        // If not defined, the native token is used.
         address erc20Token;
         address highestBidder;
-        IMemeXNFT nftContract;
+        INFT nftContract;
         uint32 startTime;
         uint32 endTime;
         bool settled;
@@ -118,7 +105,7 @@ contract MemeXAuction is
         address _token,
         uint32 _startTime,
         uint32 _endTime,
-        IMemeXNFT _nftContract
+        INFT _nftContract
     ) public onlyAdmin returns (uint256 auctionId) {
         require(_endTime > _startTime, "Invalid auction time");
         require(

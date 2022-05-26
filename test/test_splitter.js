@@ -1,10 +1,10 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("MemexSplitter Contract", function () {
+describe("Splitter Contract", function () {
     beforeEach(async () => {
         [owner, addr1, addr2, addr3, addr4, ...addrs] = await ethers.getSigners();
-        Splitter = await ethers.getContractFactory('MemeXSplitter');
+        Splitter = await ethers.getContractFactory('Splitter');
         splitter = await Splitter.deploy(owner.address, [addr2.address, addr3.address, addr4.address], [10, 45, 45]);
 
         MockERC20 = await ethers.getContractFactory("MockERC20");

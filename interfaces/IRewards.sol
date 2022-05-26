@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 interface IRewards {
     /**
-     * Pina points earned by the player.
+     * Points earned by the user.
      */
     function burnUserPoints(address account, uint256 amount)
         external

@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract MemeXSplitter is AccessControl, ReentrancyGuard {
+contract Splitter is AccessControl, ReentrancyGuard {
     address[] public destinations;
 
     uint16[] public weights;
