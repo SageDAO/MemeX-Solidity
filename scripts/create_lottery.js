@@ -11,10 +11,10 @@ async function main() {
     //const owner = await ethers.getSigner();
     [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
 
-    const Lottery = await ethers.getContractFactory("MemeXLottery");
+    const Lottery = await ethers.getContractFactory("Lottery");
     const lottery = await Lottery.attach(lotteryAddress);
     const tx = await lottery.createNewLottery(
-        0, // cost in PINA
+        0, // cost in Pixels
         ethers.utils.parseEther('0.001'), // cost in FTM
         parseInt(Date.now() / 1000), //start 
         parseInt(Date.now() / 1000 + 86400 * 30), // end
@@ -33,7 +33,7 @@ async function main() {
     console.log(receipt);
     console.log(`Lottery created with id: ${lotteryId}`);
 
-    await lottery.buyTickets(lotteryId, 1, false, {value: ethers.utils.parseEther('0.001'), gasLimit: 4000000});
+    await lottery.buyTickets(lotteryId, 1, false, { value: ethers.utils.parseEther('0.001'), gasLimit: 4000000 });
     //await lottery.buyTickets(lotteryId, 5, false, {value: ethers.utils.parseEther('0.005'), gasLimit: 4000000});
 }
 

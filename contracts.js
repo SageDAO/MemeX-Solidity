@@ -1,17 +1,18 @@
 CONTRACTS = {
     "rinkeby": {
-        "chainId": "",
-        "lotteryAddress": "",
-        "nftAddress": "0x9d02Ac9230516aa4FA820b0D3A4DEaf89bED9Adc",
-        "randomnessAddress": "0xB988eF0C42B682E59b0215b08a985a0d4C3225A9",
-        "rewardsAddress": "0x5ea6D0aDf94D315B6E1160d2E9D3fb6A2E1Bc0bF",
+        "chainId": "4",
+        "lotteryAddress": "0xE492f01A366F34d80B984810534Bc9253F2CCBDB",
+        "nftAddress": "0xfac126D9bf156703fB93FaBFab1c3dD17fd7C866",
+        "randomnessAddress": "0x28601963052668f60a0652B649D62f45c7Aa9304",
+        "rewardsAddress": "0xe15E098CBF9f479Dba9cC7450b59E0e7bf1596B1",
+        "auctionAddress": "0x728dc0bD333e8c92E49f108e16382a403fd5880F",
     },
     "fantomtestnet": {
-        "lotteryAddress": "0x06f86740e7d7d3399EB3764bc94bb88Dc5e4B627",
-        "nftAddress": "0xb583Ea04bEB3FBC7304769BE69C88f4eEf4E75cF",
-        "randomnessAddress": "0x6442D7Eb2e83dcFF36C0117D3184B4ABD14a4e96",
-        "rewardsAddress": "0x8f612dA99C20C95B8f8ccB31c1A174Ca4957dAFe",
-        "auctionAddress": "0x1039D11D083d6Fc2a3a8322a7CB8b061A9a7E606",
+        "lotteryAddress": "0x80F0B8D90BDF1EA29A856C359eeBd558049A686C",
+        "nftAddress": "0xDE41Ceb174ecf790Efa431F4E57fF11a174F3bf8",
+        "randomnessAddress": "0x1abDf820E23000E6AA2FFB9aD793d914B70ddE5e",
+        "rewardsAddress": "0xC069fba091bb79523dE7406FEfA933e9F1c994B1",
+        "auctionAddress": "0x02aAdE7123179d76e3c55d4dd9c78A89A4e5010B",
         "currentMembershipAddress": "0x0000000000000000000000000000000000000000",
     },
     "dev": {

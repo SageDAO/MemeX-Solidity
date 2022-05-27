@@ -1,16 +1,3 @@
-/*
- .----------------.  .----------------.  .----------------.  .----------------.  .----------------.
-| .--------------. || .--------------. || .--------------. || .--------------. || .--------------. |
-| | ____    ____ | || |  _________   | || | ____    ____ | || |  _________   | || |  ____  ____  | |
-| ||_   \  /   _|| || | |_   ___  |  | || ||_   \  /   _|| || | |_   ___  |  | || | |_  _||_  _| | |
-| |  |   \/   |  | || |   | |_  \_|  | || |  |   \/   |  | || |   | |_  \_|  | || |   \ \  / /   | |
-| |  | |\  /| |  | || |   |  _|  _   | || |  | |\  /| |  | || |   |  _|  _   | || |    > `' <    | |
-| | _| |_\/_| |_ | || |  _| |___/ |  | || | _| |_\/_| |_ | || |  _| |___/ |  | || |  _/ /'`\ \_  | |
-| ||_____||_____|| || | |_________|  | || ||_____||_____|| || | |_________|  | || | |____||____| | |
-| |              | || |              | || |              | || |              | || |              | |
-| '--------------' || '--------------' || '--------------' || '--------------' || '--------------' |
- '----------------'  '----------------'  '----------------'  '----------------'  '----------------'
-*/
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -22,18 +9,17 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
-import "../../interfaces/IMemeXNFT.sol";
+import "../../interfaces/INFT.sol";
 import "../../interfaces/ILottery.sol";
-import "../../interfaces/IMemeXWhitelist.sol";
+import "../../interfaces/IWhitelist.sol";
 
-contract MemeXLottery is
+contract Lottery is
     Initializable,
     AccessControlUpgradeable,
     ILottery,
     UUPSUpgradeable,
     PausableUpgradeable
 {
-    IBalanceOf public currentMembershipAddress;
     bytes32 internal requestId_;
 
     // Address of the randomness generator
@@ -81,15 +67,13 @@ contract MemeXLottery is
         uint32 maxTicketsPerUser; // max number of tickets per user
         uint32 numberOfTicketsSold; // number of tickets sold
         Status status; // Status for lotto
-        IMemeXNFT nftContract; // reference to the NFT Contract
-        bool isRefundable; // if true, users who don't win can withdraw their FTM back
+        INFT nftContract; // reference to the NFT Contract
+        bool isRefundable; // if true, users who don't win can withdraw their ETH back
         uint256 lotteryID; // ID for lotto
         uint256 dropId;
-        uint256 vipTicketCostPoints; // Cost per ticket in points for VIPs
-        uint256 vipTicketCostCoins; // Cost per ticket in FTM for VIPs
-        uint256 memberTicketCostPoints; // Cost per ticket in points for member users (who eaarned Pina points)
-        uint256 memberTicketCostCoins; // Cost per ticket in FTM for member users (who earned Pina points)
-        uint256 nonMemberTicketCostCoins; // Cost per ticket in FTM for regular users
+        uint256 memberTicketCostPoints; // Cost per ticket in points for member users (who earned points)
+        uint256 memberTicketCostCoins; // Cost per ticket in ETH for member users (who earned points)
+        uint256 nonMemberTicketCostCoins; // Cost per ticket in ETH for regular users
         uint256 defaultPrizeId; // prize all participants win if no other prizes are given
     }
 
@@ -118,7 +102,6 @@ contract MemeXLottery is
     }
 
     enum PriceTier {
-        VIP,
         Member,
         NonMember
     }
@@ -171,7 +154,7 @@ contract MemeXLottery is
         if (whitelists[_lotteryId] != address(0)) {
             // if lottery has a whitelist, requires msg.sender to be whitelisted, else throws
             require(
-                IMemeXWhitelist(whitelists[_lotteryId]).isWhitelisted(
+                IWhitelist(whitelists[_lotteryId]).isWhitelisted(
                     msg.sender,
                     _lotteryId
                 ),
@@ -184,24 +167,15 @@ contract MemeXLottery is
     /**
      * @dev Constructor for an upgradable contract
      */
-    function initialize(
-        address _membershipContract,
-        address _rewardsContract,
-        address _admin
-    ) public initializer {
+    function initialize(address _rewardsContract, address _admin)
+        public
+        initializer
+    {
         __AccessControl_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        currentMembershipAddress = IBalanceOf(_membershipContract);
         rewardsContract = IRewards(_rewardsContract);
-    }
-
-    /**
-     * @notice Updates the address for the current year's membership contract
-     */
-    function setCurrentMembershipAddress(address _address) public onlyAdmin {
-        currentMembershipAddress = IBalanceOf(_address);
     }
 
     function setPrizeMerkleRoot(uint256 _lotteryId, bytes32 _root)
@@ -366,14 +340,12 @@ contract MemeXLottery is
 
     function updateLottery(
         uint256 lotteryId,
-        uint256 _vipTicketCostPoints,
-        uint256 _vipTicketCostCoins,
         uint256 _memberTicketCostPoints,
         uint256 _memberTicketCostCoins,
         uint256 _nonMemberTicketCostCoins,
         uint32 _startTime,
         uint32 _closeTime,
-        IMemeXNFT _nftContract,
+        INFT _nftContract,
         uint16 _maxTickets,
         uint256 _defaultPrizeId,
         Status _status,
@@ -383,8 +355,6 @@ contract MemeXLottery is
         require(lottery.startTime > 0, "Lottery does not exist");
         lottery.startTime = _startTime;
         lottery.closeTime = _closeTime;
-        lottery.vipTicketCostPoints = _vipTicketCostPoints;
-        lottery.vipTicketCostCoins = _vipTicketCostCoins;
         lottery.memberTicketCostPoints = _memberTicketCostPoints;
         lottery.memberTicketCostCoins = _memberTicketCostCoins;
         lottery.nonMemberTicketCostCoins = _nonMemberTicketCostCoins;
@@ -398,23 +368,26 @@ contract MemeXLottery is
 
     /**
      * @notice Creates a new lottery.
+     * @param _lotteryId the lottery id
      * @param _collectionId the NFT collection id
+     * @param _memberTicketCostPoints cost in pixels for members
+     * @param _memberTicketCostCoins cost in ETH for members
+     * @param _nonMemberTicketCostCoins cost in ETH for non-members
      * @param _startTime lottery start time
      * @param _closeTime lottery closing time
      * @param _nftContract reference to the NFT contract
+     * @param _isRefundable refundable games allow users who didn't win to receive their ETH back
      * @param _defaultPrizeId default prize id
      */
     function createNewLottery(
         uint256 _lotteryId,
         uint256 _collectionId,
-        uint256 _vipTicketCostPoints,
-        uint256 _vipTicketCostCoins,
         uint256 _memberTicketCostPoints,
         uint256 _memberTicketCostCoins,
         uint256 _nonMemberTicketCostCoins,
         uint32 _startTime,
         uint32 _closeTime,
-        IMemeXNFT _nftContract,
+        INFT _nftContract,
         bool _isRefundable,
         uint256 _defaultPrizeId
     ) public onlyAdmin {
@@ -436,8 +409,6 @@ contract MemeXLottery is
             _isRefundable,
             _lotteryId,
             _collectionId,
-            _vipTicketCostPoints,
-            _vipTicketCostCoins,
             _memberTicketCostPoints,
             _memberTicketCostCoins,
             _nonMemberTicketCostCoins,
@@ -448,7 +419,7 @@ contract MemeXLottery is
     }
 
     /**
-     * @notice Called by the Memex team to request a random number to a particular lottery.
+     * @notice Called by the team to request a random number to a particular lottery.
      * @param _lotteryId ID of the lottery the random number is for
      */
     function requestRandomNumber(uint256 _lotteryId) external onlyAdmin {
@@ -538,7 +509,7 @@ contract MemeXLottery is
      * @param _numberOfTicketsToBuy Number of tickets to buy
      * @param _points Total user claimable points
      * @param _proof Proof of the user's claimable points
-     * @param _tier Price tier to buy tickets with. Could be VIP, Member or NonMember
+     * @param _tier Price tier to buy tickets with. Could be Member or NonMember
      */
     function claimPointsAndBuyTickets(
         uint256 _lotteryId,
@@ -554,10 +525,10 @@ contract MemeXLottery is
     }
 
     /**
-     * @notice Function called by users to buy lottery tickets using PINA points or FTM
+     * @notice Function called by users to buy lottery tickets using points or ETH
      * @param _lotteryId ID of the lottery to buy tickets for
      * @param _numberOfTicketsToBuy Number of tickets to buy
-     * @param _tier Price tier to buy tickets with. Could be VIP, Member or NonMember
+     * @param _tier Price tier to buy tickets with. Could be Member or NonMember
      */
     function buyTickets(
         uint256 _lotteryId,
@@ -594,25 +565,9 @@ contract MemeXLottery is
                 lottery.closeTime > block.timestamp,
             "Lottery is not open"
         );
-        // VIPs (those who hold a membership card NFT) will have the best price tier, paying in Pina points + FTM
-        // Members (those who hold Meme Inu or provide liquidity) will have the second-best price tier and also pay in points + FTM
-        // NonMembers (those who don't fit the previous descriptions) will have the third-best price tier and will only have the option to use FTM
-        if (_tier == PriceTier.VIP) {
-            require(
-                currentMembershipAddress != IBalanceOf(address(0)),
-                "VIP contract missing"
-            );
-            require(
-                currentMembershipAddress.balanceOf(msg.sender) > 0,
-                "VIP Membership card not found"
-            );
-            costPerTicketCoins = lottery.vipTicketCostCoins;
-            totalCostInPoints =
-                _numberOfTicketsToBuy *
-                lottery.vipTicketCostPoints;
-            remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
-            participantInfo.refundablePoints += totalCostInPoints;
-        } else if (_tier == PriceTier.Member) {
+        // Members (those who hold ASH or provide liquidity)
+        // NonMembers (those who don't fit the previous descriptions)
+        if (_tier == PriceTier.Member) {
             costPerTicketCoins = lottery.memberTicketCostCoins;
             totalCostInPoints =
                 _numberOfTicketsToBuy *
@@ -705,7 +660,7 @@ contract MemeXLottery is
         );
 
         participants[_lotteryId][_winner].claimedPrize = true;
-        IMemeXNFT nftContract = lotteryHistory[_lotteryId].nftContract;
+        INFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
         claimedPrizes[_lotteryId][_ticketNumber] = true;
         nftContract.mint(_winner, _prizeId, 1, lottery.dropId, "");

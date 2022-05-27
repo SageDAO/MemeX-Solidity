@@ -21,8 +21,8 @@ contract Rewards is AccessControl, IRewards {
     struct RewardInfo {
         uint16 chainId;
         // points rewarded per day per position size considering 8 decimals
-        uint256 pinaRewardPerDay;
-        // amount of tokens required to get the reward per day. ie 100,000 tokens (18 decimals) to get 1 pina
+        uint256 pointRewardPerDay;
+        // amount of tokens required to get the reward per day. ie 100,000 tokens (18 decimals) to get 1 point
         uint256 positionSize;
         // the rewards are capped at this amount of tokens
         uint256 positionSizeLimit;
@@ -30,7 +30,7 @@ contract Rewards is AccessControl, IRewards {
 
     event RewardChanged(
         address indexed token,
-        uint256 pinaRewardPerDay,
+        uint256 pointRewardPerDay,
         uint256 positionSize,
         uint256 positionSizeLimit
     );
@@ -61,19 +61,19 @@ contract Rewards is AccessControl, IRewards {
     function setRewardRate(
         address _token,
         uint16 _chainId,
-        uint256 _pinaRewardPerDay,
+        uint256 _pointRewardPerDay,
         uint256 _positionSize,
         uint256 _positionSizeLimit
     ) public onlyAdmin {
         rewardInfo[_token] = RewardInfo(
             _chainId,
-            _pinaRewardPerDay,
+            _pointRewardPerDay,
             _positionSize,
             _positionSizeLimit
         );
         emit RewardChanged(
             _token,
-            _pinaRewardPerDay,
+            _pointRewardPerDay,
             _positionSize,
             _positionSizeLimit
         );

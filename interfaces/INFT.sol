@@ -2,7 +2,7 @@ pragma solidity >=0.6.0;
 
 //SPDX-License-Identifier: MIT
 
-interface IMemeXNFT {
+interface INFT {
     function mint(
         address _to,
         uint256 _id,

@@ -1,14 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../../interfaces/IMemeXWhitelist.sol";
+import "../../interfaces/IWhitelist.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 interface IBalanceOf {
     function balanceOf(address owner) external view returns (uint256 balance);
 }
 
-contract MemeXWhitelist is AccessControl, IMemeXWhitelist {
+contract Whitelist is AccessControl, IWhitelist {
     mapping(uint256 => WhitelistTarget[]) public whitelist;
 
     struct WhitelistTarget {

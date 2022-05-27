@@ -20,28 +20,28 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../interfaces/IMemeXNFT.sol";
+import "../../interfaces/INFT.sol";
 
-contract MemeXAuction is
+contract Auction is
     Initializable,
     AccessControlUpgradeable,
     UUPSUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    mapping(uint256 => Auction) public auctions;
+    mapping(uint256 => AuctionInfo) public auctions;
 
     mapping(address => uint256) withdrawCredits;
 
     uint256 public defaultTimeExtension;
     uint256 public bidIncrementPercentage; // 100 = 1,00% higher than the previous bid
 
-    struct Auction {
+    struct AuctionInfo {
         // seller can define an ERC20 token to be used for the auction.
-        // If not defined, the native token is used (FTM).
+        // If not defined, the native token is used.
         address erc20Token;
         address highestBidder;
-        IMemeXNFT nftContract;
+        INFT nftContract;
         uint32 startTime;
         uint32 endTime;
         bool settled;
@@ -118,7 +118,7 @@ contract MemeXAuction is
         address _token,
         uint32 _startTime,
         uint32 _endTime,
-        IMemeXNFT _nftContract
+        INFT _nftContract
     ) public onlyAdmin returns (uint256 auctionId) {
         require(_endTime > _startTime, "Invalid auction time");
         require(
@@ -130,7 +130,7 @@ contract MemeXAuction is
             "Collection does not exist"
         );
 
-        Auction memory auction = Auction(
+        AuctionInfo memory auction = AuctionInfo(
             _token,
             address(0),
             _nftContract,
@@ -163,7 +163,7 @@ contract MemeXAuction is
     }
 
     function settleAuction(uint256 _auctionId) public whenNotPaused {
-        Auction storage auction = auctions[_auctionId];
+        AuctionInfo storage auction = auctions[_auctionId];
         require(!auction.settled, "Auction already settled");
         uint256 highestBid = auction.highestBid;
         address highestBidder = auction.highestBidder;
@@ -217,7 +217,7 @@ contract MemeXAuction is
     ) public onlyAdmin {
         require(!auctions[_auctionId].settled, "Auction already settled");
         require(auctions[_auctionId].endTime > 0, "Auction not found");
-        Auction storage auction = auctions[_auctionId];
+        AuctionInfo storage auction = auctions[_auctionId];
         auction.buyNowPrice = _buyNowPrice;
         auction.minimumPrice = _minimumPrice;
         auction.erc20Token = _token;
@@ -225,7 +225,7 @@ contract MemeXAuction is
     }
 
     function cancelAuction(uint256 _auctionId) public onlyAdmin {
-        Auction storage auction = auctions[_auctionId];
+        AuctionInfo storage auction = auctions[_auctionId];
         require(!auction.settled, "Auction is already finished");
         reverseLastBid(_auctionId, auction.erc20Token != address(0));
         auctions[_auctionId].settled = true;
@@ -238,7 +238,7 @@ contract MemeXAuction is
         nonReentrant
         whenNotPaused
     {
-        Auction storage auction = auctions[_auctionId];
+        AuctionInfo storage auction = auctions[_auctionId];
         uint256 endTime = auction.endTime;
         require(endTime > 0, "Auction not found");
         require(!auction.settled, "Auction already settled");
@@ -286,7 +286,7 @@ contract MemeXAuction is
     }
 
     function reverseLastBid(uint256 _auctionId, bool _isERC20Auction) private {
-        Auction storage auction = auctions[_auctionId];
+        AuctionInfo storage auction = auctions[_auctionId];
         address highestBidder = auction.highestBidder;
         uint256 highestBid = auction.highestBid;
         auction.highestBidder = address(0);
@@ -309,7 +309,7 @@ contract MemeXAuction is
     function getAuction(uint256 _auctionId)
         public
         view
-        returns (Auction memory)
+        returns (AuctionInfo memory)
     {
         return auctions[_auctionId];
     }

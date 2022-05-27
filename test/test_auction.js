@@ -7,8 +7,8 @@ describe("Auction Contract", function () {
     beforeEach(async () => {
         [owner, addr1, addr2, addr3, artist, ...addrs] = await ethers.getSigners();
 
-        Nft = await ethers.getContractFactory("MemeXNFT");
-        nft = await Nft.deploy("Memex", "MEMEX", owner.address);
+        Nft = await ethers.getContractFactory("NFT");
+        nft = await Nft.deploy("Urn", "URN", owner.address);
 
         MockERC20 = await ethers.getContractFactory("MockERC20");
         mockERC20 = await MockERC20.deploy();
@@ -16,7 +16,7 @@ describe("Auction Contract", function () {
         mockERC20.transfer(addr2.address, 1000);
         mockERC20.transfer(addr3.address, 1000);
 
-        Auction = await ethers.getContractFactory('MemeXAuction');
+        Auction = await ethers.getContractFactory('Auction');
         auction = await upgrades.deployProxy(Auction, [owner.address, 3600, 100], { kind: 'uups' });
 
         ContractBidder = await ethers.getContractFactory('MockAuctionBidder');

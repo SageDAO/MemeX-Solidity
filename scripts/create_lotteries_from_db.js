@@ -10,15 +10,15 @@ const nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const logger = createLogger('memex_scripts', 'create_lotteries_from_db');
+const logger = createLogger('urn_scripts', 'create_lotteries_from_db');
 let nftContract;
 
 async function main() {
     await hre.run('compile');
-    const Lottery = await ethers.getContractFactory("MemeXLottery");
+    const Lottery = await ethers.getContractFactory("Lottery");
     const lottery = await Lottery.attach(lotteryAddress);
 
-    const NFT = await hre.ethers.getContractFactory("MemeXNFT");
+    const NFT = await hre.ethers.getContractFactory("NFT");
     nftContract = await NFT.attach(nftAddress);
     // define a float value
 

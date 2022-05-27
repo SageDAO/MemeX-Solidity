@@ -8,7 +8,10 @@ require("dotenv").config();
  */
 async function main() {
 
+    // ethereum Meme VIP
     const contractAddress = '0x85f06f0dc7ac62f006ab09227e81709b7c39f50c';
+
+    const card2022 = '0x4D5f049e729a7dF85096D3cb2d5F3FC9b9E8EaF8';
 
     // define abi for the ERC-721 ownerOf function
     const abi = [
@@ -34,7 +37,7 @@ async function main() {
     ];
 
     // define contract instance
-    const memeVip = new ethers.Contract(contractAddress, abi, ethers.provider.getSigner());
+    const memeVip = new ethers.Contract(card2022, abi, ethers.provider.getSigner());
 
     // print block number 
     const blockNumber = await ethers.provider.getBlockNumber();

@@ -56,7 +56,6 @@ module.exports = {
   etherscan: {
     apiKey: {
       opera: process.env.FTMSCAN_KEY,
-      ftmTestnet: process.env.FTMSCAN_KEY,
       rinkeby: process.env.ETHERSCAN_KEY,
     },
   },
