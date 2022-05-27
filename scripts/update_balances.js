@@ -23,7 +23,7 @@ let logger;
  * @returns max(blockNumber) for that asset, or null if none is found
  */
 async function getLastBlockHeightInDatabase(assetType) {
-    const aggregations = await prisma.tokenTransactions.aggregate({
+    const aggregations = await prisma.tokenTransaction.aggregate({
         _max: {
             blockNumber: true,
         },
@@ -117,7 +117,7 @@ async function getTransactionsFromBlockchain(asset, startingBlock, endingBlock) 
             };
         });
         // store the transactions in the database
-        let dbResult = await prisma.tokenTransactions.createMany({
+        let dbResult = await prisma.tokenTransaction.createMany({
             data: mappedTransactions,
         });
         // store the last block number inspected in the DB
@@ -177,7 +177,7 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end) {
 }
 
 async function getUserTransactions(address, assetType, begin, end) {
-    return await prisma.tokenTransactions.findMany({
+    return await prisma.tokenTransaction.findMany({
         select: {
             blockNumber: true,
             blockTimestamp: true,
