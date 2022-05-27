@@ -158,6 +158,7 @@ model EarnedPoints {
   address           String   @id @db.Char(42)
   totalPointsEarned BigInt   @default(0)
   proof             String
+  signedMessage     String?
   updatedAt         DateTime @default(now())
   User              User     @relation(fields: [address], references: [walletAddress])
 }
