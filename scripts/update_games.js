@@ -222,7 +222,10 @@ async function inspectLotteryState(lottery) {
 
             logger.info(`Getting prize info`);
             let totalPrizes = await getTotalAmountOfPrizes(lottery.id, numberOfTicketsSold);
-
+            if (totalPrizes == 0) {
+                logger.info(`No prizes for lottery #${lottery.id}`);
+                return;
+            }
             logger.info(`Total prizes: ${totalPrizes}`);
             var prizesAwarded = 0;
 

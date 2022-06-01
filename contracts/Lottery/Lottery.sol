@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -21,6 +22,8 @@ contract Lottery is
     PausableUpgradeable
 {
     bytes32 internal requestId_;
+
+    address public signerAddress;
 
     // Address of the randomness generator
     IRandomNumberGenerator public randomGenerator;
@@ -196,6 +199,10 @@ contract Lottery is
         whitelists[_lotteryId] = _whitelist;
     }
 
+    function setSignerAddress(address _signer) public onlyAdmin {
+        signerAddress = _signer;
+    }
+
     function setMaxTickets(uint256 _lotteryId, uint32 _maxTickets)
         public
         onlyAdmin
@@ -336,6 +343,31 @@ contract Lottery is
         }
 
         emit LotteryPrizesCountChanged(_lotteryId, _prizeIds.length);
+    }
+
+    // Builds a prefixed hash to mimic the behavior of eth_sign.
+    function prefixed(bytes32 hash) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
+            );
+    }
+
+    function claimPointsWithMessage(
+        address _user,
+        uint256 _points,
+        bytes calldata sig
+    ) public {
+        // This recreates the message that was signed on the client.
+        bytes32 message = prefixed(keccak256(abi.encode(_user, _points)));
+        require(
+            ECDSAUpgradeable.recover(message, sig) == signerAddress,
+            "Invalid signature"
+        );
+
+        if (rewardsContract.totalPointsEarned(_user) < _points) {
+            rewardsContract.claimPoints(_user, _points);
+        }
     }
 
     function updateLottery(

@@ -131,6 +131,18 @@ contract Rewards is AccessControl, IRewards {
         pointsMerkleRoot = _root;
     }
 
+    function claimPoints(address _address, uint256 _points) public {
+        require(
+            hasRole(MANAGE_POINTS_ROLE, msg.sender),
+            "No role to claim points"
+        );
+        uint256 newPoints = _points - totalPointsEarned[_address];
+        require(newPoints > 0, "Participant already claimed all points");
+
+        totalPointsEarned[_address] = _points;
+        emit PointsEarned(_address, newPoints);
+    }
+
     function claimPointsWithProof(
         address _address,
         uint256 _points,
