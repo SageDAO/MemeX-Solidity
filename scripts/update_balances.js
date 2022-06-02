@@ -300,7 +300,6 @@ async function main() {
             // sign abi encoded message
             const message = getEncodedLeaf(leaf);
             const signature = await wallet.signMessage(message);
-            console.log(message, signature);
             proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
             logger.info(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
 
