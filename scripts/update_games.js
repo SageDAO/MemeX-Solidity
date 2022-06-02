@@ -79,8 +79,8 @@ async function updateAuctions() {
 async function updateAuctionInfo(auction) {
 
     let blockchainAuction = await auctionContract.getAuction(auction.id);
-    if (blockchainAuction.highestBidder != auction.highestBidder) {
-        logger.info(`Updating auction #${auction.id} with highest bidder ${auction.highestBidder}`);
+    if (blockchainAuction.highestBidder != auction.winnerAddress) {
+        logger.info(`Updating auction #${auction.id} with highest bidder ${blockchainAuction.highestBidder}`);
         await prisma.auction.update({
             where: {
                 id: auction.id
