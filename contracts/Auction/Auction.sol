@@ -1,16 +1,3 @@
-/*
- .----------------.  .----------------.  .----------------.  .----------------.  .----------------.
-| .--------------. || .--------------. || .--------------. || .--------------. || .--------------. |
-| | ____    ____ | || |  _________   | || | ____    ____ | || |  _________   | || |  ____  ____  | |
-| ||_   \  /   _|| || | |_   ___  |  | || ||_   \  /   _|| || | |_   ___  |  | || | |_  _||_  _| | |
-| |  |   \/   |  | || |   | |_  \_|  | || |  |   \/   |  | || |   | |_  \_|  | || |   \ \  / /   | |
-| |  | |\  /| |  | || |   |  _|  _   | || |  | |\  /| |  | || |   |  _|  _   | || |    > `' <    | |
-| | _| |_\/_| |_ | || |  _| |___/ |  | || | _| |_\/_| |_ | || |  _| |___/ |  | || |  _/ /'`\ \_  | |
-| ||_____||_____|| || | |_________|  | || ||_____||_____|| || | |_________|  | || | |____||____| | |
-| |              | || |              | || |              | || |              | || |              | |
-| '--------------' || '--------------' || '--------------' || '--------------' || '--------------' |
- '----------------'  '----------------'  '----------------'  '----------------'  '----------------'
-*/
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -29,17 +16,14 @@ contract Auction is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    mapping(uint256 => AuctionInfo) public auctions;
+    IERC20 public token;
 
-    mapping(address => uint256) withdrawCredits;
+    mapping(uint256 => AuctionInfo) public auctions;
 
     uint256 public defaultTimeExtension;
     uint256 public bidIncrementPercentage; // 100 = 1,00% higher than the previous bid
 
     struct AuctionInfo {
-        // seller can define an ERC20 token to be used for the auction.
-        // If not defined, the native token is used.
-        address erc20Token;
         address highestBidder;
         INFT nftContract;
         uint32 startTime;
@@ -55,8 +39,7 @@ contract Auction is
     event AuctionCreated(
         uint256 indexed collectionId,
         uint256 auctionId,
-        uint256 nftId,
-        address erc20Token
+        uint256 nftId
     );
 
     event AuctionCancelled(uint256 auctionId);
@@ -88,7 +71,8 @@ contract Auction is
     function initialize(
         address _admin,
         uint256 _defaultTimeExtension,
-        uint256 _bidIncrementPercentage
+        uint256 _bidIncrementPercentage,
+        address _token
     ) public initializer {
         __AccessControl_init();
         __Pausable_init();
@@ -96,6 +80,7 @@ contract Auction is
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         defaultTimeExtension = _defaultTimeExtension;
         bidIncrementPercentage = _bidIncrementPercentage;
+        token = IERC20(_token);
     }
 
     function setDefaultTimeExtension(uint16 _timeExtension) public onlyAdmin {
@@ -115,7 +100,6 @@ contract Auction is
         uint256 _nftId,
         uint256 _buyNowPrice,
         uint256 _minimumPrice,
-        address _token,
         uint32 _startTime,
         uint32 _endTime,
         INFT _nftContract
@@ -131,7 +115,6 @@ contract Auction is
         );
 
         AuctionInfo memory auction = AuctionInfo(
-            _token,
             address(0),
             _nftContract,
             _startTime,
@@ -146,20 +129,9 @@ contract Auction is
 
         auctions[_auctionId] = auction;
 
-        emit AuctionCreated(_collectionId, _auctionId, _nftId, _token);
+        emit AuctionCreated(_collectionId, _auctionId, _nftId);
 
         return auctionId;
-    }
-
-    function withdrawAllCredits() external {
-        uint256 amount = withdrawCredits[msg.sender];
-
-        require(amount != 0, "No credits to withdraw");
-
-        withdrawCredits[msg.sender] = 0;
-
-        (bool sent, ) = msg.sender.call{value: amount}("");
-        require(sent, "withdraw credits failed");
     }
 
     function settleAuction(uint256 _auctionId) public whenNotPaused {
@@ -186,15 +158,7 @@ contract Auction is
             (, , , address salesDestination) = auction
                 .nftContract
                 .getCollectionInfo(auction.collectionId);
-            if (auction.erc20Token != address(0)) {
-                IERC20(auction.erc20Token).transfer(
-                    salesDestination,
-                    highestBid
-                );
-            } else {
-                (bool sent, ) = salesDestination.call{value: highestBid}("");
-                require(sent, "Failed to send FTM to sales destination");
-            }
+            token.transfer(salesDestination, highestBid);
         }
 
         emit AuctionSettled(_auctionId, highestBidder, highestBid);
@@ -212,7 +176,6 @@ contract Auction is
         uint256 _auctionId,
         uint256 _buyNowPrice,
         uint256 _minimumPrice,
-        address _token,
         uint32 _endTime
     ) public onlyAdmin {
         require(!auctions[_auctionId].settled, "Auction already settled");
@@ -220,21 +183,19 @@ contract Auction is
         AuctionInfo storage auction = auctions[_auctionId];
         auction.buyNowPrice = _buyNowPrice;
         auction.minimumPrice = _minimumPrice;
-        auction.erc20Token = _token;
         auction.endTime = _endTime;
     }
 
     function cancelAuction(uint256 _auctionId) public onlyAdmin {
         AuctionInfo storage auction = auctions[_auctionId];
         require(!auction.settled, "Auction is already finished");
-        reverseLastBid(_auctionId, auction.erc20Token != address(0));
+        reverseLastBid(_auctionId);
         auctions[_auctionId].settled = true;
         emit AuctionCancelled(_auctionId);
     }
 
     function bid(uint256 _auctionId, uint256 _amount)
         public
-        payable
         nonReentrant
         whenNotPaused
     {
@@ -257,18 +218,8 @@ contract Auction is
                 (auction.highestBid * (10000 + bidIncrementPercentage)) / 10000,
             "Bid is lower than highest bid increment"
         );
-        bool isERC20Auction = auction.erc20Token != address(0);
-        if (isERC20Auction) {
-            require(msg.value == 0, "Auction is receiving ERC20 tokens");
-            IERC20(auction.erc20Token).transferFrom(
-                msg.sender,
-                address(this),
-                _amount
-            );
-        } else {
-            require(msg.value == _amount, "Value != bid amount");
-        }
-        reverseLastBid(_auctionId, isERC20Auction);
+        token.transferFrom(msg.sender, address(this), _amount);
+        reverseLastBid(_auctionId);
         auction.highestBidder = msg.sender;
         auction.highestBid = _amount;
 
@@ -285,7 +236,7 @@ contract Auction is
         emit BidPlaced(_auctionId, msg.sender, _amount, endTime);
     }
 
-    function reverseLastBid(uint256 _auctionId, bool _isERC20Auction) private {
+    function reverseLastBid(uint256 _auctionId) private {
         AuctionInfo storage auction = auctions[_auctionId];
         address highestBidder = auction.highestBidder;
         uint256 highestBid = auction.highestBid;
@@ -293,16 +244,7 @@ contract Auction is
         auction.highestBid = 0;
 
         if (highestBidder != address(0)) {
-            if (_isERC20Auction) {
-                IERC20(auction.erc20Token).transfer(highestBidder, highestBid);
-            } else {
-                (bool sent, ) = highestBidder.call{value: highestBid}("");
-                if (!sent) {
-                    withdrawCredits[highestBidder] =
-                        withdrawCredits[highestBidder] +
-                        highestBid;
-                }
-            }
+            token.transfer(highestBidder, highestBid);
         }
     }
 
