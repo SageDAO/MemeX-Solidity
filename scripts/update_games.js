@@ -488,16 +488,12 @@ async function createAuction(auction, nftContractAddress) {
     }
     let buyNowPrice = ethers.utils.parseEther(auction.buyNowPrice);
     let minimumPrice = ethers.utils.parseEther(auction.minimumPrice);
-    if (auction.erc20Address == null || auction.erc20Address == "") {
-        auction.erc20Address = "0x0000000000000000000000000000000000000000";
-    }
     const tx = await auctionContract.createAuction(
         auction.dropId,
         auction.id,
         auction.nftId,
         buyNowPrice,
         minimumPrice,
-        auction.erc20Address,
         startTime,
         endTime,
         nftContractAddress

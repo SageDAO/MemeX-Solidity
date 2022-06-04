@@ -58,7 +58,6 @@ model Lottery {
 model Auction {
   id                    Int        @id @default(autoincrement())
   dropId                Int        
-  erc20Address          String     @db.Char(42)
   buyNowPrice           String?
   lastUpdatedAt         DateTime?
   minimumPrice          String?

@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgrad
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/INFT.sol";
@@ -24,6 +25,8 @@ contract Lottery is
     bytes32 internal requestId_;
 
     address public signerAddress;
+
+    IERC20 public token;
 
     // Address of the randomness generator
     IRandomNumberGenerator public randomGenerator;
@@ -74,9 +77,8 @@ contract Lottery is
         bool isRefundable; // if true, users who don't win can withdraw their ETH back
         uint256 lotteryID; // ID for lotto
         uint256 dropId;
-        uint256 memberTicketCostPoints; // Cost per ticket in points for member users (who earned points)
-        uint256 memberTicketCostCoins; // Cost per ticket in ETH for member users (who earned points)
-        uint256 nonMemberTicketCostCoins; // Cost per ticket in ETH for regular users
+        uint256 ticketCostPoints; // Cost per ticket in points for member users (who earned points)
+        uint256 ticketCostTokens; // Cost per ticket in ETH for member users (who earned points)
         uint256 defaultPrizeId; // prize all participants win if no other prizes are given
     }
 
@@ -127,8 +129,7 @@ contract Lottery is
     event TicketSold(
         uint256 indexed lotteryId,
         uint256 ticketNumber,
-        address indexed participantAddress,
-        PriceTier tier
+        address indexed participantAddress
     );
     event PrizeClaimed(
         uint256 indexed lotteryId,
@@ -353,28 +354,31 @@ contract Lottery is
             );
     }
 
-    function claimPointsWithMessage(
+    function buyTicketsWithSignedMessage(
         address _user,
         uint256 _points,
-        bytes calldata sig
+        uint256 _lotteryId,
+        uint256 _numberOfTicketsToBuy,
+        bytes calldata _sig
     ) public {
-        // This recreates the message that was signed on the client.
+        // This recreates the message that was signed on the server.
         bytes32 message = prefixed(keccak256(abi.encode(_user, _points)));
         require(
-            ECDSAUpgradeable.recover(message, sig) == signerAddress,
+            ECDSAUpgradeable.recover(message, _sig) == signerAddress,
             "Invalid signature"
         );
 
         if (rewardsContract.totalPointsEarned(_user) < _points) {
             rewardsContract.claimPoints(_user, _points);
         }
+
+        buyTickets(_lotteryId, _numberOfTicketsToBuy);
     }
 
     function updateLottery(
         uint256 lotteryId,
-        uint256 _memberTicketCostPoints,
-        uint256 _memberTicketCostCoins,
-        uint256 _nonMemberTicketCostCoins,
+        uint256 _ticketCostPoints,
+        uint256 _ticketCostTokens,
         uint32 _startTime,
         uint32 _closeTime,
         INFT _nftContract,
@@ -387,9 +391,8 @@ contract Lottery is
         require(lottery.startTime > 0, "Lottery does not exist");
         lottery.startTime = _startTime;
         lottery.closeTime = _closeTime;
-        lottery.memberTicketCostPoints = _memberTicketCostPoints;
-        lottery.memberTicketCostCoins = _memberTicketCostCoins;
-        lottery.nonMemberTicketCostCoins = _nonMemberTicketCostCoins;
+        lottery.ticketCostPoints = _ticketCostPoints;
+        lottery.ticketCostTokens = _ticketCostTokens;
         lottery.nftContract = _nftContract;
         lottery.maxTickets = _maxTickets;
         lottery.defaultPrizeId = _defaultPrizeId;
@@ -402,9 +405,8 @@ contract Lottery is
      * @notice Creates a new lottery.
      * @param _lotteryId the lottery id
      * @param _collectionId the NFT collection id
-     * @param _memberTicketCostPoints cost in pixels for members
-     * @param _memberTicketCostCoins cost in ETH for members
-     * @param _nonMemberTicketCostCoins cost in ETH for non-members
+     * @param _ticketCostPoints cost in pixels
+     * @param _ticketCostTokens cost in $ASH
      * @param _startTime lottery start time
      * @param _closeTime lottery closing time
      * @param _nftContract reference to the NFT contract
@@ -414,9 +416,8 @@ contract Lottery is
     function createNewLottery(
         uint256 _lotteryId,
         uint256 _collectionId,
-        uint256 _memberTicketCostPoints,
-        uint256 _memberTicketCostCoins,
-        uint256 _nonMemberTicketCostCoins,
+        uint256 _ticketCostPoints,
+        uint256 _ticketCostTokens,
         uint32 _startTime,
         uint32 _closeTime,
         INFT _nftContract,
@@ -441,9 +442,8 @@ contract Lottery is
             _isRefundable,
             _lotteryId,
             _collectionId,
-            _memberTicketCostPoints,
-            _memberTicketCostCoins,
-            _nonMemberTicketCostCoins,
+            _ticketCostPoints,
+            _ticketCostTokens,
             _defaultPrizeId
         );
         lotteryHistory[_lotteryId] = newLottery;
@@ -536,42 +536,21 @@ contract Lottery is
     }
 
     /**
-     * @notice Function called by users to claim points and buy lottery tickets on same tx
-     * @param _lotteryId ID of the lottery to buy tickets for
-     * @param _numberOfTicketsToBuy Number of tickets to buy
-     * @param _points Total user claimable points
-     * @param _proof Proof of the user's claimable points
-     * @param _tier Price tier to buy tickets with. Could be Member or NonMember
-     */
-    function claimPointsAndBuyTickets(
-        uint256 _lotteryId,
-        uint256 _numberOfTicketsToBuy,
-        uint256 _points,
-        bytes32[] calldata _proof,
-        PriceTier _tier
-    ) public payable returns (uint256) {
-        if (rewardsContract.totalPointsEarned(msg.sender) < _points) {
-            rewardsContract.claimPointsWithProof(msg.sender, _points, _proof);
-        }
-        return buyTickets(_lotteryId, _numberOfTicketsToBuy, _tier);
-    }
-
-    /**
      * @notice Function called by users to buy lottery tickets using points or ETH
      * @param _lotteryId ID of the lottery to buy tickets for
      * @param _numberOfTicketsToBuy Number of tickets to buy
-     * @param _tier Price tier to buy tickets with. Could be Member or NonMember
      */
-    function buyTickets(
-        uint256 _lotteryId,
-        uint256 _numberOfTicketsToBuy,
-        PriceTier _tier
-    ) public payable whenNotPaused isWhitelisted(_lotteryId) returns (uint256) {
+    function buyTickets(uint256 _lotteryId, uint256 _numberOfTicketsToBuy)
+        public
+        whenNotPaused
+        isWhitelisted(_lotteryId)
+        returns (uint256)
+    {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         uint256 remainingPoints;
-        uint256 totalCostInCoins;
+        uint256 totalCostInTokens;
         uint256 totalCostInPoints;
-        uint256 costPerTicketCoins;
+        uint256 costPerTicketTokens;
 
         if (lottery.maxTickets != 0) {
             require(
@@ -597,26 +576,17 @@ contract Lottery is
                 lottery.closeTime > block.timestamp,
             "Lottery is not open"
         );
-        // Members (those who hold ASH or provide liquidity)
-        // NonMembers (those who don't fit the previous descriptions)
-        if (_tier == PriceTier.Member) {
-            costPerTicketCoins = lottery.memberTicketCostCoins;
-            totalCostInPoints =
-                _numberOfTicketsToBuy *
-                lottery.memberTicketCostPoints;
-            participantInfo.refundablePoints += totalCostInPoints;
-            remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
-        } else {
-            costPerTicketCoins = lottery.nonMemberTicketCostCoins;
-        }
+        costPerTicketTokens = lottery.ticketCostTokens;
+        totalCostInPoints = _numberOfTicketsToBuy * lottery.ticketCostPoints;
+        participantInfo.refundablePoints += totalCostInPoints;
+        remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
 
-        totalCostInCoins = _numberOfTicketsToBuy * costPerTicketCoins;
-        participantInfo.refundableValue += totalCostInCoins;
+        totalCostInTokens = _numberOfTicketsToBuy * costPerTicketTokens;
+        participantInfo.refundableValue += totalCostInTokens;
         lottery.numberOfTicketsSold += uint32(_numberOfTicketsToBuy);
-        require(
-            msg.value >= totalCostInCoins,
-            "Didn't transfer enough funds to buy tickets"
-        );
+
+        token.transfer(address(this), totalCostInTokens);
+
         if (numTicketsBought == 0) {
             participantHistory[msg.sender].push(_lotteryId);
             ++lottery.participantsCount;
@@ -627,8 +597,7 @@ contract Lottery is
             assignNewTicketToParticipant(
                 _lotteryId,
                 msg.sender,
-                costPerTicketCoins,
-                _tier
+                costPerTicketTokens
             );
         }
         return remainingPoints;
@@ -642,16 +611,14 @@ contract Lottery is
     function assignNewTicketToParticipant(
         uint256 _lotteryId,
         address _participantAddress,
-        uint256 _ticketValue,
-        PriceTier _tier
+        uint256 _ticketValue
     ) private {
         Ticket memory ticket = Ticket(_ticketValue, _participantAddress);
         lotteryTickets[_lotteryId].push(ticket);
         emit TicketSold(
             _lotteryId,
             lotteryTickets[_lotteryId].length,
-            _participantAddress,
-            _tier
+            _participantAddress
         );
     }
 

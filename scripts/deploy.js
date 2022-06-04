@@ -41,15 +41,15 @@ replaceAddress = async (oldAddress, newAddress) => {
     const newContract = contracts.replace(oldAddress, newAddress);
     fse.writeFileSync(configPath, newContract);
 
-    const webAssetPath = path.join('..', 'URN-UI', 'src', 'constants', 'config.ts');
-    const webAsset = fse.readFileSync(webAssetPath, 'utf8');
-    const count = (webAsset.match(new RegExp(oldAddress, 'g')) || []).length;
-    if (count > 0) {
-      const newWebAsset = webAsset.replace(oldAddress, newAddress);
-      fse.writeFileSync(webAssetPath, newWebAsset);
-    } else {
-      console.log("Could not find old address in UI's config.ts file");
-    }
+    // const webAssetPath = path.join('..', 'URN-UI', 'src', 'constants', 'config.ts');
+    // const webAsset = fse.readFileSync(webAssetPath, 'utf8');
+    // const count = (webAsset.match(new RegExp(oldAddress, 'g')) || []).length;
+    // if (count > 0) {
+    //   const newWebAsset = webAsset.replace(oldAddress, newAddress);
+    //   fse.writeFileSync(webAssetPath, newWebAsset);
+    // } else {
+    //   console.log("Could not find old address in UI's config.ts file");
+    // }
   }
 }
 
@@ -147,12 +147,13 @@ deployRandomness = async () => {
 
 deployAuction = async (deployer) => {
   const auctionAddress = CONTRACTS[hre.network.name]["auctionAddress"];
+  const ashAddress = CONTRACTS[hre.network.name]["ashAddress"];
 
   const Auction = await hre.ethers.getContractFactory("Auction");
   if (shouldDeployContract("Auction")) {
     const auctionImp = await Auction.deploy();
     await auctionImp.deployed();
-    const auction = await upgrades.deployProxy(Auction, [deployer.address, 3600, 100], { kinds: 'uups' });
+    const auction = await upgrades.deployProxy(Auction, [deployer.address, 3600, 100, ashAddress], { kinds: 'uups' });
     await auction.deployed();
     console.log("Auction deployed to:", auction.address);
     // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
@@ -203,6 +204,12 @@ async function main() {
   //await hre.run('compile');
 
   const deployer = await ethers.getSigner();
+
+  // MockERC20 = await ethers.getContractFactory("MockERC20");
+  // mockERC20 = await MockERC20.deploy();
+  // //mockERC20 = await MockERC20.attach('0x20c99f1F5bdf00e3270572177C6e30FC6213cEfe');
+  // console.log("MockERC20 deployed to:", mockERC20.address);
+  // return;
 
   result = await deployRewards(deployer);
   rewards = result[0];

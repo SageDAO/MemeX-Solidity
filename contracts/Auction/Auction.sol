@@ -94,6 +94,10 @@ contract Auction is
         bidIncrementPercentage = _bidIncrementPercentage;
     }
 
+    function setToken(address _token) public onlyAdmin {
+        token = IERC20(_token);
+    }
+
     function createAuction(
         uint256 _collectionId,
         uint256 _auctionId,
