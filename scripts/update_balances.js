@@ -317,6 +317,7 @@ async function main() {
                     proof: proof,
                     totalPointsEarned: leaf.points.toNumber(),
                     address: leaf.address,
+                    signedMessage: signature,
                 },
             }));
         }
