@@ -40,7 +40,7 @@ model Lottery {
   dropId                      Int    
   isRefundable                Boolean    @default(false) 
   isLive                      Boolean    @default(false)
-  blockchainCreatedAt         DateTime?
+  contractAddress             String?    @db.Char(42)
   costPerTicketTokens         Float      @default(0.0)
   costPerTicketPoints         Int        @default(0)
   defaultPrizeId              Int?
@@ -68,7 +68,7 @@ model Auction {
   nftId                 Int 
   winnerAddress         String?     @db.Char(42)
   claimedAt             DateTime?
-  blockchainCreatedAt   DateTime?
+  contractAddress       String?   @db.Char(42)
   Drop                  Drop @relation(fields: [dropId], references: [id])
   Nft                   Nft  @relation(fields: [nftId], references: [id])
 }
