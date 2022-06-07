@@ -22,7 +22,7 @@ function shouldDeployContract(name) {
   switch (name) {
     case "Rewards":
       return true;
-    case "RNGTemp":
+    case "RNG":
       return true;
     case "Lottery":
       return true;
@@ -120,10 +120,10 @@ deployLottery = async (rewards, deployer) => {
   return [lottery, false];
 };
 
-deployRandomness = async () => {
+deployRNG = async () => {
   const randAddress = CONTRACTS[hre.network.name]["randomnessAddress"];
-  const Randomness = await hre.ethers.getContractFactory("RandomNumberConsumer");
-  if (shouldDeployContract("RandomNumberConsumer")) {
+  const Randomness = await hre.ethers.getContractFactory("RNG");
+  if (shouldDeployContract("RNG")) {
     _vrfCoordinator = "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B";
     _linkToken = "0x01BE23585060835E02B77ef475b0Cc51aA1e0709";
     _lotteryAddr = CONTRACTS[hre.network.name]["lotteryAddress"];
@@ -219,7 +219,7 @@ async function main() {
   lottery = result[0];
   newLottery = result[1];
 
-  values = await deployRNGTemp(lottery.address);
+  values = await deployRNG(lottery.address);
   randomness = values[0];
   newRandomness = values[1];
 

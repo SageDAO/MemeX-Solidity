@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 import "../../interfaces/ILottery.sol";
 
-contract RandomNumberConsumer is Ownable, VRFConsumerBase {
+contract RNG is Ownable, VRFConsumerBase {
     bytes32 internal keyHash;
     uint256 internal fee;
     address public lotteryAddr;
