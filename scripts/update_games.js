@@ -432,6 +432,7 @@ async function createLottery(lottery, nftContractAddress) {
         lottery.isRefundable,
         lottery.defaultPrizeId || 0
     );
+    await tx.wait();
 
     logger.info("Lottery created");
 
@@ -501,6 +502,7 @@ async function createAuction(auction, nftContractAddress) {
         endTime,
         nftContractAddress
     );
+    await tx.wait();
 
     await prisma.auction.update({
         where: {
