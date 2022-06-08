@@ -406,12 +406,13 @@ async function createLottery(lottery, nftContractAddress) {
     let royaltyPercentageBasisPoints = parseInt(lottery.Drop.royaltyPercentage * 100);
     let collectionExists = await nft.collectionExists(lottery.dropId);
     if (!collectionExists) {
-        await nft.createCollection(
+        const tx = await nft.createCollection(
             lottery.dropId,
             royaltyAddress,
             royaltyPercentageBasisPoints,
             "https://" + lottery.Drop.dropMetadataCid + ".ipfs.dweb.link/",
             primarySalesDestination);
+        await tx.wait();
         logger.info("Collection created");
     } else {
         logger.info("Collection already exists");
@@ -431,6 +432,7 @@ async function createLottery(lottery, nftContractAddress) {
         lottery.isRefundable,
         lottery.defaultPrizeId || 0
     );
+
     logger.info("Lottery created");
 
     if (lottery.maxTickets > 0) {
@@ -470,12 +472,13 @@ async function createAuction(auction, nftContractAddress) {
     let royaltyPercentageBasisPoints = parseInt(auction.Drop.royaltyPercentage * 100);
     let collectionExists = await nft.collectionExists(auction.dropId);
     if (!collectionExists) {
-        await nft.createCollection(
+        const tx = await nft.createCollection(
             auction.dropId,
             royaltyAddress,
             royaltyPercentageBasisPoints,
             "https://" + auction.Drop.dropMetadataCid + ".ipfs.dweb.link/",
             primarySalesDestination);
+        await tx.wait();
         logger.info("Collection created");
     } else {
         logger.info("Collection already exists");
