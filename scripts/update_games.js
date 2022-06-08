@@ -16,6 +16,8 @@ const CONTRACTS = require('../contracts.js');
 var abiCoder = ethers.utils.defaultAbiCoder;
 let logger;
 let lotteryContract;
+let lotteryAddress;
+let auctionAddress;
 
 async function main() {
     await hre.run('compile');
@@ -61,14 +63,14 @@ async function updateAuctions() {
             auction.Drop.SecondarySplitter.splitterAddress = await deploySplitter(auction.dropId, auction.Drop.secondarySplitterId);
         }
         const endTime = Math.floor(auction.endTime / 1000);
-        if (auction.blockchainCreatedAt == null) {
+        if (auction.contractAddress == null) {
             if (auction.endTime < now) {
                 // ignore an auction with an expired end time
                 continue;
             }
             await createAuction(auction, CONTRACTS[hre.network.name]["nftAddress"]);
         } else {
-            // if we're past endTime, inspect the lottery and take the required actions
+            // if we're past endTime, inspect the auction and take the required actions
             if (now >= endTime) {
                 await updateAuctionInfo(auction);
             }
@@ -111,7 +113,7 @@ async function updateLotteries() {
             lottery.Drop.SecondarySplitter.splitterAddress = await deploySplitter(lottery.dropId, lottery.Drop.secondarySplitterId);
         }
 
-        if (lottery.blockchainCreatedAt == null) {
+        if (lottery.contractAddress == null) {
             if (lottery.endTime < now) {
                 // ignore a lottery with an expired end time
                 continue;
@@ -440,13 +442,12 @@ async function createLottery(lottery, nftContractAddress) {
         await lotteryContract.setMaxTicketsPerUser(lottery.id, lottery.maxTicketsPerUser);
     }
 
-    lottery.blockchainCreatedAt = new Date();
     await prisma.lottery.update({
         where: {
             id: lottery.id
         },
         data: {
-            blockchainCreatedAt: lottery.blockchainCreatedAt,
+            contractAddress: lotteryAddress,
             isLive: true,
         }
     });
@@ -498,13 +499,12 @@ async function createAuction(auction, nftContractAddress) {
         nftContractAddress
     );
 
-    auction.blockchainCreatedAt = new Date();
     await prisma.auction.update({
         where: {
             id: auction.id
         },
         data: {
-            blockchainCreatedAt: auction.blockchainCreatedAt,
+            contractAddress: auctionAddress,
             isLive: true,
         }
     });

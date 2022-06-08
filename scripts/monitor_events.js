@@ -10,6 +10,7 @@ let logger;
 async function main() {
 
     logger = createLogger(`urn_scripts_${hre.network.name}`, `monitor_events_${hre.network.name}`);
+    logger.info('Starting monitor_events script');
     const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
     const Lottery = await hre.ethers.getContractFactory("Lottery");
     const lottery = await Lottery.attach(lotteryAddress);
