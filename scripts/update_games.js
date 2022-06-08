@@ -187,13 +187,12 @@ async function getTotalAmountOfPrizes(lotteryId, numberOfTicketsSold) {
 }
 
 async function inspectLotteryState(lottery) {
-    const blockNum = await ethers.provider.getBlockNumber();
-    const block = await ethers.provider.getBlock(blockNum);
+    const now = Math.floor(Date.now() / 1000);
     lotteryInfo = await lotteryContract.getLotteryInfo(lottery.id);
     numberOfTicketsSold = lotteryInfo.numberOfTicketsSold;
 
     // if the lottery has finished but still has the status of "open"
-    if (lotteryInfo.status == 0 && lotteryInfo.closeTime < block.timestamp) {
+    if (lotteryInfo.status == 0 && lotteryInfo.closeTime < now) {
         if (numberOfTicketsSold > 0) {
             logger.info(`Lottery #${lottery.id} is closed, requesting random number.`);
             await lotteryContract.requestRandomNumber(lottery.id);
