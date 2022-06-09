@@ -544,10 +544,8 @@ contract Lottery is
         public
         whenNotPaused
         isWhitelisted(_lotteryId)
-        returns (uint256)
     {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-        uint256 remainingPoints;
         uint256 totalCostInTokens;
         uint256 totalCostInPoints;
         uint256 costPerTicketTokens;
@@ -576,16 +574,21 @@ contract Lottery is
                 lottery.closeTime > block.timestamp,
             "Lottery is not open"
         );
-        costPerTicketTokens = lottery.ticketCostTokens;
+
         totalCostInPoints = _numberOfTicketsToBuy * lottery.ticketCostPoints;
         participantInfo.refundablePoints += totalCostInPoints;
-        remainingPoints = _burnUserPoints(msg.sender, totalCostInPoints);
+        if (totalCostInPoints > 0) {
+            _burnUserPoints(msg.sender, totalCostInPoints);
+        }
 
-        totalCostInTokens = _numberOfTicketsToBuy * costPerTicketTokens;
-        participantInfo.refundableValue += totalCostInTokens;
+        costPerTicketTokens = lottery.ticketCostTokens;
+
         lottery.numberOfTicketsSold += uint32(_numberOfTicketsToBuy);
-
-        token.transfer(address(this), totalCostInTokens);
+        if (costPerTicketTokens > 0) {
+            totalCostInTokens = _numberOfTicketsToBuy * costPerTicketTokens;
+            token.transfer(address(this), totalCostInTokens);
+            participantInfo.refundableValue += totalCostInTokens;
+        }
 
         if (numTicketsBought == 0) {
             participantHistory[msg.sender].push(_lotteryId);
@@ -600,7 +603,6 @@ contract Lottery is
                 costPerTicketTokens
             );
         }
-        return remainingPoints;
     }
 
     /**
