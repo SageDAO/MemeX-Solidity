@@ -13,7 +13,7 @@ describe("Auction Contract", function () {
         MockERC20 = await ethers.getContractFactory("MockERC20");
         mockERC20 = await MockERC20.deploy();
         mockERC20.transfer(addr1.address, 1000);
-        mockERC20.transfer(addr2.address, 1000);
+        mockERC20.transfer(addr2.address, 2000);
         mockERC20.transfer(addr3.address, 1000);
 
         Auction = await ethers.getContractFactory('Auction');
@@ -88,8 +88,8 @@ describe("Auction Contract", function () {
     });
 
     it("Should revert if bid higher than buy now price - ERC20", async function () {
-        await mockERC20.approve(auction.address, 10000);
-        await expect(auction.connect(addr2).bid(2, 10000)).to.be.revertedWith("Bid higher than buy now price");
+        await mockERC20.connect(addr2).approve(auction.address, 2000);
+        await expect(auction.connect(addr2).bid(2, 2000)).to.be.revertedWith("Bid higher than buy now price");
     });
 
     it("Should revert if calling create not being admin", async function () {
@@ -141,7 +141,7 @@ describe("Auction Contract", function () {
         await auction.connect(addr2).bid(2, 3);
         expect(await mockERC20.balanceOf(auction.address)).to.equal(3);
         expect(await mockERC20.balanceOf(addr1.address)).to.equal(1000);
-        expect(await mockERC20.balanceOf(addr2.address)).to.equal(997);
+        expect(await mockERC20.balanceOf(addr2.address)).to.equal(1997);
     });
 
     it("Should revert if trying to settle auction before the end", async function () {

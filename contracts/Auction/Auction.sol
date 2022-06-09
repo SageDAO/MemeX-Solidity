@@ -205,6 +205,7 @@ contract Auction is
     {
         AuctionInfo storage auction = auctions[_auctionId];
         uint256 endTime = auction.endTime;
+        uint256 buyNowPrice = auction.buyNowPrice;
         require(endTime > 0, "Auction not found");
         require(!auction.settled, "Auction already settled");
         require(endTime > block.timestamp, "Auction has ended");
@@ -212,12 +213,9 @@ contract Auction is
             _amount > 0 && _amount >= auction.minimumPrice,
             "Bid is lower than minimum"
         );
+
         require(
-            auction.buyNowPrice == 0 || _amount <= auction.buyNowPrice,
-            "Bid higher than buy now price"
-        );
-        require(
-            _amount == auction.buyNowPrice ||
+            _amount == buyNowPrice ||
                 _amount >=
                 (auction.highestBid * (10000 + bidIncrementPercentage)) / 10000,
             "Bid is lower than highest bid increment"
@@ -227,6 +225,12 @@ contract Auction is
         auction.highestBidder = msg.sender;
         auction.highestBid = _amount;
 
+        if (buyNowPrice > 0) {
+            require(_amount <= buyNowPrice, "Bid higher than buy now price");
+            if (_amount == buyNowPrice) {
+                settleAuction(_auctionId);
+            }
+        }
         uint256 timeExtension = defaultTimeExtension;
 
         if (endTime - block.timestamp < timeExtension) {
@@ -234,9 +238,6 @@ contract Auction is
             auction.endTime = uint32(endTime);
         }
 
-        if (auction.buyNowPrice != 0 && _amount == auction.buyNowPrice) {
-            settleAuction(_auctionId);
-        }
         emit BidPlaced(_auctionId, msg.sender, _amount, endTime);
     }
 
