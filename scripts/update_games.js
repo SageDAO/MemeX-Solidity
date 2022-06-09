@@ -242,7 +242,8 @@ async function inspectLotteryState(lottery) {
                     hashOfSeed = keccak256(abiCoder.encode(['uint256', 'uint256'], [randomSeed, prizesAwarded]));
 
                     // convert hash into a number
-                    randomPosition = ethers.BigNumber.from(hashOfSeed).mod(numberOfTicketsSold);
+                    let randomBigNumber = ethers.BigNumber.from(hashOfSeed).mod(numberOfTicketsSold);
+                    let randomPosition = randomBigNumber.toNumber();
                     logger.info(`Generated random position ${randomPosition}`);
                     while (winnerTicketNumbers.has(randomPosition)) {
                         logger.info(`${randomPosition} already won a prize, checking next position in array`);
@@ -254,7 +255,7 @@ async function inspectLotteryState(lottery) {
                     logger.info(`Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${tickets[randomPosition]}`);
 
                     var leaf = {
-                        lotteryId: Number(lottery.id), winnerAddress: tickets[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), ticketNumber: randomPosition.toNumber(), proof: "", createdAt: new Date()
+                        lotteryId: Number(lottery.id), winnerAddress: tickets[randomPosition], nftId: prizes[prizeIndex].prizeId.toNumber(), ticketNumber: randomPosition, proof: "", createdAt: new Date()
                     };
                     leaves.push(leaf);
                 }
