@@ -283,6 +283,7 @@ async function main() {
         for (index in leaves) {
             leaf = leaves[index];
             // sign abi encoded message
+            let wallet = await ethers.getSigner();
             const message = getEncodedLeaf(leaf);
             const signature = await wallet.signMessage(message);
             logger.info(`Address: ${leaf.address} Points: ${leaf.points} Message: ${signature}`)
