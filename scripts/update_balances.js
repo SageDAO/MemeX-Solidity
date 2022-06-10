@@ -276,45 +276,27 @@ async function main() {
         logger.info(`Publishing rewards`);
 
         let hashedLeaves = leaves.map(leaf => getEncodedLeaf(leaf));
-        const tree = new MerkleTree(hashedLeaves, keccak256, { sortPairs: true });
 
-        const root = tree.getHexRoot().toString('hex');
-        logger.info(`Storing Merkle tree root in the contract: ${root}`);
-        const wallet = await ethers.getSigner();
-        const nonce = await ethers.provider.getTransactionCount(wallet.address);
-        const storedRoot = await rewardsContract.pointsMerkleRoot();
-        if (storedRoot != root) {
-            const tx = await rewardsContract.setPointsMerkleRoot(root, {
-                nonce: nonce
-            });
-        }
-
-        //await rewardsContract.setPointsMerkleRoot(root, { nonce: getNonce() });
-
-        // generate proofs for each reward
-        // store each proof in the DB so it can be easily queried when users claim points
-        // it needs to be run inside a transaction (all leafs of the tree update at the same time or roll back)
+        // generate a signed message for each reward
+        // store each message in the DB so it can be easily queried when users claim points
         let updates = new Array();
         for (index in leaves) {
             leaf = leaves[index];
             // sign abi encoded message
             const message = getEncodedLeaf(leaf);
             const signature = await wallet.signMessage(message);
-            proof = tree.getProof(getEncodedLeaf(leaf)).map(x => buf2hex(x.data)).toString();
-            logger.info(`Address: ${leaf.address} Points: ${leaf.points} Proof: ${proof}`)
+            logger.info(`Address: ${leaf.address} Points: ${leaf.points} Message: ${signature}`)
 
             updates.push(prisma.earnedPoints.upsert({
                 where: {
                     address: leaf.address
                 },
                 update: {
-                    proof: proof,
                     totalPointsEarned: leaf.points.toNumber(),
                     updatedAt: new Date(),
                     signedMessage: signature,
                 },
                 create: {
-                    proof: proof,
                     totalPointsEarned: leaf.points.toNumber(),
                     address: leaf.address,
                     signedMessage: signature,
