@@ -171,14 +171,17 @@ contract Lottery is
     /**
      * @dev Constructor for an upgradable contract
      */
-    function initialize(address _rewardsContract, address _admin)
-        public
-        initializer
-    {
+    function initialize(
+        address _rewardsContract,
+        address _admin,
+        address _token
+    ) public initializer {
         __AccessControl_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        token = IERC20(_token);
+        signerAddress = _admin;
         rewardsContract = IRewards(_rewardsContract);
     }
 
@@ -187,6 +190,10 @@ contract Lottery is
         onlyAdmin
     {
         prizeMerkleRoots[_lotteryId] = _root;
+    }
+
+    function setToken(address _token) public onlyAdmin {
+        token = IERC20(_token);
     }
 
     function getWhitelist(uint256 _lotteryId) public view returns (address) {
@@ -355,12 +362,12 @@ contract Lottery is
     }
 
     function buyTicketsWithSignedMessage(
-        address _user,
         uint256 _points,
         uint256 _lotteryId,
         uint256 _numberOfTicketsToBuy,
         bytes calldata _sig
     ) public {
+        address _user = msg.sender;
         // This recreates the message that was signed on the server.
         bytes32 message = prefixed(keccak256(abi.encode(_user, _points)));
         require(
@@ -576,8 +583,9 @@ contract Lottery is
         );
 
         totalCostInPoints = _numberOfTicketsToBuy * lottery.ticketCostPoints;
-        participantInfo.refundablePoints += totalCostInPoints;
+
         if (totalCostInPoints > 0) {
+            participantInfo.refundablePoints += totalCostInPoints;
             _burnUserPoints(msg.sender, totalCostInPoints);
         }
 
@@ -586,7 +594,7 @@ contract Lottery is
         lottery.numberOfTicketsSold += uint32(_numberOfTicketsToBuy);
         if (costPerTicketTokens > 0) {
             totalCostInTokens = _numberOfTicketsToBuy * costPerTicketTokens;
-            token.transfer(address(this), totalCostInTokens);
+            token.transferFrom(msg.sender, address(this), totalCostInTokens);
             participantInfo.refundableValue += totalCostInTokens;
         }
 
@@ -722,39 +730,31 @@ contract Lottery is
         ParticipantInfo storage participantInfo = participants[_lotteryId][
             msg.sender
         ];
-
+        uint256 refundAmount = participantInfo.refundableValue;
         if (lottery.status == Status.Completed) {
             // check if the participant has any refundable tickets
             require(
-                lottery.isRefundable && participantInfo.refundableValue > 0,
+                lottery.isRefundable && refundAmount > 0,
                 "Participant has no refundable tickets"
             );
         } else if (lottery.status == Status.Cancelled) {
             require(participantInfo.refundableValue > 0, "Already refunded");
-            // points are only refunded if the lottery is canceled
-            rewardsContract.refundPoints(
-                msg.sender,
-                participantInfo.refundablePoints
-            );
         } else {
             revert("Can't ask for a refund on this lottery");
         }
 
-        uint256 refundAmount = participantInfo.refundableValue;
         participantInfo.refundableValue = 0;
-        (bool sent, ) = msg.sender.call{value: refundAmount}("");
-        require(sent, "Refund failed");
+        token.transfer(msg.sender, refundAmount);
         emit Refunded(_lotteryId, msg.sender, refundAmount);
     }
 
     /**
-     * @notice Function called to withdraw funds (native tokens) from the contract.
+     * @notice Function called to withdraw funds (tokens) from the contract.
      * @param _to Recipient of the funds
      * @param _amount Amount to withdraw
      */
-    function withdraw(address payable _to, uint256 _amount) external onlyAdmin {
-        (bool sent, ) = _to.call{value: _amount}("");
-        require(sent, "Withdrawal failed");
+    function withdraw(address _to, uint256 _amount) external onlyAdmin {
+        token.transfer(_to, _amount);
     }
 
     function pause() external onlyAdmin {
