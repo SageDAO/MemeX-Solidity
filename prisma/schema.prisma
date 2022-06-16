@@ -58,7 +58,6 @@ model Lottery {
 model Auction {
   id                    Int        @id @default(autoincrement())
   dropId                Int        
-  buyNowPrice           String?
   lastUpdatedAt         DateTime?
   minimumPrice          String?
   settled               Boolean    @default(false)

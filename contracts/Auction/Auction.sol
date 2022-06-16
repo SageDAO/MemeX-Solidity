@@ -31,7 +31,6 @@ contract Auction is
         bool settled;
         uint256 collectionId;
         uint256 nftId;
-        uint256 buyNowPrice;
         uint256 minimumPrice;
         uint256 highestBid;
     }
@@ -102,17 +101,12 @@ contract Auction is
         uint256 _collectionId,
         uint256 _auctionId,
         uint256 _nftId,
-        uint256 _buyNowPrice,
         uint256 _minimumPrice,
         uint32 _startTime,
         uint32 _endTime,
         INFT _nftContract
     ) public onlyAdmin returns (uint256 auctionId) {
         require(_endTime > _startTime, "Invalid auction time");
-        require(
-            _buyNowPrice == 0 || _buyNowPrice >= _minimumPrice,
-            "Invalid buy now price"
-        );
         require(
             _nftContract.collectionExists(_collectionId),
             "Collection does not exist"
@@ -126,7 +120,6 @@ contract Auction is
             false,
             _collectionId,
             _nftId,
-            _buyNowPrice,
             _minimumPrice,
             0
         );
@@ -143,11 +136,7 @@ contract Auction is
         require(!auction.settled, "Auction already settled");
         uint256 highestBid = auction.highestBid;
         address highestBidder = auction.highestBidder;
-        require(
-            block.timestamp > auction.endTime ||
-                highestBid == auction.buyNowPrice,
-            "Auction is still running"
-        );
+        require(block.timestamp > auction.endTime, "Auction is still running");
 
         auction.settled = true;
         if (highestBidder != address(0)) {
@@ -178,14 +167,12 @@ contract Auction is
 
     function updateAuction(
         uint256 _auctionId,
-        uint256 _buyNowPrice,
         uint256 _minimumPrice,
         uint32 _endTime
     ) public onlyAdmin {
         require(!auctions[_auctionId].settled, "Auction already settled");
         require(auctions[_auctionId].endTime > 0, "Auction not found");
         AuctionInfo storage auction = auctions[_auctionId];
-        auction.buyNowPrice = _buyNowPrice;
         auction.minimumPrice = _minimumPrice;
         auction.endTime = _endTime;
     }
@@ -205,7 +192,6 @@ contract Auction is
     {
         AuctionInfo storage auction = auctions[_auctionId];
         uint256 endTime = auction.endTime;
-        uint256 buyNowPrice = auction.buyNowPrice;
         require(endTime > 0, "Auction not found");
         require(!auction.settled, "Auction already settled");
         require(endTime > block.timestamp, "Auction has ended");
@@ -215,8 +201,7 @@ contract Auction is
         );
 
         require(
-            _amount == buyNowPrice ||
-                _amount >=
+            _amount >=
                 (auction.highestBid * (10000 + bidIncrementPercentage)) / 10000,
             "Bid is lower than highest bid increment"
         );
@@ -225,12 +210,6 @@ contract Auction is
         auction.highestBidder = msg.sender;
         auction.highestBid = _amount;
 
-        if (buyNowPrice > 0) {
-            require(_amount <= buyNowPrice, "Bid higher than buy now price");
-            if (_amount == buyNowPrice) {
-                settleAuction(_auctionId);
-            }
-        }
         uint256 timeExtension = defaultTimeExtension;
 
         if (endTime - block.timestamp < timeExtension) {
