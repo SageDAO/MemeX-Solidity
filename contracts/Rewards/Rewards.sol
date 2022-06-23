@@ -1,15 +1,19 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../../interfaces/IRewards.sol";
 
-contract Rewards is AccessControl, IRewards {
+contract Rewards is
+    Initializable,
+    AccessControlUpgradeable,
+    UUPSUpgradeable,
+    IRewards
+{
     bytes32 public constant MANAGE_POINTS_ROLE =
         keccak256("MANAGE_POINTS_ROLE");
-    bytes32 public pointsMerkleRoot;
-
     mapping(address => uint256) public totalPointsUsed;
 
     mapping(address => uint256) public totalPointsEarned;
@@ -42,8 +46,10 @@ contract Rewards is AccessControl, IRewards {
         _;
     }
 
-    constructor(address _admin) {
-        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+    function initialize(address _admin) public initializer {
+        __AccessControl_init();
+        __UUPSUpgradeable_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     function getPointsUsedBatch(address[] calldata addresses)
@@ -127,10 +133,6 @@ contract Rewards is AccessControl, IRewards {
         totalPointsUsed[_account] = used - _points;
     }
 
-    function setPointsMerkleRoot(bytes32 _root) public onlyAdmin {
-        pointsMerkleRoot = _root;
-    }
-
     function claimPoints(address _address, uint256 _points) public {
         require(
             hasRole(MANAGE_POINTS_ROLE, msg.sender),
@@ -143,36 +145,9 @@ contract Rewards is AccessControl, IRewards {
         emit PointsEarned(_address, newPoints);
     }
 
-    function claimPointsWithProof(
-        address _address,
-        uint256 _points,
-        bytes32[] calldata _proof
-    ) public returns (uint256) {
-        require(
-            _verify(_leaf(_address, _points), pointsMerkleRoot, _proof),
-            "Invalid proof"
-        );
-        uint256 newPoints = _points - totalPointsEarned[_address];
-        require(newPoints > 0, "Participant already claimed all points");
-
-        totalPointsEarned[_address] = _points;
-        emit PointsEarned(_address, newPoints);
-        return newPoints;
-    }
-
-    function _leaf(address _address, uint256 _points)
+    function _authorizeUpgrade(address newImplementation)
         internal
-        pure
-        returns (bytes32)
-    {
-        return keccak256(abi.encode(_address, _points));
-    }
-
-    function _verify(
-        bytes32 _leafHash,
-        bytes32 _root,
-        bytes32[] memory _proof
-    ) internal pure returns (bool) {
-        return MerkleProof.verify(_proof, _root, _leafHash);
-    }
+        override
+        onlyAdmin
+    {}
 }

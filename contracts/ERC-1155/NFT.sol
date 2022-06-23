@@ -1,14 +1,25 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155SupplyUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "../Utils/StringUtils.sol";
 import "../../interfaces/INFT.sol";
 
-contract NFT is ERC1155Supply, AccessControl, INFT {
+contract NFT is
+    Initializable,
+    UUPSUpgradeable,
+    ERC1155SupplyUpgradeable,
+    AccessControlUpgradeable,
+    PausableUpgradeable,
+    INFT
+{
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     string public name;
     // Contract symbol
@@ -48,24 +59,27 @@ contract NFT is ERC1155Supply, AccessControl, INFT {
         public
         view
         virtual
-        override(AccessControl, ERC1155)
+        override(AccessControlUpgradeable, ERC1155Upgradeable)
         returns (bool)
     {
         return
-            interfaceId == type(IERC1155).interfaceId ||
+            interfaceId == type(IERC1155Upgradeable).interfaceId ||
             interfaceId == INTERFACE_ID_ERC2981 ||
-            interfaceId == type(IAccessControl).interfaceId ||
+            interfaceId == type(IAccessControlUpgradeable).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
-    constructor(
+    function initialize(
         string memory _name,
         string memory _symbol,
         address _admin
-    ) ERC1155("") {
+    ) public initializer {
+        __AccessControl_init();
+        __Pausable_init();
+        __UUPSUpgradeable_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         name = _name;
         symbol = _symbol;
-        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     function getCollectionInfo(uint256 _collectionId)
@@ -177,7 +191,7 @@ contract NFT is ERC1155Supply, AccessControl, INFT {
         uint32 _quantity,
         uint256 _collectionId,
         bytes memory _data
-    ) public {
+    ) public whenNotPaused {
         require(hasRole(MINTER_ROLE, msg.sender), "NFT: No minting privileges");
         if (tokenToCollection[_id] == 0) {
             tokenToCollection[_id] = _collectionId;
@@ -226,12 +240,21 @@ contract NFT is ERC1155Supply, AccessControl, INFT {
         address account,
         uint256 id,
         uint256 value
-    ) public virtual {
+    ) public {
         require(
             account == _msgSender() || isApprovedForAll(account, _msgSender()),
             "ERC1155: caller is not owner nor approved"
         );
 
+        _burn(account, id, value);
+    }
+
+    function burnFromAuthorizedSC(
+        address account,
+        uint256 id,
+        uint256 value
+    ) public {
+        require(hasRole(BURNER_ROLE, msg.sender), "NFT: No burn privileges");
         _burn(account, id, value);
     }
 
@@ -247,4 +270,18 @@ contract NFT is ERC1155Supply, AccessControl, INFT {
 
         _burnBatch(account, ids, values);
     }
+
+    function pause() external onlyAdmin {
+        _pause();
+    }
+
+    function unpause() external onlyAdmin {
+        _unpause();
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyAdmin
+    {}
 }

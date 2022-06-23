@@ -9,12 +9,6 @@ interface IRewards {
         external
         returns (uint256);
 
-    function claimPointsWithProof(
-        address _address,
-        uint256 _points,
-        bytes32[] calldata _proof
-    ) external returns (uint256);
-
     function availablePoints(address _user) external view returns (uint256);
 
     function totalPointsUsed(address _user) external view returns (uint256);

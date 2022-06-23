@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require('keccak256');
 const { ONE } = require("bignumber/lib/rsa/jsbn");
@@ -18,7 +18,7 @@ describe("Lottery Contract", function () {
         artist = addr1;
 
         Rewards = await ethers.getContractFactory('Rewards');
-        rewards = await Rewards.deploy(owner.address);
+        rewards = await upgrades.deployProxy(Rewards, [owner.address], { kind: 'uups' });
         await rewards.deployed();
 
         MockERC20 = await ethers.getContractFactory("MockERC20");
@@ -33,7 +33,7 @@ describe("Lottery Contract", function () {
         await rewards.grantRole(MANAGE_POINTS_ROLE, owner.address);
 
         Nft = await ethers.getContractFactory("NFT");
-        nft = await Nft.deploy("Urn", "URN", owner.address);
+        nft = await upgrades.deployProxy(Nft, ["Sage", "SAGE", owner.address], { kind: 'uups' });
         await nft.grantRole(MINTER_ROLE, lottery.address);
 
         MockRNG = await ethers.getContractFactory("MockRNG");

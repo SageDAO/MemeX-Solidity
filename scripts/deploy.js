@@ -57,7 +57,7 @@ deployRewards = async (deployer) => {
   const rewardsAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
   const Rewards = await hre.ethers.getContractFactory("Rewards");
   if (shouldDeployContract("Rewards")) {
-    rewards = await Rewards.deploy(deployer.address);
+    rewards = await upgrades.deployProxy(Rewards, [deployer.address], { kind: 'uups' });
     await rewards.deployed();
     console.log("Rewards contract deployed to:", rewards.address);
     // await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
@@ -78,13 +78,13 @@ deployNFT = async (deployer, lottery) => {
   const Nft = await hre.ethers.getContractFactory("NFT");
   if (shouldDeployContract("NFT")) {
     console.log("deploying NFT contract");
-    nft = await Nft.deploy("Urn NFTs", "URN", deployer.address);
+    nft = await upgrades.deployProxy(Nft, ["Sage NFTs", "SAGE", deployer.address], { kind: 'uups' });
     await nft.deployed();
     console.log("NFT deployed to:", nft.address);
     // await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
     // await hre.run("verify:verify", {
     //   address: nft.address,
-    //   constructorArguments: ["Urn NFTs", "URN"", deployer.address],
+    //   constructorArguments: ["Sage NFTs", "SAGE", deployer.address],
     // });
     replaceAddress(nftAddress, nft.address);
     return [nft, true];
@@ -102,10 +102,8 @@ deployLottery = async (rewards, deployer) => {
 
   if (shouldDeployContract("Lottery")) {
     // lottery = await Lottery.deploy(rewards.address, deployer.address);
-    lotteryImp = await Lottery.deploy();
-    console.log("Lottery deployed to:", lotteryImp.address);
     await lotteryImp.deployed();
-    const lottery = await upgrades.deployProxy(Lottery, [rewards.address, deployer.address, ashAddress], { kinds: 'uups' });
+    const lottery = await upgrades.deployProxy(Lottery, [rewards.address, deployer.address, ashAddress], { kind: 'uups' });
     await lottery.deployed();
     console.log("Proxy deployed to:", lottery.address);
     // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
@@ -152,9 +150,7 @@ deployAuction = async (deployer) => {
 
   const Auction = await hre.ethers.getContractFactory("Auction");
   if (shouldDeployContract("Auction")) {
-    const auctionImp = await Auction.deploy();
-    await auctionImp.deployed();
-    const auction = await upgrades.deployProxy(Auction, [deployer.address, 3600, 100, ashAddress], { kinds: 'uups' });
+    const auction = await upgrades.deployProxy(Auction, [deployer.address, 3600, 100, ashAddress], { kind: 'uups' });
     await auction.deployed();
     console.log("Auction deployed to:", auction.address);
     // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code

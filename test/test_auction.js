@@ -8,7 +8,7 @@ describe("Auction Contract", function () {
         [owner, addr1, addr2, addr3, artist, ...addrs] = await ethers.getSigners();
 
         Nft = await ethers.getContractFactory("NFT");
-        nft = await Nft.deploy("Urn", "URN", owner.address);
+        nft = await upgrades.deployProxy(Nft, ["Sage", "SAGE", owner.address], { kind: 'uups' });
 
         MockERC20 = await ethers.getContractFactory("MockERC20");
         mockERC20 = await MockERC20.deploy();
@@ -23,8 +23,6 @@ describe("Auction Contract", function () {
         // contractBidder = await ContractBidder.deploy(auction.address);
 
         await nft.grantRole(MINTER_ROLE, auction.address);
-        blockNum = await ethers.provider.getBlockNumber();
-        block = await ethers.provider.getBlock(blockNum);
 
         await nft.createCollection(1, artist.address, 200, "ipfs://path/", artist.address)
         await auction.createAuction(1, 1, 1, 2, parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address);
@@ -50,22 +48,12 @@ describe("Auction Contract", function () {
         expect(resp.highestBidder).to.equal(addr1.address);
     });
 
-    it("Should transfer funds to destination address - ERC20", async function () {
-        balance = await mockERC20.balanceOf(artist.address);
-        await mockERC20.connect(addr2).approve(auction.address, 1000);
-        await auction.connect(addr2).bid(2, 1000);
-        await ethers.provider.send("evm_increaseTime", [2 * 86401]);
-        await auction.settleAuction(2);
-        expect(await mockERC20.balanceOf(artist.address)).to.equal(balance.add(1000));
-
-    });
-
     it("Should revert if bid lower than higest bid increment", async function () {
-        await auction.createAuction(1, 3, 1, 0, parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address);
+        await auction.createAuction(1, 4, 1, 0, parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 3 * 86400, nft.address);
         await mockERC20.connect(addr2).approve(auction.address, 10000);
-        await auction.connect(addr2).bid(3, 200);
-        await expect(auction.connect(addr2).bid(3, 201)).to.be.revertedWith("Bid is lower than highest bid increment");
-        await expect(auction.connect(addr2).bid(3, 210)).to.emit(auction, 'BidPlaced');
+        await auction.connect(addr2).bid(4, 200);
+        await expect(auction.connect(addr2).bid(4, 201)).to.be.revertedWith("Bid is lower than highest bid increment");
+        await expect(auction.connect(addr2).bid(4, 210)).to.emit(auction, 'BidPlaced');
     });
 
     it("Should revert if bid lower than mininum - ERC20", async function () {
@@ -87,7 +75,7 @@ describe("Auction Contract", function () {
     });
 
     it("Should revert if calling update not being admin", async function () {
-        await expect(auction.connect(addr1).updateAuction(1, 3, block.timestamp)).to.be.revertedWith("Admin calls only");
+        await expect(auction.connect(addr1).updateAuction(1, 3, 0)).to.be.revertedWith("Admin calls only");
     });
 
     it("Should revert if calling setDefaultTimeExtension not being admin", async function () {
@@ -140,14 +128,15 @@ describe("Auction Contract", function () {
     });
 
     it("Should settle auction - ERC20", async function () {
+        ercBalance = await mockERC20.balanceOf(artist.address);
         await mockERC20.connect(addr2).approve(auction.address, 2);
         await auction.connect(addr2).bid(2, 2);
         await ethers.provider.send("evm_increaseTime", [2 * 86401]);
         await auction.settleAuction(2);
         balance = await nft.balanceOf(addr2.address, 2);
         expect(balance).to.equal(1);
+        expect(await mockERC20.balanceOf(artist.address)).to.equal(ercBalance.add(2));
     });
-
 
 });
 
