@@ -410,7 +410,7 @@ async function createLottery(lottery, nftContractAddress) {
             lottery.dropId,
             royaltyAddress,
             royaltyPercentageBasisPoints,
-            "https://" + lottery.Drop.dropMetadataCid + ".ipfs.dweb.link/",
+            "https://arweave.net/" + lottery.Drop.dropMetadataCid + "/",
             primarySalesDestination);
         await tx.wait();
         logger.info("Collection created");
@@ -477,7 +477,7 @@ async function createAuction(auction, nftContractAddress) {
             auction.dropId,
             royaltyAddress,
             royaltyPercentageBasisPoints,
-            "https://" + auction.Drop.dropMetadataCid + ".ipfs.dweb.link/",
+            "https://arweave.net/" + auction.Drop.dropMetadataCid + "/",
             primarySalesDestination);
         await tx.wait();
         logger.info("Collection created");
