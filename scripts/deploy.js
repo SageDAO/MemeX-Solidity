@@ -1,9 +1,3 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// When running the script with `npx hardhat run <script>` you'll find the Hardhat
-// Runtime Environment's members available in the global scope.
-
 const { ethers, upgrades } = require("hardhat");
 const hre = require("hardhat");
 const CONTRACTS = require("../contracts.js");
@@ -40,7 +34,7 @@ replaceAddress = async (oldAddress, newAddress) => {
         const newContract = contracts.replace(oldAddress, newAddress);
         fse.writeFileSync(configPath, newContract);
 
-        // const webAssetPath = path.join('..', 'URN-UI', 'src', 'constants', 'config.ts');
+        // const webAssetPath = path.join('..', 'Sage-UI', 'src', 'constants', 'config.ts');
         // const webAsset = fse.readFileSync(webAssetPath, 'utf8');
         // const count = (webAsset.match(new RegExp(oldAddress, 'g')) || []).length;
         // if (count > 0) {
@@ -289,7 +283,7 @@ async function main() {
     }
 
     const artifactsPath = path.join(".", "artifacts", "contracts");
-    const webAssetPath = path.join("..", "URN-UI", "src", "constants", "abis");
+    const webAssetPath = path.join("..", "Sage-UI", "src", "constants", "abis");
 
     fse.copySync(artifactsPath, webAssetPath, { overwrite: true });
 }
