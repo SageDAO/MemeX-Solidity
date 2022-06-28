@@ -1,49 +1,69 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { MerkleTree } = require("merkletreejs");
-const keccak256 = require('keccak256')
-const BigNumber = require('bignumber.js');
+const keccak256 = require("keccak256");
+const BigNumber = require("bignumber.js");
 
 const MANAGE_POINTS_ROLE = keccak256("MANAGE_POINTS_ROLE");
 
-describe("Rewards Contract", function () {
+describe("Rewards Contract", function() {
     beforeEach(async () => {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
-        Rewards = await ethers.getContractFactory('Rewards');
-        rewards = await upgrades.deployProxy(Rewards, [owner.address], { kind: 'uups' });
+        Rewards = await ethers.getContractFactory("Rewards");
+        rewards = await upgrades.deployProxy(Rewards, [owner.address], {
+            kind: "uups"
+        });
         // addr2 will simulate the lottery contract
         await rewards.grantRole(MANAGE_POINTS_ROLE, addr2.address);
     });
 
-    it("Users start with 0 rewards", async function () {
+    it("Users start with 0 rewards", async function() {
         expect(await rewards.availablePoints(owner.address)).to.equal(0);
     });
 
-    it("Should increase points after claiming", async function () {
+    it("Should increase points after claiming", async function() {
         await rewards.connect(addr2).claimPoints(addr1.address, 10);
         await rewards.connect(addr2).claimPoints(addr1.address, 20);
         expect(await rewards.availablePoints(addr1.address)).to.equal(20);
     });
 
-    it("Should throw if burn points not called by lottery contract", async function () {
-        await expect(rewards.connect(addr1).burnUserPoints(addr1.address, 1500000000)).to.be.revertedWith("Smart contract role required");
+    it("Should throw if burn points not called by lottery contract", async function() {
+        await expect(
+            rewards.connect(addr1).burnUserPoints(addr1.address, 1500000000)
+        ).to.be.revertedWith("Smart contract role required");
     });
 
-    it("Should set and update reward rates", async function () {
-        await rewards.setRewardRate(addr2.address, 1, 100000000, ethers.BigNumber.from("100000000000000000000000"), ethers.BigNumber.from("100000000000000000000000"));
+    it("Should set and update reward rates", async function() {
+        await rewards.setRewardRate(
+            addr2.address,
+            1,
+            100000000,
+            ethers.BigNumber.from("100000000000000000000000"),
+            ethers.BigNumber.from("100000000000000000000000")
+        );
         let reward = await rewards.rewardInfo(addr2.address);
         expect(reward.pointRewardPerDay).to.equal(100000000);
         expect(reward.chainId).to.equal(1);
-        expect(reward.positionSize).to.equal(ethers.BigNumber.from("100000000000000000000000"));
-        expect(reward.positionSizeLimit).to.equal(ethers.BigNumber.from("100000000000000000000000"));
-        await rewards.setRewardRate(addr2.address, 1, 200000000, ethers.BigNumber.from("100000000000000000000000"), ethers.BigNumber.from("100000000000000000000000"));
+        expect(reward.positionSize).to.equal(
+            ethers.BigNumber.from("100000000000000000000000")
+        );
+        expect(reward.positionSizeLimit).to.equal(
+            ethers.BigNumber.from("100000000000000000000000")
+        );
+        await rewards.setRewardRate(
+            addr2.address,
+            1,
+            200000000,
+            ethers.BigNumber.from("100000000000000000000000"),
+            ethers.BigNumber.from("100000000000000000000000")
+        );
         reward = await rewards.rewardInfo(addr2.address);
         expect(reward.pointRewardPerDay).to.equal(200000000);
     });
 
-    it("Should not call grantRole if doesn't have role", async function () {
-        await expect(rewards.connect(addr1).grantRole(MANAGE_POINTS_ROLE, owner.address)).to.be.revertedWith("");
+    it("Should not call grantRole if doesn't have role", async function() {
+        await expect(
+            rewards.connect(addr1).grantRole(MANAGE_POINTS_ROLE, owner.address)
+        ).to.be.revertedWith("");
     });
 });
-
-

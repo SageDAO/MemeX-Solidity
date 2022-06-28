@@ -1,14 +1,23 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const keccak256 = require('keccak256');
+const keccak256 = require("keccak256");
 const MINTER_ROLE = keccak256("MINTER_ROLE");
 
-describe("Auction Contract", function () {
+describe("Auction Contract", function() {
     beforeEach(async () => {
-        [owner, addr1, addr2, addr3, artist, ...addrs] = await ethers.getSigners();
+        [
+            owner,
+            addr1,
+            addr2,
+            addr3,
+            artist,
+            ...addrs
+        ] = await ethers.getSigners();
 
         Nft = await ethers.getContractFactory("NFT");
-        nft = await upgrades.deployProxy(Nft, ["Sage", "SAGE", owner.address], { kind: 'uups' });
+        nft = await upgrades.deployProxy(Nft, ["Sage", "SAGE", owner.address], {
+            kind: "uups"
+        });
 
         MockERC20 = await ethers.getContractFactory("MockERC20");
         mockERC20 = await MockERC20.deploy();
@@ -16,29 +25,67 @@ describe("Auction Contract", function () {
         mockERC20.transfer(addr2.address, 2000);
         mockERC20.transfer(addr3.address, 1000);
 
-        Auction = await ethers.getContractFactory('Auction');
-        auction = await upgrades.deployProxy(Auction, [owner.address, 3600, 100, mockERC20.address], { kind: 'uups' });
+        Auction = await ethers.getContractFactory("Auction");
+        auction = await upgrades.deployProxy(
+            Auction,
+            [owner.address, 3600, 100, mockERC20.address],
+            { kind: "uups" }
+        );
 
         // ContractBidder = await ethers.getContractFactory('MockAuctionBidder');
         // contractBidder = await ContractBidder.deploy(auction.address);
 
         await nft.grantRole(MINTER_ROLE, auction.address);
 
-        await nft.createCollection(1, artist.address, 200, "ipfs://path/", artist.address)
-        await auction.createAuction(1, 1, 1, 2, parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address);
-        await auction.createAuction(1, 2, 2, 2, parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 2 * 86400, nft.address);
+        await nft.createCollection(
+            1,
+            artist.address,
+            200,
+            "ipfs://path/",
+            artist.address
+        );
+        await auction.createAuction(
+            1,
+            1,
+            1,
+            2,
+            parseInt(Date.now() / 1000),
+            parseInt(Date.now() / 1000) + 86400,
+            nft.address
+        );
+        await auction.createAuction(
+            1,
+            2,
+            2,
+            2,
+            parseInt(Date.now() / 1000),
+            parseInt(Date.now() / 1000) + 2 * 86400,
+            nft.address
+        );
     });
 
-    it("Should create auction - ERC20", async function () {
-        await expect(auction.createAuction(1, 3, 1, 2,
-            parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address)).to.emit(auction, 'AuctionCreated');
+    it("Should create auction - ERC20", async function() {
+        await expect(
+            auction.createAuction(
+                1,
+                3,
+                1,
+                2,
+                parseInt(Date.now() / 1000),
+                parseInt(Date.now() / 1000) + 86400,
+                nft.address
+            )
+        ).to.emit(auction, "AuctionCreated");
     });
 
-    it("Should cancel auction", async function () {
-        await expect(auction.cancelAuction(1)).to.emit(auction, 'AuctionCancelled');
+    it("Should cancel auction", async function() {
+        await expect(auction.cancelAuction(1)).to.emit(
+            auction,
+            "AuctionCancelled"
+        );
     });
 
-    it("Should allow ERC20 bids", async function () {
+    it("Should allow ERC20 bids", async function() {
         await mockERC20.connect(addr1).approve(auction.address, 2);
         await auction.connect(addr1).bid(2, 2);
         expect(await mockERC20.balanceOf(auction.address)).to.equal(2);
@@ -48,67 +95,116 @@ describe("Auction Contract", function () {
         expect(resp.highestBidder).to.equal(addr1.address);
     });
 
-    it("Should revert if bid lower than higest bid increment", async function () {
-        await auction.createAuction(1, 4, 1, 0, parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 3 * 86400, nft.address);
+    it("Should revert if bid lower than higest bid increment", async function() {
+        await auction.createAuction(
+            1,
+            4,
+            1,
+            0,
+            parseInt(Date.now() / 1000),
+            parseInt(Date.now() / 1000) + 3 * 86400,
+            nft.address
+        );
         await mockERC20.connect(addr2).approve(auction.address, 10000);
         await auction.connect(addr2).bid(4, 200);
-        await expect(auction.connect(addr2).bid(4, 201)).to.be.revertedWith("Bid is lower than highest bid increment");
-        await expect(auction.connect(addr2).bid(4, 210)).to.emit(auction, 'BidPlaced');
+        await expect(auction.connect(addr2).bid(4, 201)).to.be.revertedWith(
+            "Bid is lower than highest bid increment"
+        );
+        await expect(auction.connect(addr2).bid(4, 210)).to.emit(
+            auction,
+            "BidPlaced"
+        );
     });
 
-    it("Should revert if bid lower than mininum - ERC20", async function () {
+    it("Should revert if bid lower than mininum - ERC20", async function() {
         await mockERC20.approve(auction.address, 1);
-        await expect(auction.connect(addr2).bid(2, 1)).to.be.revertedWith("Bid is lower than minimum");
+        await expect(auction.connect(addr2).bid(2, 1)).to.be.revertedWith(
+            "Bid is lower than minimum"
+        );
     });
 
-    it("Should revert if bid = 0", async function () {
-        await auction.createAuction(1, 3, 1, 0, parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address);
-        await expect(auction.connect(addr2).bid(3, 0)).to.be.revertedWith("Bid is lower than minimum");
+    it("Should revert if bid = 0", async function() {
+        await auction.createAuction(
+            1,
+            3,
+            1,
+            0,
+            parseInt(Date.now() / 1000),
+            parseInt(Date.now() / 1000) + 86400,
+            nft.address
+        );
+        await expect(auction.connect(addr2).bid(3, 0)).to.be.revertedWith(
+            "Bid is lower than minimum"
+        );
     });
 
-    it("Should revert if calling create not being admin", async function () {
-        await expect(auction.connect(addr1).createAuction(1, 3, 1, 2, parseInt(Date.now() / 1000), parseInt(Date.now() / 1000) + 86400, nft.address)).to.be.revertedWith("Admin calls only");
+    it("Should revert if calling create not being admin", async function() {
+        await expect(
+            auction
+                .connect(addr1)
+                .createAuction(
+                    1,
+                    3,
+                    1,
+                    2,
+                    parseInt(Date.now() / 1000),
+                    parseInt(Date.now() / 1000) + 86400,
+                    nft.address
+                )
+        ).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should revert if calling cancel not being admin", async function () {
-        await expect(auction.connect(addr1).cancelAuction(1)).to.be.revertedWith("Admin calls only");
+    it("Should revert if calling cancel not being admin", async function() {
+        await expect(
+            auction.connect(addr1).cancelAuction(1)
+        ).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should revert if calling update not being admin", async function () {
-        await expect(auction.connect(addr1).updateAuction(1, 3, 0)).to.be.revertedWith("Admin calls only");
+    it("Should revert if calling update not being admin", async function() {
+        await expect(
+            auction.connect(addr1).updateAuction(1, 3, 0)
+        ).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should revert if calling setDefaultTimeExtension not being admin", async function () {
-        await expect(auction.connect(addr1).setDefaultTimeExtension(1)).to.be.revertedWith("Admin calls only");
+    it("Should revert if calling setDefaultTimeExtension not being admin", async function() {
+        await expect(
+            auction.connect(addr1).setDefaultTimeExtension(1)
+        ).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should revert if calling setBidIncrement not being admin", async function () {
-        await expect(auction.connect(addr1).setBidIncrementPercentage(1)).to.be.revertedWith("Admin calls only");
+    it("Should revert if calling setBidIncrement not being admin", async function() {
+        await expect(
+            auction.connect(addr1).setBidIncrementPercentage(1)
+        ).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should set a new default time extension", async function () {
+    it("Should set a new default time extension", async function() {
         await auction.setDefaultTimeExtension(60);
         expect(await auction.defaultTimeExtension()).to.equal(60);
     });
 
-    it("Should set a new bidIncrementPercentage", async function () {
+    it("Should set a new bidIncrementPercentage", async function() {
         await auction.setBidIncrementPercentage(200);
         expect(await auction.bidIncrementPercentage()).to.equal(200);
     });
 
-    it("Should revert if bid lower than highest bid - ERC20", async function () {
+    it("Should revert if bid lower than highest bid - ERC20", async function() {
         await mockERC20.connect(addr1).approve(auction.address, 2);
         await mockERC20.connect(addr2).approve(auction.address, 3);
         await auction.connect(addr2).bid(2, 3);
-        await expect(auction.connect(addr1).bid(2, 2)).to.be.revertedWith("Bid is lower than highest bid");
+        await expect(auction.connect(addr1).bid(2, 2)).to.be.revertedWith(
+            "Bid is lower than highest bid"
+        );
     });
 
-    it("Should revert if trying to bid on a settled auction", async function () {
+    it("Should revert if trying to bid on a settled auction", async function() {
         await auction.cancelAuction(1);
-        await expect(auction.connect(addr2).bid(1, 2)).to.be.revertedWith("Auction already settled");
+        await expect(auction.connect(addr2).bid(1, 2)).to.be.revertedWith(
+            "Auction already settled"
+        );
     });
 
-    it("Should reverse last bid - ERC20", async function () {
+    it("Should reverse last bid - ERC20", async function() {
         await mockERC20.connect(addr1).approve(auction.address, 2);
         await mockERC20.connect(addr2).approve(auction.address, 3);
         await auction.connect(addr1).bid(2, 2);
@@ -118,16 +214,20 @@ describe("Auction Contract", function () {
         expect(await mockERC20.balanceOf(addr2.address)).to.equal(1997);
     });
 
-    it("Should revert if trying to settle auction before the end", async function () {
-        await expect(auction.settleAuction(1)).to.be.revertedWith("Auction is still running");
+    it("Should revert if trying to settle auction before the end", async function() {
+        await expect(auction.settleAuction(1)).to.be.revertedWith(
+            "Auction is still running"
+        );
     });
 
-    it("Should revert if trying to settle auction already finished", async function () {
+    it("Should revert if trying to settle auction already finished", async function() {
         await auction.cancelAuction(1);
-        await expect(auction.settleAuction(1)).to.be.revertedWith("Auction already settled");
+        await expect(auction.settleAuction(1)).to.be.revertedWith(
+            "Auction already settled"
+        );
     });
 
-    it("Should settle auction - ERC20", async function () {
+    it("Should settle auction - ERC20", async function() {
         ercBalance = await mockERC20.balanceOf(artist.address);
         await mockERC20.connect(addr2).approve(auction.address, 2);
         await auction.connect(addr2).bid(2, 2);
@@ -135,8 +235,8 @@ describe("Auction Contract", function () {
         await auction.settleAuction(2);
         balance = await nft.balanceOf(addr2.address, 2);
         expect(balance).to.equal(1);
-        expect(await mockERC20.balanceOf(artist.address)).to.equal(ercBalance.add(2));
+        expect(await mockERC20.balanceOf(artist.address)).to.equal(
+            ercBalance.add(2)
+        );
     });
-
 });
-

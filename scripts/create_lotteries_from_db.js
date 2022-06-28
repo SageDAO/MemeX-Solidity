@@ -1,20 +1,20 @@
-const BigNumber = require('bignumber.js');
+const BigNumber = require("bignumber.js");
 const hre = require("hardhat");
 const ethers = hre.ethers;
 const deployer = ethers.getSigner().address;
 
-const CONTRACTS = require('../contracts.js');
+const CONTRACTS = require("../contracts.js");
 const createLogger = require("./logs.js");
 const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
 const nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-const logger = createLogger('urn_scripts', 'create_lotteries_from_db');
+const logger = createLogger("sage_scripts", "create_lotteries_from_db");
 let nftContract;
 
 async function main() {
-    await hre.run('compile');
+    await hre.run("compile");
     const Lottery = await ethers.getContractFactory("Lottery");
     const lottery = await Lottery.attach(lotteryAddress);
 
@@ -29,7 +29,7 @@ async function main() {
         // create new lottery and update DB with lotteryId
         await createLottery(drop, lottery);
     }
-    logger.info("Finished creating lotteries succesfully")
+    logger.info("Finished creating lotteries succesfully");
 }
 
 async function createLottery(drop, lottery) {
@@ -71,26 +71,23 @@ function exit(code) {
 
 main()
     .then(() => setTimeout(exit, 2000, 0))
-    .catch((error) => {
+    .catch(error => {
         logger.error(error.stack);
         setTimeout(exit, 2000, 1);
     });
 
 async function fetchDropsReadyForBlockchain() {
-    return await prisma.drop.findMany(
-        {
-            where: {
-                blockchainCreatedAt: {
-                    equals: null
-                },
-                approvedAt: {
-                    not: null
-                }
+    return await prisma.drop.findMany({
+        where: {
+            blockchainCreatedAt: {
+                equals: null
             },
-            include: {
-                CreatedBy: true,
+            approvedAt: {
+                not: null
             }
+        },
+        include: {
+            CreatedBy: true
         }
-    );
+    });
 }
-

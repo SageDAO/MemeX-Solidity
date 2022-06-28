@@ -1,7 +1,7 @@
 require("dotenv").config();
 
-const logdnaWinston = require('logdna-winston');
-const winston = require('winston');
+const logdnaWinston = require("logdna-winston");
+const winston = require("winston");
 
 // function to create a logger
 function createLogger(logGroupName, logStreamName) {
@@ -10,14 +10,16 @@ function createLogger(logGroupName, logStreamName) {
         key: process.env.LOGDNA_KEY,
         app: logGroupName,
         env: logStreamName,
-        indexMeta: true 
-    }
+        indexMeta: true
+    };
     if (process.env.LOGDNA_KEY != "") {
         logger.add(new logdnaWinston(options));
     }
-      logger.add(new winston.transports.Console({
-        timestamp: true,
-      }));
+    logger.add(
+        new winston.transports.Console({
+            timestamp: true
+        })
+    );
     return logger;
 }
 
