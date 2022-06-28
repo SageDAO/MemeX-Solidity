@@ -436,7 +436,7 @@ contract Lottery is
             _nftContract.collectionExists(_collectionId),
             "Collection does not exist"
         );
-        lotteries.push(_collectionId);
+        lotteries.push(_lotteryId);
         LotteryInfo memory newLottery = LotteryInfo(
             _startTime,
             _closeTime,
