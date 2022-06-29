@@ -99,15 +99,13 @@ deployLottery = async (rewards, deployer) => {
     const Lottery = await hre.ethers.getContractFactory("Lottery");
 
     if (shouldDeployContract("Lottery")) {
-        // lottery = await Lottery.deploy(rewards.address, deployer.address);
-        await lotteryImp.deployed();
         const lottery = await upgrades.deployProxy(
             Lottery,
             [rewards.address, deployer.address, ashAddress],
             { kind: "uups" }
         );
         await lottery.deployed();
-        console.log("Proxy deployed to:", lottery.address);
+        console.log("Lottery proxy deployed to:", lottery.address);
         // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
         // await hre.run("verify:verify", {
         //   address: lottery.address,

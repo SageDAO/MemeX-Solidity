@@ -420,7 +420,7 @@ contract Lottery is
      * @param _isRefundable refundable games allow users who didn't win to receive their ETH back
      * @param _defaultPrizeId default prize id
      */
-    function createNewLottery(
+    function createLottery(
         uint256 _lotteryId,
         uint256 _collectionId,
         uint256 _ticketCostPoints,
@@ -429,7 +429,9 @@ contract Lottery is
         uint32 _closeTime,
         INFT _nftContract,
         bool _isRefundable,
-        uint256 _defaultPrizeId
+        uint256 _defaultPrizeId,
+        uint16 _maxTickets,
+        uint16 _maxTicketsPerUser
     ) public onlyAdmin {
         require(_closeTime > _startTime, "Close time must be after start time");
         require(
@@ -441,8 +443,8 @@ contract Lottery is
             _startTime,
             _closeTime,
             0,
-            0,
-            0,
+            _maxTickets,
+            _maxTicketsPerUser,
             0,
             Status.Created,
             _nftContract,

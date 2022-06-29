@@ -415,7 +415,7 @@ async function hardhatTests(Lottery) {
     const blockNumber = await ethers.provider.getBlockNumber();
     const block = await ethers.provider.getBlock(blockNumber);
 
-    // await lottery.createNewLottery(0, 1, block.timestamp, block.timestamp + 1100,
+    // await lottery.createLottery(0, 1, block.timestamp, block.timestamp + 1100,
     //     nft.address, 0, owner.address, "ipfs://path/");
     // await lottery.addPrizes(1, [1, 2], [1, 1000]);
     // accounts = await ethers.getSigners();
@@ -528,7 +528,7 @@ async function createLottery(lottery, nftContractAddress) {
     let startTime = parseInt(new Date(lottery.startTime).getTime() / 1000);
     let endTime = parseInt(new Date(lottery.endTime).getTime() / 1000);
 
-    const tx = await lotteryContract.createNewLottery(
+    const tx = await lotteryContract.createLottery(
         lottery.id,
         lottery.dropId,
         lottery.costPerTicketPoints,
@@ -537,25 +537,13 @@ async function createLottery(lottery, nftContractAddress) {
         endTime,
         nftContractAddress,
         lottery.isRefundable,
-        lottery.defaultPrizeId || 0
+        lottery.defaultPrizeId || 0,
+        lottery.maxTickets,
+        lottery.maxTicketsPerUser
     );
     await tx.wait();
 
     logger.info("Lottery created");
-
-    if (lottery.maxTickets > 0) {
-        logger.info("Setting max tickets to " + lottery.maxTickets);
-        await lotteryContract.setMaxTickets(lottery.id, lottery.maxTickets);
-    }
-    if (lottery.maxTicketsPerUser > 0) {
-        logger.info(
-            "Setting max tickets per user to " + lottery.maxTicketsPerUser
-        );
-        await lotteryContract.setMaxTicketsPerUser(
-            lottery.id,
-            lottery.maxTicketsPerUser
-        );
-    }
 
     await prisma.lottery.update({
         where: {
@@ -610,8 +598,8 @@ async function createAuction(auction, nftContractAddress) {
     let endTime = parseInt(new Date(auction.endTime).getTime() / 1000);
     let minimumPrice = ethers.utils.parseEther(auction.minimumPrice);
     const tx = await auctionContract.createAuction(
-        auction.dropId,
         auction.id,
+        auction.dropId,
         auction.nftId,
         minimumPrice,
         startTime,

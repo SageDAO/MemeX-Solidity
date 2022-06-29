@@ -98,8 +98,8 @@ contract Auction is
     }
 
     function createAuction(
-        uint256 _collectionId,
         uint256 _auctionId,
+        uint256 _collectionId,
         uint256 _nftId,
         uint256 _minimumPrice,
         uint32 _startTime,

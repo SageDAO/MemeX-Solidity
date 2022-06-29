@@ -54,8 +54,8 @@ describe("Auction Contract", function() {
             nft.address
         );
         await auction.createAuction(
-            1,
             2,
+            1,
             2,
             2,
             parseInt(Date.now() / 1000),
@@ -67,8 +67,8 @@ describe("Auction Contract", function() {
     it("Should create auction - ERC20", async function() {
         await expect(
             auction.createAuction(
-                1,
                 3,
+                1,
                 1,
                 2,
                 parseInt(Date.now() / 1000),
@@ -97,8 +97,8 @@ describe("Auction Contract", function() {
 
     it("Should revert if bid lower than higest bid increment", async function() {
         await auction.createAuction(
-            1,
             4,
+            1,
             1,
             0,
             parseInt(Date.now() / 1000),
@@ -125,8 +125,8 @@ describe("Auction Contract", function() {
 
     it("Should revert if bid = 0", async function() {
         await auction.createAuction(
-            1,
             3,
+            1,
             1,
             0,
             parseInt(Date.now() / 1000),
@@ -143,8 +143,8 @@ describe("Auction Contract", function() {
             auction
                 .connect(addr1)
                 .createAuction(
-                    1,
                     3,
+                    1,
                     1,
                     2,
                     parseInt(Date.now() / 1000),

@@ -75,7 +75,7 @@ describe("Lottery Contract", function() {
             "ipfs://path/collection2",
             artist.address
         );
-        await lottery.createNewLottery(
+        await lottery.createLottery(
             1,
             1,
             10,
@@ -84,9 +84,11 @@ describe("Lottery Contract", function() {
             block.timestamp + 86400 * 3,
             nft.address,
             true,
+            0,
+            0,
             0
         );
-        await lottery.createNewLottery(
+        await lottery.createLottery(
             2,
             2,
             0,
@@ -95,6 +97,8 @@ describe("Lottery Contract", function() {
             block.timestamp + 86400 * 3,
             nft.address,
             true,
+            0,
+            0,
             0
         );
         lottery.addPrizes(1, [1, 2], [1, 100]);
@@ -428,11 +432,11 @@ describe("Lottery Contract", function() {
         ).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call createNewLottery if not admin", async function() {
+    it("Should not call createLottery if not admin", async function() {
         await expect(
             lottery
                 .connect(addr1)
-                .createNewLottery(
+                .createLottery(
                     3,
                     1,
                     10,
@@ -441,6 +445,8 @@ describe("Lottery Contract", function() {
                     block.timestamp + 86400 * 3,
                     nft.address,
                     true,
+                    0,
+                    0,
                     0
                 )
         ).to.be.revertedWith("Admin calls only");
