@@ -86,7 +86,9 @@ describe("Lottery Contract", function() {
             true,
             0,
             0,
-            0
+            0,
+            [1, 2],
+            [1, 100]
         );
         await lottery.createLottery(
             2,
@@ -99,9 +101,10 @@ describe("Lottery Contract", function() {
             true,
             0,
             0,
-            0
+            0,
+            [1, 2],
+            [1, 100]
         );
-        lottery.addPrizes(1, [1, 2], [1, 100]);
         lottery.setSignerAddress(owner.address);
 
         abiCoder = ethers.utils.defaultAbiCoder;
@@ -447,7 +450,9 @@ describe("Lottery Contract", function() {
                     true,
                     0,
                     0,
-                    0
+                    0,
+                    [1, 2],
+                    [1, 100]
                 )
         ).to.be.revertedWith("Admin calls only");
     });

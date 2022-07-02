@@ -431,13 +431,20 @@ contract Lottery is
         bool _isRefundable,
         uint256 _defaultPrizeId,
         uint16 _maxTickets,
-        uint16 _maxTicketsPerUser
+        uint16 _maxTicketsPerUser,
+        uint256[] calldata _prizeIds,
+        uint16[] calldata _prizeAmounts
     ) public onlyAdmin {
         require(_closeTime > _startTime, "Close time must be after start time");
         require(
             _nftContract.collectionExists(_collectionId),
             "Collection does not exist"
         );
+        require(
+            _prizeIds.length == _prizeAmounts.length,
+            "Number of prize ids and amounts must be equal"
+        );
+
         lotteries.push(_lotteryId);
         LotteryInfo memory newLottery = LotteryInfo(
             _startTime,
@@ -456,6 +463,9 @@ contract Lottery is
             _defaultPrizeId
         );
         lotteryHistory[_lotteryId] = newLottery;
+        for (uint256 i; i < _prizeIds.length; i++) {
+            prizes[_lotteryId].push(PrizeInfo(_prizeIds[i], _prizeAmounts[i]));
+        }
         emit LotteryStatusChanged(_collectionId, Status.Created);
     }
 

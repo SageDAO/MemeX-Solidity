@@ -528,6 +528,23 @@ async function createLottery(lottery, nftContractAddress) {
     let startTime = parseInt(new Date(lottery.startTime).getTime() / 1000);
     let endTime = parseInt(new Date(lottery.endTime).getTime() / 1000);
 
+    let prizes = await prisma.nft.findMany({
+        where: {
+            lotteryId: lottery.id
+        },
+        orderBy: {
+            numberOfEditions: "asc"
+        }
+    });
+    let prizeIds = Array();
+    let prizeAmounts = Array();
+    for (prize of prizes) {
+        if (prize.numberOfEditions > 0) {
+            prizeIds.push(prize.id);
+            prizeAmounts.push(prize.numberOfEditions);
+        }
+    }
+
     const tx = await lotteryContract.createLottery(
         lottery.id,
         lottery.dropId,
@@ -539,7 +556,9 @@ async function createLottery(lottery, nftContractAddress) {
         lottery.isRefundable,
         lottery.defaultPrizeId || 0,
         lottery.maxTickets,
-        lottery.maxTicketsPerUser
+        lottery.maxTicketsPerUser,
+        prizeIds,
+        prizeAmounts
     );
     await tx.wait();
 
@@ -554,7 +573,6 @@ async function createLottery(lottery, nftContractAddress) {
             isLive: true
         }
     });
-    await addPrizes(lottery);
 
     logger.info(`Lottery created with drop id: ${lottery.dropId} | startTime: ${lottery.startTime} | endTime: ${lottery.endTime} | maxTickets: ${lottery.maxTickets} | 
     CreatedBy: ${lottery.Drop.artistAddress} | defaultPrizeId: ${lottery.defaultPrizeId} | royaltyPercentageBasePoints: ${royaltyPercentageBasisPoints} | metadataIpfsPath: ${lottery.Drop.dropMetadataCid}`);
@@ -622,29 +640,3 @@ async function createAuction(auction, nftContractAddress) {
 }
 
 const buf2hex = x => "0x" + x.toString("hex");
-
-async function addPrizes(lottery) {
-    let prizes = await prisma.nft.findMany({
-        where: {
-            lotteryId: lottery.id
-        },
-        orderBy: {
-            numberOfEditions: "asc"
-        }
-    });
-    let prizeIds = Array();
-    let prizeAmounts = Array();
-    for (prize of prizes) {
-        if (prize.numberOfEditions > 0) {
-            prizeIds.push(prize.id);
-            prizeAmounts.push(prize.numberOfEditions);
-        }
-    }
-    if (prizeIds.length > 0) {
-        await lotteryContract.addPrizes(
-            parseInt(lottery.id),
-            prizeIds,
-            prizeAmounts
-        );
-    }
-}

@@ -14,15 +14,15 @@ function shouldDeployContract(name) {
     // An easy way to select which contracts we want to deploy.
     switch (name) {
         case "Rewards":
-            return true;
+            return false;
         case "RNG":
-            return true;
+            return false;
         case "Lottery":
             return true;
         case "NFT":
-            return true;
+            return false;
         case "Auction":
-            return true;
+            return false;
     }
     return false;
 }

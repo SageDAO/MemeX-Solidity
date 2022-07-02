@@ -1,10 +1,10 @@
 CONTRACTS = {
     rinkeby: {
-        lotteryAddress: "0x5402789d5454E9376dEeAD3876f9031c70b21C2a",
-        nftAddress: "0xac10064117FAF65735344455AdE01137F4d4E1f6",
+        lotteryAddress: "0x6B58aFB318B0FfF1f486BE534b2091952A2D98ca", //imp 0x8d70d24caecd49e65cad4a77ed1bedec90bc00d3
+        nftAddress: "0xac10064117FAF65735344455AdE01137F4d4E1f6", // imp 0x8927fA8af73D886FfE9D7cBd95886a6F22aBb7ca
         randomnessAddress: "0xC98875cF81f78Aa7eD7F8Af0c122Cde94F3aec28",
-        rewardsAddress: "0xAb35e1ed507aCBd0CBDacF50837476E61Eb57Abf",
-        auctionAddress: "0xb3a93b968147E2591e107c2Ba3dcEEcFD9c78532",
+        rewardsAddress: "0xAb35e1ed507aCBd0CBDacF50837476E61Eb57Abf", //imp 0x05A45Ee2E54DF5B273394Ac4368e6c3CDa89c5c6
+        auctionAddress: "0xb3a93b968147E2591e107c2Ba3dcEEcFD9c78532", //imp 0xc827cef79121F5Cf41684C311D7C0C4AaDdDC7c5
         ashAddress: "0xd7315632731b7be8c618dE4374433f7C7E37A1D8",
         vrfCoordinator: "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B",
         linkToken: "0x01BE23585060835E02B77ef475b0Cc51aA1e0709",
@@ -19,8 +19,7 @@ CONTRACTS = {
         auctionAddress: "0x857053dd8E42F4f7eB3862ECaE025067013e0def",
         ashAddress: "0x64d91f12ece7362f91a6f8e7940cd55f05060b92",
         linkToken: "0x514910771af9ca656af840dff83e8264ecf986ca",
-        vrfCoordinator: "0x271682DEB8C4E0901D1a1550aD2e64D568E69909",
-        
+        vrfCoordinator: "0x271682DEB8C4E0901D1a1550aD2e64D568E69909"
     },
     localhost: {
         lotteryAddress: "0x2a810409872AfC346F9B5b26571Fd6eC42EA4849",
