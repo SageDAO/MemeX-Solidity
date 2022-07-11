@@ -20,8 +20,9 @@ contract Auction is
 
     mapping(uint256 => AuctionInfo) public auctions;
 
-    uint256 public defaultTimeExtension;
-    uint256 public bidIncrementPercentage; // 100 = 1,00% higher than the previous bid
+    uint256 constant DEFAULT_DURATION = 86400;
+    uint256 private defaultTimeExtension;
+    uint256 private bidIncrementPercentage; // 100 = 1,00% higher than the previous bid
 
     struct AuctionInfo {
         address highestBidder;
@@ -106,7 +107,7 @@ contract Auction is
         uint32 _endTime,
         INFT _nftContract
     ) public onlyAdmin returns (uint256 auctionId) {
-        require(_endTime > _startTime, "Invalid auction time");
+        require(_endTime == 0 || _endTime > _startTime, "Invalid auction time");
         require(
             _nftContract.collectionExists(_collectionId),
             "Collection does not exist"
@@ -136,7 +137,11 @@ contract Auction is
         require(!auction.settled, "Auction already settled");
         uint256 highestBid = auction.highestBid;
         address highestBidder = auction.highestBidder;
-        require(block.timestamp > auction.endTime, "Auction is still running");
+        uint256 endTime = auction.endTime;
+        require(
+            endTime > 0 && block.timestamp > endTime,
+            "Auction is still running"
+        );
 
         auction.settled = true;
         if (highestBidder != address(0)) {
@@ -192,9 +197,11 @@ contract Auction is
     {
         AuctionInfo storage auction = auctions[_auctionId];
         uint256 endTime = auction.endTime;
-        require(endTime > 0, "Auction not found");
+        uint256 startTime = auction.startTime;
+        uint256 timestamp = block.timestamp;
+        require(timestamp >= startTime, "Auction not available");
+        require(endTime == 0 || endTime > timestamp, "Auction has ended");
         require(!auction.settled, "Auction already settled");
-        require(endTime > block.timestamp, "Auction has ended");
         require(
             _amount > 0 && _amount >= auction.minimumPrice,
             "Bid is lower than minimum"
@@ -212,9 +219,13 @@ contract Auction is
 
         uint256 timeExtension = defaultTimeExtension;
 
-        if (endTime - block.timestamp < timeExtension) {
-            endTime = block.timestamp + timeExtension;
-            auction.endTime = uint32(endTime);
+        if (endTime == 0) {
+            auction.endTime = uint32(timestamp + DEFAULT_DURATION);
+        } else {
+            if (endTime - timestamp < timeExtension) {
+                endTime = timestamp + timeExtension;
+                auction.endTime = uint32(endTime);
+            }
         }
 
         emit BidPlaced(_auctionId, msg.sender, _amount, endTime);
@@ -238,6 +249,14 @@ contract Auction is
         returns (AuctionInfo memory)
     {
         return auctions[_auctionId];
+    }
+
+    function getDefaultTimeExtension() public view returns (uint256) {
+        return defaultTimeExtension;
+    }
+
+    function getBidIncrementPercentage() public view returns (uint256) {
+        return bidIncrementPercentage;
     }
 
     function pause() external onlyAdmin {
