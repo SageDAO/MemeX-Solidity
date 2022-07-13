@@ -17,13 +17,7 @@ describe("NFT Contract", () => {
         });
         await nft.grantRole(MINTER_ROLE, _lotteryAddress);
 
-        await nft.createCollection(
-            1,
-            addr1.address,
-            200,
-            basePath,
-            addr1.address
-        );
+        await nft.createDrop(1, addr1.address, 200, basePath, addr1.address);
         await nft.grantRole(MINTER_ROLE, addr2.address);
         _id = 1;
         await nft.connect(addr2).safeMint(addr2.address, _id, 1);

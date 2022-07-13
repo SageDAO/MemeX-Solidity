@@ -21,19 +21,19 @@ contract SageNFT is
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a; // implements ERC-2981 interface
 
-    // tokenId => collectionId
-    mapping(uint256 => uint256) public tokenToCollection;
+    // tokenId => DropId
+    mapping(uint256 => uint256) public tokenIdToDrop;
 
-    // collectionId => collection info
-    mapping(uint256 => CollectionInfo) public collections;
+    // dropId => drop info
+    mapping(uint256 => DropInfo) public drops;
 
-    event CollectionCreated(
+    event DropCreated(
         uint256 collectionId,
         address royaltyDestination,
         uint16 royaltyPercentage,
         string baseMetadataURI
     );
-    struct CollectionInfo {
+    struct DropInfo {
         uint16 royalty;
         address royaltyDestination;
         address primarySalesDestination;
@@ -67,7 +67,7 @@ contract SageNFT is
         _grantRole(MINTER_ROLE, msg.sender);
     }
 
-    function getCollectionInfo(uint256 _collectionId)
+    function getCollectionInfo(uint256 _dropId)
         public
         view
         returns (
@@ -78,19 +78,19 @@ contract SageNFT is
         )
     {
         return (
-            collections[_collectionId].royaltyDestination,
-            collections[_collectionId].royalty,
-            collections[_collectionId].dropMetadataURI,
-            collections[_collectionId].primarySalesDestination
+            drops[_dropId].royaltyDestination,
+            drops[_dropId].royalty,
+            drops[_dropId].dropMetadataURI,
+            drops[_dropId].primarySalesDestination
         );
     }
 
     function safeMint(
         address to,
         uint256 tokenId,
-        uint256 collectionId
+        uint256 dropId
     ) public onlyRole(MINTER_ROLE) {
-        tokenToCollection[tokenId] = collectionId;
+        tokenIdToDrop[tokenId] = dropId;
         _safeMint(to, tokenId);
     }
 
@@ -127,7 +127,7 @@ contract SageNFT is
     {
         return
             string.concat(
-                collections[tokenToCollection[tokenId]].dropMetadataURI,
+                drops[tokenIdToDrop[tokenId]].dropMetadataURI,
                 StringUtils.uint2str(tokenId)
             );
     }
@@ -149,15 +149,15 @@ contract SageNFT is
     }
 
     /**
-     * @notice Creates a new collection.
-     * @param _collectionId the collection id
+     * @notice Creates a new drop.
+     * @param _dropId the drop id
      * @param _royaltyDestination the wallet address of the artist
      * @param _royaltyPercentage the royalty percentage in base points (200 = 2%)
      * @param _dropMetadataURI the metadata URI of the drop
-     * @param _primarySalesDestination the wallet address to receive primary sales of the collection
+     * @param _primarySalesDestination the wallet address to receive primary sales for the drop
      */
-    function createCollection(
-        uint256 _collectionId,
+    function createDrop(
+        uint256 _dropId,
         address _royaltyDestination,
         uint16 _royaltyPercentage,
         string memory _dropMetadataURI,
@@ -168,29 +168,25 @@ contract SageNFT is
             _royaltyDestination != address(0),
             "Royalty destination address can't be 0"
         );
-        CollectionInfo memory collection = CollectionInfo(
+        DropInfo memory drop = DropInfo(
             _royaltyPercentage,
             _royaltyDestination,
             _primarySalesDestination,
             _dropMetadataURI
         );
 
-        collections[_collectionId] = collection;
+        drops[_dropId] = drop;
 
-        emit CollectionCreated(
-            _collectionId,
+        emit DropCreated(
+            _dropId,
             _royaltyDestination,
             _royaltyPercentage,
             _dropMetadataURI
         );
     }
 
-    function collectionExists(uint256 _collectionId)
-        public
-        view
-        returns (bool)
-    {
-        return collections[_collectionId].royaltyDestination != address(0);
+    function dropExists(uint256 _dropId) public view returns (bool) {
+        return drops[_dropId].royaltyDestination != address(0);
     }
 
     /**
@@ -203,12 +199,7 @@ contract SageNFT is
         view
         returns (address, uint256)
     {
-        CollectionInfo storage collection = collections[
-            tokenToCollection[tokenId]
-        ];
-        return (
-            collection.royaltyDestination,
-            (salePrice * collection.royalty) / 10000
-        );
+        DropInfo storage drop = drops[tokenIdToDrop[tokenId]];
+        return (drop.royaltyDestination, (salePrice * drop.royalty) / 10000);
     }
 }
