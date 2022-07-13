@@ -28,7 +28,7 @@ contract SageNFT is
     mapping(uint256 => DropInfo) public drops;
 
     event DropCreated(
-        uint256 collectionId,
+        uint256 dropId,
         address royaltyDestination,
         uint16 royaltyPercentage,
         string baseMetadataURI
@@ -67,7 +67,7 @@ contract SageNFT is
         _grantRole(MINTER_ROLE, msg.sender);
     }
 
-    function getCollectionInfo(uint256 _dropId)
+    function getDropInfo(uint256 _dropId)
         public
         view
         returns (
