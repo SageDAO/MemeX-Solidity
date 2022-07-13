@@ -3,12 +3,10 @@ pragma solidity >=0.6.0;
 //SPDX-License-Identifier: MIT
 
 interface INFT {
-    function mint(
+    function safeMint(
         address _to,
         uint256 _id,
-        uint32 _quantity,
-        uint256 _collectionId,
-        bytes calldata _data
+        uint256 _collectionId
     ) external;
 
     function createCollection(

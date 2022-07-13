@@ -45,8 +45,8 @@ describe("Lottery Contract", function() {
         await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
         await rewards.grantRole(MANAGE_POINTS_ROLE, owner.address);
 
-        Nft = await ethers.getContractFactory("NFT");
-        nft = await upgrades.deployProxy(Nft, ["Sage", "SAGE", owner.address], {
+        Nft = await ethers.getContractFactory("SageNFT");
+        nft = await upgrades.deployProxy(Nft, ["Sage", "SAGE"], {
             kind: "uups"
         });
         await nft.grantRole(MINTER_ROLE, lottery.address);
@@ -510,7 +510,7 @@ describe("Lottery Contract", function() {
             await lottery
                 .connect(addr1)
                 .claimPrize(2, addr1.address, 1, 0, prizeProofA);
-            expect(await nft.balanceOf(addr1.address, 1)).to.equal(1);
+            expect(await nft.balanceOf(addr1.address)).to.equal(1);
         });
 
         it("Should allow to claim more than one prize", async function() {

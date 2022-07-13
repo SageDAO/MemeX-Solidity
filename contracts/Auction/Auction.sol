@@ -145,12 +145,10 @@ contract Auction is
 
         auction.settled = true;
         if (highestBidder != address(0)) {
-            auction.nftContract.mint(
+            auction.nftContract.safeMint(
                 highestBidder,
                 auction.nftId,
-                1,
-                auction.collectionId,
-                ""
+                auction.collectionId
             );
 
             (, , , address salesDestination) = auction

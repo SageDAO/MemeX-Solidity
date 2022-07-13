@@ -684,7 +684,7 @@ contract Lottery is
         INFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
         claimedPrizes[_lotteryId][_ticketNumber] = true;
-        nftContract.mint(_winner, _prizeId, 1, lottery.dropId, "");
+        nftContract.safeMint(_winner, _prizeId, lottery.dropId);
         emit PrizeClaimed(_lotteryId, _winner, _prizeId);
     }
 

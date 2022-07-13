@@ -14,8 +14,8 @@ describe("Auction Contract", function() {
             ...addrs
         ] = await ethers.getSigners();
 
-        Nft = await ethers.getContractFactory("NFT");
-        nft = await upgrades.deployProxy(Nft, ["Sage", "SAGE", owner.address], {
+        Nft = await ethers.getContractFactory("SageNFT");
+        nft = await upgrades.deployProxy(Nft, ["Sage", "SAGE"], {
             kind: "uups"
         });
 
@@ -246,7 +246,7 @@ describe("Auction Contract", function() {
         await auction.connect(addr2).bid(2, 2);
         await ethers.provider.send("evm_increaseTime", [2 * 86401]);
         await auction.settleAuction(2);
-        balance = await nft.balanceOf(addr2.address, 2);
+        balance = await nft.balanceOf(addr2.address);
         expect(balance).to.equal(1);
         expect(await mockERC20.balanceOf(artist.address)).to.equal(
             ercBalance.add(2)

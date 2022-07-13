@@ -7,15 +7,13 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "../Utils/StringUtils.sol";
-import "../../interfaces/INFT.sol";
 
 contract NFT is
     Initializable,
     UUPSUpgradeable,
     ERC1155SupplyUpgradeable,
     AccessControlUpgradeable,
-    PausableUpgradeable,
-    INFT
+    PausableUpgradeable
 {
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
