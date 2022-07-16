@@ -332,7 +332,9 @@ contract Lottery is
         INFT _nftContract,
         uint16 _maxTickets,
         Status _status,
-        bool _isRefundable
+        bool _isRefundable,
+        uint128 _firstPrizeId,
+        uint128 _lastPrizeId
     ) public onlyAdmin {
         LotteryInfo storage lottery = lotteryHistory[lotteryId];
         require(lottery.startTime > 0, "Lottery does not exist");
@@ -344,6 +346,8 @@ contract Lottery is
         lottery.maxTickets = _maxTickets;
         lottery.status = _status;
         lottery.isRefundable = _isRefundable;
+        lottery.firstPrizeId = _firstPrizeId;
+        lottery.lastPrizeId = _lastPrizeId;
         emit LotteryStatusChanged(lotteryId, _status);
     }
 
