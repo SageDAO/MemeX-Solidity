@@ -577,7 +577,7 @@ contract Lottery is
         uint256 _lotteryId,
         address _winner,
         uint256 _prizeId,
-        string memory _uri,
+        string calldata _uri,
         bytes32[] calldata _proof
     ) public whenNotPaused {
         ParticipantInfo storage participantInfo = participants[_lotteryId][
