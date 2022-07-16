@@ -20,7 +20,7 @@ function shouldDeployContract(name) {
         case "Lottery":
             return true;
         case "Auction":
-            return false;
+            return true;
     }
     return false;
 }
@@ -273,9 +273,9 @@ async function main() {
             }
         }
 
-        if (newAuction) {
-            await nft.grantRole(MINTER_ROLE, auction.address);
-        }
+        // if (newAuction) {
+        //     await nft.grantRole(MINTER_ROLE, auction.address);
+        // }
     }
 
     const artifactsPath = path.join(".", "artifacts", "contracts");
