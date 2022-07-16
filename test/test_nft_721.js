@@ -5,22 +5,33 @@ const keccak256 = require("keccak256");
 const MINTER_ROLE = keccak256("MINTER_ROLE");
 const BURNER_ROLE = keccak256("BURNER_ROLE");
 
-const basePath = "ipfs://path/";
+const uri = "ipfs://aaaa/";
 
 describe("NFT Contract", () => {
     beforeEach(async () => {
-        [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
+        [
+            owner,
+            addr1,
+            addr2,
+            addr3,
+            artist,
+            ...addrs
+        ] = await ethers.getSigners();
         Nft = await ethers.getContractFactory("SageNFT");
         _lotteryAddress = addr1.address;
-        nft = await upgrades.deployProxy(Nft, ["Sage", "SAGE"], {
-            kind: "uups"
-        });
+        nft = await upgrades.deployProxy(
+            Nft,
+            ["Sage", "SAGE", artist.address, 200, artist.address],
+            {
+                kind: "uups"
+            }
+        );
         await nft.grantRole(MINTER_ROLE, _lotteryAddress);
 
-        await nft.createDrop(1, addr1.address, 200, basePath, addr1.address);
         await nft.grantRole(MINTER_ROLE, addr2.address);
         _id = 1;
-        await nft.connect(addr2).safeMint(addr2.address, _id, 1);
+
+        await nft.connect(addr2).safeMint(addr2.address, _id, uri);
     });
 
     it("Should increase minter balance", async function() {
@@ -28,7 +39,7 @@ describe("NFT Contract", () => {
     });
 
     it("Should answer correct uri", async function() {
-        expect(await nft.tokenURI(_id)).to.equal(basePath + _id);
+        expect(await nft.tokenURI(_id)).to.equal(uri);
     });
 
     it("Should be able to burn", async function() {
@@ -61,7 +72,7 @@ describe("NFT Contract", () => {
 
     it("Should calculate royalties", async function() {
         royaltyInfo = await nft.royaltyInfo(1, 100);
-        expect(royaltyInfo[0]).to.equal(addr1.address);
+        expect(royaltyInfo[0]).to.equal(artist.address);
         expect(royaltyInfo[1]).to.equal(2);
     });
 
