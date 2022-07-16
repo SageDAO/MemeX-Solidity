@@ -46,9 +46,6 @@ contract Lottery is
     // participant address => lottery ids he entered
     mapping(address => uint256[]) internal participantHistory;
 
-    //lotteryid => prizeIds
-    mapping(uint256 => PrizeInfo[]) public prizes;
-
     // lotteryId => ticketNumber => claimed state
     mapping(uint256 => mapping(uint256 => bool)) public claimedPrizes;
 
@@ -75,11 +72,11 @@ contract Lottery is
         Status status; // Status for lotto
         INFT nftContract; // reference to the NFT Contract
         bool isRefundable; // if true, users who don't win can withdraw their ETH back
+        uint128 firstPrizeId;
+        uint128 lastPrizeId;
         uint256 lotteryID; // ID for lotto
-        uint256 dropId;
         uint256 ticketCostPoints; // Cost per ticket in points for member users (who earned points)
         uint256 ticketCostTokens; // Cost per ticket in ETH for member users (who earned points)
-        uint256 defaultPrizeId; // prize all participants win if no other prizes are given
     }
 
     struct ParticipantInfo {
@@ -87,11 +84,6 @@ contract Lottery is
         bool claimedPrize;
         uint256 refundablePoints; // points are only refunded in case of a cancellation
         uint256 refundableValue;
-    }
-
-    struct PrizeInfo {
-        uint256 prizeId;
-        uint16 numberOfEditions;
     }
 
     struct Ticket {
@@ -106,16 +98,7 @@ contract Lottery is
         Completed // The lottery has been completed and the numbers drawn
     }
 
-    enum PriceTier {
-        Member,
-        NonMember
-    }
-
     event ResponseReceived(bytes32 indexed requestId);
-    event LotteryPrizesCountChanged(
-        uint256 indexed lotteryId,
-        uint256 numberOfPrizes
-    );
     event LotteryStatusChanged(
         uint256 indexed lotteryId,
         Status indexed status
@@ -268,14 +251,6 @@ contract Lottery is
         randomGenerator = IRandomNumberGenerator(_IRandomNumberGenerator);
     }
 
-    function getPrizes(uint256 _lotteryId)
-        public
-        view
-        returns (PrizeInfo[] memory)
-    {
-        return prizes[_lotteryId];
-    }
-
     function prizeClaimed(uint256 _lotteryId, uint256 _ticketNumber)
         public
         view
@@ -319,40 +294,6 @@ contract Lottery is
         _;
     }
 
-    function removePrize(uint256 _lotteryId, uint256 _index) public onlyAdmin {
-        require(_index < prizes[_lotteryId].length, "Index out of bounds");
-
-        prizes[_lotteryId][_index] = prizes[_lotteryId][
-            prizes[_lotteryId].length - 1
-        ];
-        prizes[_lotteryId].pop();
-    }
-
-    /**
-     * @notice Defines prizes for a lottery.
-     * @param _lotteryId The lottery ID
-     * @param _prizeIds array with prize ids
-     * @param _prizeAmounts array with prize supply
-     */
-    function addPrizes(
-        uint256 _lotteryId,
-        uint256[] calldata _prizeIds,
-        uint16[] calldata _prizeAmounts
-    ) public onlyAdmin {
-        LotteryInfo memory lottery = lotteryHistory[_lotteryId];
-        require(lottery.startTime > 0, "Lottery does not exist");
-        require(_prizeIds.length > 0, "Number of prizes can't be 0");
-        require(
-            _prizeIds.length == _prizeAmounts.length,
-            "Number of prize ids and amounts must be equal"
-        );
-        for (uint256 i; i < _prizeIds.length; i++) {
-            prizes[_lotteryId].push(PrizeInfo(_prizeIds[i], _prizeAmounts[i]));
-        }
-
-        emit LotteryPrizesCountChanged(_lotteryId, _prizeIds.length);
-    }
-
     // Builds a prefixed hash to mimic the behavior of eth_sign.
     function prefixed(bytes32 hash) internal pure returns (bytes32) {
         return
@@ -390,7 +331,6 @@ contract Lottery is
         uint32 _closeTime,
         INFT _nftContract,
         uint16 _maxTickets,
-        uint256 _defaultPrizeId,
         Status _status,
         bool _isRefundable
     ) public onlyAdmin {
@@ -402,7 +342,6 @@ contract Lottery is
         lottery.ticketCostTokens = _ticketCostTokens;
         lottery.nftContract = _nftContract;
         lottery.maxTickets = _maxTickets;
-        lottery.defaultPrizeId = _defaultPrizeId;
         lottery.status = _status;
         lottery.isRefundable = _isRefundable;
         emit LotteryStatusChanged(lotteryId, _status);
@@ -411,39 +350,28 @@ contract Lottery is
     /**
      * @notice Creates a new lottery.
      * @param _lotteryId the lottery id
-     * @param _collectionId the NFT collection id
      * @param _ticketCostPoints cost in pixels
      * @param _ticketCostTokens cost in $ASH
      * @param _startTime lottery start time
      * @param _closeTime lottery closing time
      * @param _nftContract reference to the NFT contract
      * @param _isRefundable refundable games allow users who didn't win to receive their ETH back
-     * @param _defaultPrizeId default prize id
      */
     function createLottery(
         uint256 _lotteryId,
-        uint256 _collectionId,
         uint256 _ticketCostPoints,
         uint256 _ticketCostTokens,
         uint32 _startTime,
         uint32 _closeTime,
         INFT _nftContract,
         bool _isRefundable,
-        uint256 _defaultPrizeId,
         uint16 _maxTickets,
         uint16 _maxTicketsPerUser,
-        uint256[] calldata _prizeIds,
-        uint16[] calldata _prizeAmounts
+        uint128 _firstPrizeId,
+        uint128 _lastPrizeId
     ) public onlyAdmin {
+        require(_startTime > 0, "Invalid start time");
         require(_closeTime > _startTime, "Close time must be after start time");
-        require(
-            _nftContract.collectionExists(_collectionId),
-            "Collection does not exist"
-        );
-        require(
-            _prizeIds.length == _prizeAmounts.length,
-            "Number of prize ids and amounts must be equal"
-        );
 
         lotteries.push(_lotteryId);
         LotteryInfo memory newLottery = LotteryInfo(
@@ -456,17 +384,14 @@ contract Lottery is
             Status.Created,
             _nftContract,
             _isRefundable,
+            _firstPrizeId,
+            _lastPrizeId,
             _lotteryId,
-            _collectionId,
             _ticketCostPoints,
-            _ticketCostTokens,
-            _defaultPrizeId
+            _ticketCostTokens
         );
         lotteryHistory[_lotteryId] = newLottery;
-        for (uint256 i; i < _prizeIds.length; i++) {
-            prizes[_lotteryId].push(PrizeInfo(_prizeIds[i], _prizeAmounts[i]));
-        }
-        emit LotteryStatusChanged(_collectionId, Status.Created);
+        emit LotteryStatusChanged(_lotteryId, Status.Created);
     }
 
     /**
@@ -648,7 +573,7 @@ contract Lottery is
         uint256 _lotteryId,
         address _winner,
         uint256 _prizeId,
-        uint256 _ticketNumber,
+        string memory _uri,
         bytes32[] calldata _proof
     ) public whenNotPaused {
         ParticipantInfo storage participantInfo = participants[_lotteryId][
@@ -656,11 +581,11 @@ contract Lottery is
         ];
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(
-            !claimedPrizes[_lotteryId][_ticketNumber],
+            !claimedPrizes[_lotteryId][_prizeId],
             "Participant already claimed prize"
         );
         if (lottery.isRefundable) {
-            uint256 ticketValue = lotteryTickets[_lotteryId][_ticketNumber]
+            uint256 ticketValue = lotteryTickets[_lotteryId][_prizeId]
                 .ticketCostInCoins;
 
             require(
@@ -673,7 +598,7 @@ contract Lottery is
 
         require(
             _verify(
-                _leaf(_lotteryId, _winner, _prizeId, _ticketNumber),
+                _leaf(_lotteryId, _winner, _prizeId, _uri),
                 prizeMerkleRoots[_lotteryId],
                 _proof
             ),
@@ -683,8 +608,8 @@ contract Lottery is
         participants[_lotteryId][_winner].claimedPrize = true;
         INFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
-        claimedPrizes[_lotteryId][_ticketNumber] = true;
-        nftContract.safeMint(_winner, _prizeId, lottery.dropId);
+        claimedPrizes[_lotteryId][_prizeId] = true;
+        nftContract.safeMint(_winner, _prizeId, _uri);
         emit PrizeClaimed(_lotteryId, _winner, _prizeId);
     }
 
@@ -692,10 +617,9 @@ contract Lottery is
         uint256 _lotteryId,
         address _winner,
         uint256 _prizeId,
-        uint256 _ticketNumber
+        string memory _uri
     ) internal pure returns (bytes32) {
-        return
-            keccak256(abi.encode(_lotteryId, _winner, _prizeId, _ticketNumber));
+        return keccak256(abi.encode(_lotteryId, _winner, _prizeId, _uri));
     }
 
     function _verify(

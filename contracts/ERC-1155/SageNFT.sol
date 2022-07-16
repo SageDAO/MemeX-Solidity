@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -14,31 +15,17 @@ contract SageNFT is
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
     ERC721BurnableUpgradeable,
+    ERC721URIStorageUpgradeable,
     AccessControlUpgradeable,
     UUPSUpgradeable
 {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+    bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 private constant BURNER_ROLE = keccak256("BURNER_ROLE");
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a; // implements ERC-2981 interface
 
-    // tokenId => DropId
-    mapping(uint256 => uint256) public tokenIdToDrop;
-
-    // dropId => drop info
-    mapping(uint256 => DropInfo) public drops;
-
-    event DropCreated(
-        uint256 dropId,
-        address royaltyDestination,
-        uint16 royaltyPercentage,
-        string baseMetadataURI
-    );
-    struct DropInfo {
-        uint16 royalty;
-        address royaltyDestination;
-        address primarySalesDestination;
-        string dropMetadataURI;
-    }
+    address private primarySalesDestination;
+    uint256 public royaltyPercentage; // in basis points (100 = 1%)
+    address public royaltyDestination;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -53,45 +40,34 @@ contract SageNFT is
         _;
     }
 
-    function initialize(string calldata name, string calldata symbol)
-        public
-        initializer
-    {
-        __ERC721_init(name, symbol);
+    function initialize(
+        string calldata _name,
+        string calldata _symbol,
+        address _primarySalesDestination,
+        uint256 _royaltyPercentage,
+        address _royaltyDestination
+    ) public initializer {
+        __ERC721_init(_name, _symbol);
         __ERC721Enumerable_init();
         __ERC721Burnable_init();
         __AccessControl_init();
         __UUPSUpgradeable_init();
 
+        royaltyDestination = _royaltyDestination;
+        royaltyPercentage = _royaltyPercentage;
+        primarySalesDestination = _primarySalesDestination;
+
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
-    }
-
-    function getDropInfo(uint256 _dropId)
-        public
-        view
-        returns (
-            address,
-            uint16,
-            string memory,
-            address
-        )
-    {
-        return (
-            drops[_dropId].royaltyDestination,
-            drops[_dropId].royalty,
-            drops[_dropId].dropMetadataURI,
-            drops[_dropId].primarySalesDestination
-        );
     }
 
     function safeMint(
         address to,
         uint256 tokenId,
-        uint256 dropId
+        string memory uri
     ) public onlyRole(MINTER_ROLE) {
-        tokenIdToDrop[tokenId] = dropId;
         _safeMint(to, tokenId);
+        _setTokenURI(tokenId, uri);
     }
 
     function _authorizeUpgrade(address newImplementation)
@@ -110,7 +86,10 @@ contract SageNFT is
         super._beforeTokenTransfer(from, to, tokenId);
     }
 
-    function _burn(uint256 tokenId) internal override(ERC721Upgradeable) {
+    function _burn(uint256 tokenId)
+        internal
+        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
+    {
         super._burn(tokenId);
     }
 
@@ -122,14 +101,10 @@ contract SageNFT is
     function tokenURI(uint256 tokenId)
         public
         view
-        override(ERC721Upgradeable)
+        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
         returns (string memory)
     {
-        return
-            string.concat(
-                drops[tokenIdToDrop[tokenId]].dropMetadataURI,
-                StringUtils.uint2str(tokenId)
-            );
+        return super.tokenURI(tokenId);
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -149,47 +124,6 @@ contract SageNFT is
     }
 
     /**
-     * @notice Creates a new drop.
-     * @param _dropId the drop id
-     * @param _royaltyDestination the wallet address of the artist
-     * @param _royaltyPercentage the royalty percentage in base points (200 = 2%)
-     * @param _dropMetadataURI the metadata URI of the drop
-     * @param _primarySalesDestination the wallet address to receive primary sales for the drop
-     */
-    function createDrop(
-        uint256 _dropId,
-        address _royaltyDestination,
-        uint16 _royaltyPercentage,
-        string memory _dropMetadataURI,
-        address _primarySalesDestination
-    ) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
-        require(
-            _royaltyDestination != address(0),
-            "Royalty destination address can't be 0"
-        );
-        DropInfo memory drop = DropInfo(
-            _royaltyPercentage,
-            _royaltyDestination,
-            _primarySalesDestination,
-            _dropMetadataURI
-        );
-
-        drops[_dropId] = drop;
-
-        emit DropCreated(
-            _dropId,
-            _royaltyDestination,
-            _royaltyPercentage,
-            _dropMetadataURI
-        );
-    }
-
-    function dropExists(uint256 _dropId) public view returns (bool) {
-        return drops[_dropId].royaltyDestination != address(0);
-    }
-
-    /**
      * @notice Calculates royalties based on a sale price provided following EIP-2981.
      * Solution is agnostic of the sale price unit and will answer using the same unit.
      * @return  address to receive royaltyAmount, amount to be paid as royalty.
@@ -199,7 +133,10 @@ contract SageNFT is
         view
         returns (address, uint256)
     {
-        DropInfo storage drop = drops[tokenIdToDrop[tokenId]];
-        return (drop.royaltyDestination, (salePrice * drop.royalty) / 10000);
+        return (royaltyDestination, (salePrice * royaltyPercentage) / 10000);
+    }
+
+    function getPrimarySalesDestination() public view returns (address) {
+        return primarySalesDestination;
     }
 }

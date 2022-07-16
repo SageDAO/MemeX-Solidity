@@ -30,17 +30,13 @@ contract Auction is
         uint32 startTime;
         uint32 endTime;
         bool settled;
-        uint256 collectionId;
         uint256 nftId;
         uint256 minimumPrice;
         uint256 highestBid;
+        string nftUri;
     }
 
-    event AuctionCreated(
-        uint256 indexed collectionId,
-        uint256 auctionId,
-        uint256 nftId
-    );
+    event AuctionCreated(uint256 auctionId, uint256 nftId);
 
     event AuctionCancelled(uint256 auctionId);
 
@@ -100,18 +96,14 @@ contract Auction is
 
     function createAuction(
         uint256 _auctionId,
-        uint256 _collectionId,
         uint256 _nftId,
         uint256 _minimumPrice,
         uint32 _startTime,
         uint32 _endTime,
-        INFT _nftContract
+        INFT _nftContract,
+        string memory _nftUri
     ) public onlyAdmin returns (uint256 auctionId) {
         require(_endTime == 0 || _endTime > _startTime, "Invalid auction time");
-        require(
-            _nftContract.collectionExists(_collectionId),
-            "Collection does not exist"
-        );
 
         AuctionInfo memory auction = AuctionInfo(
             address(0),
@@ -119,15 +111,15 @@ contract Auction is
             _startTime,
             _endTime,
             false,
-            _collectionId,
             _nftId,
             _minimumPrice,
-            0
+            0,
+            _nftUri
         );
 
         auctions[_auctionId] = auction;
 
-        emit AuctionCreated(_collectionId, _auctionId, _nftId);
+        emit AuctionCreated(_auctionId, _nftId);
 
         return auctionId;
     }
@@ -148,12 +140,12 @@ contract Auction is
             auction.nftContract.safeMint(
                 highestBidder,
                 auction.nftId,
-                auction.collectionId
+                auction.nftUri
             );
 
-            (, , , address salesDestination) = auction
+            address salesDestination = auction
                 .nftContract
-                .getCollectionInfo(auction.collectionId);
+                .getPrimarySalesDestination();
             token.transfer(salesDestination, highestBid);
         }
 

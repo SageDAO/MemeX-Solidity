@@ -6,7 +6,7 @@ interface INFT {
     function safeMint(
         address _to,
         uint256 _id,
-        uint256 _collectionId
+        string memory _uri
     ) external;
 
     function createCollection(
@@ -31,5 +31,5 @@ interface INFT {
             address
         );
 
-    function collectionExists(uint256 _collectionId) external returns (bool);
+    function getPrimarySalesDestination() external returns (address);
 }
