@@ -472,11 +472,11 @@ describe("Lottery Contract", function() {
             expect(await lottery.prizeMerkleRoots(2)).to.equal(root);
         });
 
-        it("Should claim prize with a merkle proof", async function() {
+        it.only("Should claim prize with a merkle proof", async function() {
             await lottery.connect(addr1).buyTickets(2, 1);
             await lottery
                 .connect(addr1)
-                .claimPrize(2, addr1.address, 1, 0, prizeProofA);
+                .claimPrize(2, addr1.address, 1, "ipfs://aaa", prizeProofA);
             expect(await nft.balanceOf(addr1.address)).to.equal(1);
         });
 
