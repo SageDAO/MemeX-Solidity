@@ -19,8 +19,6 @@ function shouldDeployContract(name) {
             return false;
         case "Lottery":
             return true;
-        case "NFT":
-            return false;
         case "Auction":
             return false;
     }
@@ -230,9 +228,9 @@ async function main() {
     randomness = values[0];
     newRandomness = values[1];
 
-    result = await deployNFT(deployer, lottery);
-    nft = result[0];
-    newNft = result[1];
+    // result = await deployNFT(deployer, lottery);
+    // nft = result[0];
+    // newNft = result[1];
 
     result = await deployAuction(deployer);
     auction = result[0];
@@ -244,7 +242,7 @@ async function main() {
         await randomness.setLotteryAddress(lottery.address);
         await lottery.setRandomGenerator(randomness.address);
         await lottery.setRewardsContract(rewards.address);
-        await nft.grantRole(MINTER_ROLE, lottery.address);
+        // await nft.grantRole(MINTER_ROLE, lottery.address);
         await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
     } else {
         // else, update only the new contract references
@@ -256,15 +254,15 @@ async function main() {
             }
         }
 
-        if (newNft) {
-            await nft.grantRole(MINTER_ROLE, lottery.address);
-            await nft.grantRole(MINTER_ROLE, auction.address);
-        }
+        // if (newNft) {
+        //     await nft.grantRole(MINTER_ROLE, lottery.address);
+        //     await nft.grantRole(MINTER_ROLE, auction.address);
+        // }
 
         if (newLottery) {
             await lottery.setRandomGenerator(randomness.address);
             await lottery.setRewardsContract(rewards.address);
-            await nft.grantRole(MINTER_ROLE, lottery.address);
+            // await nft.grantRole(MINTER_ROLE, lottery.address);
             await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
             await randomness.setLotteryAddress(lottery.address);
         }
