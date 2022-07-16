@@ -20,6 +20,7 @@ describe("Lottery Contract", function() {
             addr2,
             addr3,
             addr4,
+            artist,
             ...addrs
         ] = await ethers.getSigners();
         artist = addr1;
@@ -46,9 +47,13 @@ describe("Lottery Contract", function() {
         await rewards.grantRole(MANAGE_POINTS_ROLE, owner.address);
 
         Nft = await ethers.getContractFactory("SageNFT");
-        nft = await upgrades.deployProxy(Nft, ["Sage", "SAGE"], {
-            kind: "uups"
-        });
+        nft = await upgrades.deployProxy(
+            Nft,
+            ["Sage", "SAGE", artist.address, 200, artist.address],
+            {
+                kind: "uups"
+            }
+        );
         await nft.grantRole(MINTER_ROLE, lottery.address);
 
         MockRNG = await ethers.getContractFactory("MockRNG");
@@ -61,22 +66,7 @@ describe("Lottery Contract", function() {
         // create a new lottery
         blockNum = await ethers.provider.getBlockNumber();
         block = await ethers.provider.getBlock(blockNum);
-        await nft.createCollection(
-            1,
-            artist.address,
-            200,
-            "ipfs://path/",
-            artist.address
-        );
-        await nft.createCollection(
-            2,
-            artist.address,
-            200,
-            "ipfs://path/collection2",
-            artist.address
-        );
         await lottery.createLottery(
-            1,
             1,
             10,
             0,
@@ -86,12 +76,10 @@ describe("Lottery Contract", function() {
             true,
             0,
             0,
-            0,
-            [1, 2],
-            [1, 100]
+            1,
+            2
         );
         await lottery.createLottery(
-            2,
             2,
             0,
             1,
@@ -101,9 +89,8 @@ describe("Lottery Contract", function() {
             true,
             0,
             0,
-            0,
-            [1, 2],
-            [1, 100]
+            3,
+            4
         );
         lottery.setSignerAddress(owner.address);
 
@@ -131,9 +118,10 @@ describe("Lottery Contract", function() {
             block.timestamp + 86400 * 3,
             nft.address,
             1,
-            2,
             3,
-            true
+            true,
+            1,
+            2
         );
         expect(await lottery.getLotteryCount()).to.equal(2);
         lottery = await lottery.getLotteryInfo(1);
@@ -142,7 +130,6 @@ describe("Lottery Contract", function() {
         expect(lottery.closeTime).to.equal(block.timestamp + 86400 * 3);
         expect(lottery.nftContract).to.equal(nft.address);
         expect(lottery.maxTickets).to.equal(1);
-        expect(lottery.defaultPrizeId).to.equal(2);
     });
 
     it("Should allow users to buy tickets with points", async function() {
@@ -159,21 +146,6 @@ describe("Lottery Contract", function() {
     it("Should allow non member to buy tickets with coins", async function() {
         await lottery.connect(addr2).buyTickets(2, 1);
         expect(await lottery.getLotteryTicketCount(2)).to.equal(1);
-    });
-
-    it("Should add 100 prizes", async function() {
-        prizes = Array(100)
-            .fill()
-            .map((_, idx) => 10 + idx);
-        amounts = Array(100).fill(1);
-        await lottery.addPrizes(1, prizes, amounts);
-        await lottery.getPrizes(1);
-    });
-
-    it("Should remove prize", async function() {
-        await lottery.removePrize(1, 0);
-        prizes = await lottery.getPrizes(1);
-        expect(prizes.length).to.equal(1);
     });
 
     it("Should allow to claim more points if new rewards are published", async function() {
@@ -263,9 +235,10 @@ describe("Lottery Contract", function() {
             block.timestamp + 86400 * 3,
             nft.address,
             0,
-            0,
             3,
-            true
+            true,
+            1,
+            2
         ); // "force" a lottery completion (status = 3)
         expect(await lottery.connect(addr2).askForRefund(2)).to.have.emit(
             lottery,
@@ -289,9 +262,10 @@ describe("Lottery Contract", function() {
             block.timestamp + 86400 * 3,
             nft.address,
             0,
-            0,
             3,
-            true
+            true,
+            1,
+            2
         ); // "force" a lottery completion (status = 3)
         expect(
             await lottery
@@ -333,9 +307,10 @@ describe("Lottery Contract", function() {
             block.timestamp + 86400 * 3,
             nft.address,
             0,
-            0,
             3,
-            true
+            true,
+            1,
+            2
         ); // "force" a lottery completion (status = 3)
         expect(await lottery.connect(addr2).askForRefund(2)).to.have.emit(
             lottery,
@@ -429,19 +404,12 @@ describe("Lottery Contract", function() {
         ).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should not call addPrizes if not admin", async function() {
-        await expect(
-            lottery.connect(addr1).addPrizes(1, [1], [1])
-        ).to.be.revertedWith("Admin calls only");
-    });
-
     it("Should not call createLottery if not admin", async function() {
         await expect(
             lottery
                 .connect(addr1)
                 .createLottery(
                     3,
-                    1,
                     10,
                     TWO_ETH,
                     block.timestamp,
@@ -450,9 +418,8 @@ describe("Lottery Contract", function() {
                     true,
                     0,
                     0,
-                    0,
-                    [1, 2],
-                    [1, 100]
+                    1,
+                    2
                 )
         ).to.be.revertedWith("Admin calls only");
     });
@@ -473,16 +440,16 @@ describe("Lottery Contract", function() {
         beforeEach(async () => {
             abiCoder = ethers.utils.defaultAbiCoder;
             leafA = abiCoder.encode(
-                ["uint256", "address", "uint256", "uint256"],
-                [2, addr1.address, 1, 0]
+                ["uint256", "address", "uint256", "string"],
+                [2, addr1.address, 1, "ipfs://aaa"]
             );
             leafB = abiCoder.encode(
-                ["uint256", "address", "uint256", "uint256"],
-                [2, addr2.address, 2, 1]
+                ["uint256", "address", "uint256", "string"],
+                [2, addr2.address, 2, "ipfs://bbb"]
             );
             leafC = abiCoder.encode(
-                ["uint256", "address", "uint256", "uint256"],
-                [2, addr1.address, 2, 2]
+                ["uint256", "address", "uint256", "string"],
+                [2, addr1.address, 2, "ipfs://ccc"]
             );
             buf2hex = x => "0x" + x.toString("hex");
             leaves = [leafA, leafB, leafC].map(leaf => keccak256(leaf));

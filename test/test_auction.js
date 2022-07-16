@@ -15,9 +15,13 @@ describe("Auction Contract", function() {
         ] = await ethers.getSigners();
 
         Nft = await ethers.getContractFactory("SageNFT");
-        nft = await upgrades.deployProxy(Nft, ["Sage", "SAGE"], {
-            kind: "uups"
-        });
+        nft = await upgrades.deployProxy(
+            Nft,
+            ["Sage", "SAGE", artist.address, 200, artist.address],
+            {
+                kind: "uups"
+            }
+        );
 
         MockERC20 = await ethers.getContractFactory("MockERC20");
         mockERC20 = await MockERC20.deploy();
@@ -37,30 +41,23 @@ describe("Auction Contract", function() {
 
         await nft.grantRole(MINTER_ROLE, auction.address);
 
-        await nft.createCollection(
-            1,
-            artist.address,
-            200,
-            "ipfs://path/",
-            artist.address
-        );
         await auction.createAuction(
-            1,
             1,
             1,
             2,
             parseInt(Date.now() / 1000),
             0,
-            nft.address
+            nft.address,
+            "ipfs://aaaaa"
         );
         await auction.createAuction(
             2,
-            1,
             2,
             2,
             parseInt(Date.now() / 1000),
             parseInt(Date.now() / 1000) + 2 * 86400,
-            nft.address
+            nft.address,
+            "ipfs://bbbb"
         );
     });
 
@@ -71,22 +68,22 @@ describe("Auction Contract", function() {
             auction.createAuction(
                 3,
                 1,
-                1,
                 2,
                 parseInt(Date.now() / 1000),
                 parseInt(Date.now() / 1000) + 86400,
-                nft.address
+                nft.address,
+                "ipfs://cccc"
             )
         ).to.emit(auction, "AuctionCreated");
         await expect(
             auction.createAuction(
                 4,
                 1,
-                1,
                 2,
                 parseInt(Date.now() / 1000),
                 0,
-                nft.address
+                nft.address,
+                "ipfs://dddd"
             )
         ).to.emit(auction, "AuctionCreated");
     });
@@ -112,11 +109,11 @@ describe("Auction Contract", function() {
         await auction.createAuction(
             4,
             1,
-            1,
             0,
             parseInt(Date.now() / 1000),
             parseInt(Date.now() / 1000) + 3 * 86400,
-            nft.address
+            nft.address,
+            "ipfs://dddd"
         );
         await mockERC20.connect(addr2).approve(auction.address, 10000);
         await auction.connect(addr2).bid(4, 200);
@@ -140,11 +137,11 @@ describe("Auction Contract", function() {
         await auction.createAuction(
             3,
             1,
-            1,
             0,
             parseInt(Date.now() / 1000),
             parseInt(Date.now() / 1000) + 86400,
-            nft.address
+            nft.address,
+            "ipfs://cccc"
         );
         await expect(auction.connect(addr2).bid(3, 0)).to.be.revertedWith(
             "Bid is lower than minimum"
@@ -158,11 +155,11 @@ describe("Auction Contract", function() {
                 .createAuction(
                     3,
                     1,
-                    1,
                     2,
                     parseInt(Date.now() / 1000),
                     parseInt(Date.now() / 1000) + 86400,
-                    nft.address
+                    nft.address,
+                    "ipfs://aaaaa"
                 )
         ).to.be.revertedWith("Admin calls only");
     });
