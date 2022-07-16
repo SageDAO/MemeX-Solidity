@@ -55,40 +55,31 @@ async function updateAuctions() {
         if (auction.claimedAt != null) {
             continue;
         }
-        let primarySplitterAddress =
-            auction.Drop.PrimarySplitter?.splitterAddress;
-        if (
-            auction.Drop.primarySplitterId != null &&
-            primarySplitterAddress == null
-        ) {
-            auction.Drop.PrimarySplitter.splitterAddress = await deploySplitter(
-                auction.dropId,
-                auction.Drop.primarySplitterId
-            );
-        }
+        // let primarySplitterAddress =
+        //     auction.Drop.PrimarySplitter?.splitterAddress;
+        // if (
+        //     auction.Drop.primarySplitterId != null &&
+        //     primarySplitterAddress == null
+        // ) {
+        //     auction.Drop.PrimarySplitter.splitterAddress = await deploySplitter(
+        //         auction.dropId,
+        //         auction.Drop.primarySplitterId
+        //     );
+        // }
 
-        let secondarySplitterAddress =
-            auction.Drop.SecondarySplitter?.splitterAddress;
-        if (
-            auction.Drop.secondarySplitterId != null &&
-            secondarySplitterAddress == null
-        ) {
-            auction.Drop.SecondarySplitter.splitterAddress = await deploySplitter(
-                auction.dropId,
-                auction.Drop.secondarySplitterId
-            );
-        }
+        // let secondarySplitterAddress =
+        //     auction.Drop.SecondarySplitter?.splitterAddress;
+        // if (
+        //     auction.Drop.secondarySplitterId != null &&
+        //     secondarySplitterAddress == null
+        // ) {
+        //     auction.Drop.SecondarySplitter.splitterAddress = await deploySplitter(
+        //         auction.dropId,
+        //         auction.Drop.secondarySplitterId
+        //     );
+        // }
         const endTime = Math.floor(auction.endTime / 1000);
-        if (auction.contractAddress == null) {
-            if (auction.endTime < now) {
-                // ignore an auction with an expired end time
-                continue;
-            }
-            await createAuction(
-                auction,
-                CONTRACTS[hre.network.name]["nftAddress"]
-            );
-        } else {
+        if (auction.contractAddress != null) {
             // if we're past endTime, inspect the auction and take the required actions
             if (now >= endTime) {
                 await updateAuctionInfo(auction);
@@ -123,41 +114,31 @@ async function updateLotteries() {
         if (lottery.prizesAwardedAt != null) {
             continue;
         }
-        let primarySplitterAddress =
-            lottery.Drop.PrimarySplitter?.splitterAddress;
-        if (
-            lottery.Drop.primarySplitterId != null &&
-            primarySplitterAddress == null
-        ) {
-            lottery.Drop.PrimarySplitter.splitterAddress = await deploySplitter(
-                lottery.dropId,
-                lottery.Drop.primarySplitterId
-            );
-        }
+        // let primarySplitterAddress =
+        //     lottery.Drop.PrimarySplitter?.splitterAddress;
+        // if (
+        //     lottery.Drop.primarySplitterId != null &&
+        //     primarySplitterAddress == null
+        // ) {
+        //     lottery.Drop.PrimarySplitter.splitterAddress = await deploySplitter(
+        //         lottery.dropId,
+        //         lottery.Drop.primarySplitterId
+        //     );
+        // }
 
-        let secondarySplitterAddress =
-            lottery.Drop.SecondarySplitter?.splitterAddress;
-        if (
-            lottery.Drop.secondarySplitterId != null &&
-            secondarySplitterAddress == null
-        ) {
-            lottery.Drop.SecondarySplitter.splitterAddress = await deploySplitter(
-                lottery.dropId,
-                lottery.Drop.secondarySplitterId
-            );
-        }
+        // let secondarySplitterAddress =
+        //     lottery.Drop.SecondarySplitter?.splitterAddress;
+        // if (
+        //     lottery.Drop.secondarySplitterId != null &&
+        //     secondarySplitterAddress == null
+        // ) {
+        //     lottery.Drop.SecondarySplitter.splitterAddress = await deploySplitter(
+        //         lottery.dropId,
+        //         lottery.Drop.secondarySplitterId
+        //     );
+        // }
 
-        if (lottery.contractAddress == null) {
-            if (lottery.endTime < now) {
-                // ignore a lottery with an expired end time
-                continue;
-            }
-
-            await createLottery(
-                lottery,
-                CONTRACTS[hre.network.name]["nftAddress"]
-            );
-        } else {
+        if (lottery.contractAddress != null) {
             const endTime = Math.floor(lottery.endTime / 1000);
             // if we're past endTime, inspect the lottery and take the required actions
             if (now >= endTime) {
