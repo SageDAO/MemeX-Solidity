@@ -19,8 +19,8 @@ model Drop {
   bannerImageS3Path                String
   description                      String
   tags                             String
-  nftContractAddress               String
-  NftContract                      NftContract @relation("ContractDrops", fields:[nftContractAddress], references: [contractAddress])
+  artistAddress                    String      @db.Char(42)
+  NftContract                      NftContract @relation("ContractDrops", fields:[artistAddress], references: [artistAddress])
   ApprovedByUser                   User?       @relation("Drop_approvedByToUser", fields: [approvedBy], references: [walletAddress])
   Whitelist                        Whitelist?  @relation(fields: [whitelistId], references: [id])
   Auctions                         Auction[]
@@ -36,14 +36,12 @@ model Lottery {
   contractAddress             String?    @db.Char(42)
   costPerTicketTokens         Float      @default(0.0)
   costPerTicketPoints         Int        @default(0)
-  defaultPrizeId              Int?
   maxTickets                  Int        @default(0)
   maxTicketsPerUser           Int        @default(0)
   prizesAwardedAt             DateTime?
   endTime                     DateTime
   startTime                   DateTime
   Drop                        Drop       @relation(fields: [dropId], references: [id])
-  DefaultPrize                Nft?       @relation("defaultPrize", fields: [defaultPrizeId], references: [id])
   Nfts                        Nft[]
   PrizeProofs                 PrizeProof[]   
 }
@@ -111,17 +109,16 @@ model Nft {
   price                    Float?
   ownerAddress             String?      @db.Char(42)
   metadataURL              String?
-  listedOnNftContract      String?      @db.Char(42) 
-  DefaultPrizeInLotteries  Lottery[]    @relation("defaultPrize")
+  artistAddress            String?      @db.Char(42) 
   PrizeProof               PrizeProof[]
   Auction                  Auction?  
   Lottery                  Lottery?     @relation(fields: [lotteryId], references: [id])
-  NftContract              NftContract? @relation(fields: [listedOnNftContract], references: [contractAddress])
+  NftContract              NftContract? @relation(fields: [artistAddress], references: [artistAddress])
 }
 
 model NftContract {
-  contractAddress        String @id @db.Char(42)
-  artistAddress          String @db.Char(42)
+  artistAddress          String  @id @db.Char(42)
+  contractAddress        String? @db.Char(42)
   royaltyPercentage      Float       @default(0.0)
   splitterId             Int?  
   Splitter               Splitter?   @relation("Splitter", fields: [splitterId], references: [id])

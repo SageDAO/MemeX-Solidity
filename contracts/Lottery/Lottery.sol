@@ -83,7 +83,6 @@ contract Lottery is
         uint16 totalTicketsBought;
         bool claimedPrize;
         uint256 refundablePoints; // points are only refunded in case of a cancellation
-        uint256 refundableValue;
     }
 
     struct Ticket {
@@ -118,11 +117,6 @@ contract Lottery is
         uint256 indexed lotteryId,
         address indexed participantAddress,
         uint256 indexed prizeId
-    );
-    event Refunded(
-        uint256 indexed lotteryId,
-        address indexed participantAddress,
-        uint256 refundAmount
     );
 
     /**
@@ -251,12 +245,12 @@ contract Lottery is
         randomGenerator = IRandomNumberGenerator(_IRandomNumberGenerator);
     }
 
-    function prizeClaimed(uint256 _lotteryId, uint256 _ticketNumber)
+    function prizeClaimed(uint256 _lotteryId, uint256 _tokenId)
         public
         view
         returns (bool)
     {
-        return claimedPrizes[_lotteryId][_ticketNumber];
+        return claimedPrizes[_lotteryId][_tokenId];
     }
 
     /**
@@ -474,11 +468,7 @@ contract Lottery is
      */
     function cancelLottery(uint256 _lotteryId) public onlyAdmin {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-        require(
-            lottery.status != Status.Completed,
-            "Lottery already completed"
-        );
-        // set status to canceled, allowing users to ask for a refund
+        require(lottery.participantsCount == 0, "Lottery already started");
         lottery.status = Status.Cancelled;
         emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
@@ -536,7 +526,6 @@ contract Lottery is
         if (costPerTicketTokens > 0) {
             totalCostInTokens = _numberOfTicketsToBuy * costPerTicketTokens;
             token.transferFrom(msg.sender, address(this), totalCostInTokens);
-            participantInfo.refundableValue += totalCostInTokens;
         }
 
         if (numTicketsBought == 0) {
@@ -580,25 +569,10 @@ contract Lottery is
         string calldata _uri,
         bytes32[] calldata _proof
     ) public whenNotPaused {
-        ParticipantInfo storage participantInfo = participants[_lotteryId][
-            _winner
-        ];
-        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(
             !claimedPrizes[_lotteryId][_prizeId],
             "Participant already claimed prize"
         );
-        if (lottery.isRefundable) {
-            uint256 ticketValue = lotteryTickets[_lotteryId][_prizeId]
-                .ticketCostInCoins;
-
-            require(
-                participantInfo.refundableValue >= ticketValue,
-                "Participant has requested a refund"
-            );
-            // make the claimed ticket value non-refundable
-            participantInfo.refundableValue -= ticketValue;
-        }
 
         require(
             _verify(
@@ -634,24 +608,6 @@ contract Lottery is
         return MerkleProofUpgradeable.verify(_proof, _root, _leafHash);
     }
 
-    function getRefundableCoinBalance(uint256 _lotteryId, address _user)
-        public
-        view
-        returns (uint256)
-    {
-        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-        ParticipantInfo storage participantInfo = participants[_lotteryId][
-            _user
-        ];
-        if (
-            (lottery.status == Status.Completed ||
-                lottery.status == Status.Cancelled) && lottery.isRefundable
-        ) {
-            return participantInfo.refundableValue;
-        }
-        return 0;
-    }
-
     function getTicketCountPerUser(uint256 _lotteryId, address _user)
         public
         view
@@ -661,31 +617,6 @@ contract Lottery is
             _user
         ];
         return participantInfo.totalTicketsBought;
-    }
-
-    function askForRefund(uint256 _lotteryId) public whenNotPaused {
-        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-
-        // get the ParticipantInfo
-        ParticipantInfo storage participantInfo = participants[_lotteryId][
-            msg.sender
-        ];
-        uint256 refundAmount = participantInfo.refundableValue;
-        if (lottery.status == Status.Completed) {
-            // check if the participant has any refundable tickets
-            require(
-                lottery.isRefundable && refundAmount > 0,
-                "Participant has no refundable tickets"
-            );
-        } else if (lottery.status == Status.Cancelled) {
-            require(participantInfo.refundableValue > 0, "Already refunded");
-        } else {
-            revert("Can't ask for a refund on this lottery");
-        }
-
-        participantInfo.refundableValue = 0;
-        token.transfer(msg.sender, refundAmount);
-        emit Refunded(_lotteryId, msg.sender, refundAmount);
     }
 
     /**

@@ -16,7 +16,7 @@ contract Auction is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    IERC20 public token;
+    IERC20 public erc20;
 
     mapping(uint256 => AuctionInfo) public auctions;
 
@@ -38,7 +38,10 @@ contract Auction is
 
     event AuctionCreated(uint256 auctionId, uint256 nftId);
 
-    event AuctionCancelled(uint256 auctionId);
+    event AuctionCancelled(
+        uint256 indexed auctionId,
+        address indexed previousBidder
+    );
 
     event AuctionSettled(
         uint256 indexed auctionId,
@@ -48,7 +51,8 @@ contract Auction is
 
     event BidPlaced(
         uint256 indexed auctionId,
-        address indexed bidder,
+        address indexed newBidder,
+        address indexed previousBidder,
         uint256 bidAmount,
         uint256 newEndTime
     );
@@ -76,7 +80,7 @@ contract Auction is
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         defaultTimeExtension = _defaultTimeExtension;
         bidIncrementPercentage = _bidIncrementPercentage;
-        token = IERC20(_token);
+        erc20 = IERC20(_token);
     }
 
     function setDefaultTimeExtension(uint16 _timeExtension) public onlyAdmin {
@@ -91,7 +95,7 @@ contract Auction is
     }
 
     function setToken(address _token) public onlyAdmin {
-        token = IERC20(_token);
+        erc20 = IERC20(_token);
     }
 
     function createAuction(
@@ -143,10 +147,7 @@ contract Auction is
                 auction.nftUri
             );
 
-            address salesDestination = auction
-                .nftContract
-                .getPrimarySalesDestination();
-            token.transfer(salesDestination, highestBid);
+            erc20.transfer(address(auction.nftContract), highestBid);
         }
 
         emit AuctionSettled(_auctionId, highestBidder, highestBid);
@@ -157,7 +158,7 @@ contract Auction is
         pure
         returns (uint256)
     {
-        return (_bid * (_percentage)) / 10000;
+        return (_bid * _percentage) / 10000;
     }
 
     function updateAuction(
@@ -175,9 +176,16 @@ contract Auction is
     function cancelAuction(uint256 _auctionId) public onlyAdmin {
         AuctionInfo storage auction = auctions[_auctionId];
         require(!auction.settled, "Auction is already finished");
-        reverseLastBid(_auctionId);
+        address previousBidder = auction.highestBidder;
+        uint256 previousBid = auction.highestBid;
+        auction.highestBidder = address(0);
+        auction.highestBid = 0;
+
+        if (previousBidder != address(0)) {
+            erc20.transfer(previousBidder, previousBid);
+        }
         auctions[_auctionId].settled = true;
-        emit AuctionCancelled(_auctionId);
+        emit AuctionCancelled(_auctionId, previousBidder);
     }
 
     function bid(uint256 _auctionId, uint256 _amount)
@@ -202,10 +210,17 @@ contract Auction is
                 (auction.highestBid * (10000 + bidIncrementPercentage)) / 10000,
             "Bid is lower than highest bid increment"
         );
-        token.transferFrom(msg.sender, address(this), _amount);
-        reverseLastBid(_auctionId);
+        erc20.transferFrom(msg.sender, address(this), _amount);
+
+        // revert previous bid
+        address previousBidder = auction.highestBidder;
+        uint256 previousBid = auction.highestBid;
         auction.highestBidder = msg.sender;
         auction.highestBid = _amount;
+
+        if (previousBidder != address(0)) {
+            erc20.transfer(previousBidder, previousBid);
+        }
 
         uint256 timeExtension = defaultTimeExtension;
 
@@ -218,19 +233,13 @@ contract Auction is
             }
         }
 
-        emit BidPlaced(_auctionId, msg.sender, _amount, endTime);
-    }
-
-    function reverseLastBid(uint256 _auctionId) private {
-        AuctionInfo storage auction = auctions[_auctionId];
-        address highestBidder = auction.highestBidder;
-        uint256 highestBid = auction.highestBid;
-        auction.highestBidder = address(0);
-        auction.highestBid = 0;
-
-        if (highestBidder != address(0)) {
-            token.transfer(highestBidder, highestBid);
-        }
+        emit BidPlaced(
+            _auctionId,
+            msg.sender,
+            previousBidder,
+            _amount,
+            endTime
+        );
     }
 
     function getAuction(uint256 _auctionId)

@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URISto
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../Utils/StringUtils.sol";
 
 contract SageNFT is
@@ -23,7 +24,7 @@ contract SageNFT is
     bytes32 private constant BURNER_ROLE = keccak256("BURNER_ROLE");
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a; // implements ERC-2981 interface
 
-    address private primarySalesDestination;
+    address private salesDestination;
     uint256 public royaltyPercentage; // in basis points (100 = 1%)
     address public royaltyDestination;
 
@@ -43,7 +44,7 @@ contract SageNFT is
     function initialize(
         string calldata _name,
         string calldata _symbol,
-        address _primarySalesDestination,
+        address _salesDestination,
         uint256 _royaltyPercentage,
         address _royaltyDestination
     ) public initializer {
@@ -55,7 +56,7 @@ contract SageNFT is
 
         royaltyDestination = _royaltyDestination;
         royaltyPercentage = _royaltyPercentage;
-        primarySalesDestination = _primarySalesDestination;
+        salesDestination = _salesDestination;
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
@@ -69,6 +70,26 @@ contract SageNFT is
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
     }
+
+    function withdrawERC20(address erc20) public onlyAdmin {
+        IERC20 token = IERC20(erc20);
+        uint256 balance = token.balanceOf(address(this));
+        uint256 artist = (balance * 8000) / 10000;
+        token.transfer(salesDestination, artist);
+        token.transfer(msg.sender, balance - artist);
+    }
+
+    function withdraw() public onlyAdmin {
+        uint256 balance = balanceOf(address(this));
+        uint256 artist = (balance * 8000) / 10000;
+        (bool sent, ) = salesDestination.call{value: artist}("");
+        if (!sent) {
+            revert();
+        }
+        (sent, ) = msg.sender.call{value: balance - artist}("");
+    }
+
+    receive() external payable {}
 
     function _authorizeUpgrade(address newImplementation)
         internal
@@ -136,7 +157,7 @@ contract SageNFT is
         return (royaltyDestination, (salePrice * royaltyPercentage) / 10000);
     }
 
-    function getPrimarySalesDestination() public view returns (address) {
-        return primarySalesDestination;
+    function getSalesDestination() public view returns (address) {
+        return salesDestination;
     }
 }

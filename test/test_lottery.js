@@ -223,62 +223,6 @@ describe("Lottery Contract", function() {
         expect(await mockERC20.balanceOf(addr2.address)).to.equal(addr2Balance);
     });
 
-    it("Should allow refunds on a refundable lottery", async function() {
-        await lottery.connect(addr2).buyTickets(2, 1);
-        await lottery.connect(addr1).buyTickets(2, 1);
-        await lottery.connect(addr1).buyTickets(2, 1);
-        await lottery.updateLottery(
-            2,
-            10,
-            0,
-            block.timestamp,
-            block.timestamp + 86400 * 3,
-            nft.address,
-            0,
-            3,
-            true,
-            1,
-            2
-        ); // "force" a lottery completion (status = 3)
-        expect(await lottery.connect(addr2).askForRefund(2)).to.have.emit(
-            lottery,
-            "Refunded"
-        );
-        expect(await lottery.connect(addr1).askForRefund(2)).to.have.emit(
-            lottery,
-            "Refunded"
-        );
-    });
-
-    it("Should get the user refundable balance", async function() {
-        await lottery.connect(addr2).buyTickets(2, 1);
-        await lottery.connect(addr1).buyTickets(2, 1);
-        await lottery.connect(addr1).buyTickets(2, 1);
-        await lottery.updateLottery(
-            2,
-            10,
-            TWO_ETH,
-            block.timestamp,
-            block.timestamp + 86400 * 3,
-            nft.address,
-            0,
-            3,
-            true,
-            1,
-            2
-        ); // "force" a lottery completion (status = 3)
-        expect(
-            await lottery
-                .connect(addr2)
-                .getRefundableCoinBalance(2, addr2.address)
-        ).to.equal(1);
-        expect(
-            await lottery
-                .connect(addr1)
-                .getRefundableCoinBalance(2, addr1.address)
-        ).to.equal(2);
-    });
-
     it("Should return the correct # of tickets bought", async function() {
         await lottery.connect(addr2).buyTickets(2, 1);
         await lottery.connect(addr1).buyTickets(2, 1);
@@ -289,36 +233,6 @@ describe("Lottery Contract", function() {
         expect(
             await lottery.connect(addr1).getTicketCountPerUser(2, addr1.address)
         ).to.equal(2);
-    });
-
-    it("Should revert if asking for a refund before the lottery ends", async function() {
-        await expect(lottery.connect(addr2).askForRefund(1)).to.be.revertedWith(
-            "Can't ask for a refund on this lottery"
-        );
-    });
-
-    it("Should revert if asking for a refund twice", async function() {
-        await lottery.connect(addr2).buyTickets(2, 1);
-        await lottery.updateLottery(
-            2,
-            10,
-            TWO_ETH,
-            block.timestamp,
-            block.timestamp + 86400 * 3,
-            nft.address,
-            0,
-            3,
-            true,
-            1,
-            2
-        ); // "force" a lottery completion (status = 3)
-        expect(await lottery.connect(addr2).askForRefund(2)).to.have.emit(
-            lottery,
-            "Refunded"
-        );
-        await expect(lottery.connect(addr2).askForRefund(2)).to.be.revertedWith(
-            "Participant has no refundable tickets"
-        );
     });
 
     it("Should not allow user to buy ticket when lottery is not open", async function() {
@@ -472,7 +386,7 @@ describe("Lottery Contract", function() {
             expect(await lottery.prizeMerkleRoots(2)).to.equal(root);
         });
 
-        it.only("Should claim prize with a merkle proof", async function() {
+        it("Should claim prize with a merkle proof", async function() {
             await lottery.connect(addr1).buyTickets(2, 1);
             await lottery
                 .connect(addr1)
@@ -484,16 +398,15 @@ describe("Lottery Contract", function() {
             await lottery.connect(addr1).buyTickets(2, 1);
             await lottery.connect(addr1).buyTickets(2, 1);
             await lottery.connect(addr2).buyTickets(2, 1);
-            expect(await lottery.prizeClaimed(2, 0)).to.equal(false);
+            expect(await lottery.prizeClaimed(2, 1)).to.equal(false);
             await lottery
                 .connect(addr1)
-                .claimPrize(2, addr1.address, 1, 0, prizeProofA);
-            expect(await lottery.prizeClaimed(2, 0)).to.equal(true);
+                .claimPrize(2, addr1.address, 1, "ipfs://aaa", prizeProofA);
+            expect(await lottery.prizeClaimed(2, 1)).to.equal(true);
 
-            expect(await lottery.prizeClaimed(2, 2)).to.equal(false);
             await lottery
                 .connect(addr1)
-                .claimPrize(2, addr1.address, 2, 2, prizeProofC);
+                .claimPrize(2, addr1.address, 2, "ipfs://ccc", prizeProofC);
             expect(await lottery.prizeClaimed(2, 2)).to.equal(true);
         });
 
@@ -501,76 +414,12 @@ describe("Lottery Contract", function() {
             await lottery.connect(addr1).buyTickets(2, 1);
             await lottery
                 .connect(addr1)
-                .claimPrize(2, addr1.address, 1, 0, prizeProofA);
+                .claimPrize(2, addr1.address, 1, "ipfs://aaa", prizeProofA);
             await expect(
                 lottery
                     .connect(addr1)
-                    .claimPrize(2, addr1.address, 1, 0, prizeProofA)
+                    .claimPrize(2, addr1.address, 1, "ipfs://aaa", prizeProofA)
             ).to.be.revertedWith("Participant already claimed prize");
-        });
-
-        it("Should revert if trying to claim a prize after asking for a refund", async function() {
-            await lottery.connect(addr1).buyTickets(2, 1);
-            await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
-            await ethers.provider.send("evm_mine", []);
-            await lottery.requestRandomNumber(2);
-            expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(
-                lottery,
-                "ResponseReceived"
-            );
-            await lottery.connect(addr1).askForRefund(2);
-            await expect(
-                lottery
-                    .connect(addr1)
-                    .claimPrize(2, addr1.address, 1, 0, prizeProofA)
-            ).to.be.revertedWith("Participant has requested a refund");
-        });
-
-        it("Should allow refund of non winning tickets after claiming prize", async function() {
-            expect(await lottery.connect(addr1).buyTickets(2, 1)).to.have.emit(
-                lottery,
-                "TicketSold"
-            );
-            expect(await lottery.connect(addr1).buyTickets(2, 1)).to.have.emit(
-                lottery,
-                "TicketSold"
-            );
-            await lottery.updateLottery(
-                2,
-                10,
-                TWO_ETH,
-                block.timestamp,
-                block.timestamp + 86400 * 3,
-                nft.address,
-                0,
-                0,
-                3,
-                true
-            ); // "force" a lottery completion (status = 3)
-            await lottery
-                .connect(addr1)
-                .claimPrize(2, addr1.address, 1, 0, prizeProofA);
-            expect(await lottery.connect(addr1).askForRefund(2)).to.have.emit(
-                lottery,
-                "Refunded"
-            );
-        });
-
-        it("Should revert if asking for a refund after claiming a prize from a single ticket", async function() {
-            await lottery.connect(addr1).buyTickets(2, 1);
-            await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
-            await ethers.provider.send("evm_mine", []);
-            await lottery.requestRandomNumber(2);
-            expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(
-                lottery,
-                "ResponseReceived"
-            );
-            await lottery
-                .connect(addr1)
-                .claimPrize(2, addr1.address, 1, 0, prizeProofA);
-            await expect(
-                lottery.connect(addr1).askForRefund(2)
-            ).to.be.revertedWith("Participant has no refundable tickets");
         });
     });
 
