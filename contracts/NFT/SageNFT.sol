@@ -1,72 +1,56 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../Utils/StringUtils.sol";
+import "../../interfaces/ISageStorage.sol";
 
-contract SageNFT is
-    Initializable,
-    ERC721Upgradeable,
-    ERC721EnumerableUpgradeable,
-    ERC721BurnableUpgradeable,
-    ERC721URIStorageUpgradeable,
-    AccessControlUpgradeable,
-    UUPSUpgradeable
-{
-    bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 private constant BURNER_ROLE = keccak256("BURNER_ROLE");
+contract SageNFT is ERC721, ERC721Enumerable, ERC721Burnable, ERC721URIStorage {
+    ISageStorage immutable sageStorage;
+    uint256 private constant DEFAULT_ROYALTY_PERCENTAGE = 1000; // in basis points (100 = 1%)
+
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a; // implements ERC-2981 interface
 
-    address private salesDestination;
-    uint256 public royaltyPercentage; // in basis points (100 = 1%)
-    address public royaltyDestination;
+    address public artistAddress;
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        address _sageStorage,
+        address _artistAddress
+    ) ERC721(_name, _symbol) {
+        sageStorage = ISageStorage(_sageStorage);
+        artistAddress = _artistAddress;
     }
 
     /**
      * @dev Throws if not called by an admin account.
      */
     modifier onlyAdmin() {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
+        require(
+            sageStorage.getBool(
+                keccak256(abi.encodePacked("role.admin", msg.sender))
+            ),
+            "Admin calls only"
+        );
         _;
-    }
-
-    function initialize(
-        string calldata _name,
-        string calldata _symbol,
-        address _salesDestination,
-        uint256 _royaltyPercentage,
-        address _royaltyDestination
-    ) public initializer {
-        __ERC721_init(_name, _symbol);
-        __ERC721Enumerable_init();
-        __ERC721Burnable_init();
-        __AccessControl_init();
-        __UUPSUpgradeable_init();
-
-        royaltyDestination = _royaltyDestination;
-        royaltyPercentage = _royaltyPercentage;
-        salesDestination = _salesDestination;
-
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(MINTER_ROLE, msg.sender);
     }
 
     function safeMint(
         address to,
         uint256 tokenId,
         string memory uri
-    ) public onlyRole(MINTER_ROLE) {
+    ) public {
+        require(
+            sageStorage.getBool(
+                keccak256(abi.encodePacked("role.minter", msg.sender))
+            ),
+            "No minting rights"
+        );
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
     }
@@ -75,27 +59,24 @@ contract SageNFT is
         IERC20 token = IERC20(erc20);
         uint256 balance = token.balanceOf(address(this));
         uint256 artist = (balance * 8000) / 10000;
-        token.transfer(salesDestination, artist);
+        token.transfer(artistAddress, artist);
         token.transfer(msg.sender, balance - artist);
     }
 
     function withdraw() public onlyAdmin {
         uint256 balance = balanceOf(address(this));
         uint256 artist = (balance * 8000) / 10000;
-        (bool sent, ) = salesDestination.call{value: artist}("");
+        (bool sent, ) = artistAddress.call{value: artist}("");
         if (!sent) {
             revert();
         }
         (sent, ) = msg.sender.call{value: balance - artist}("");
+        if (!sent) {
+            revert();
+        }
     }
 
     receive() external payable {}
-
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyAdmin
-    {}
 
     // The following functions are overrides required by Solidity.
 
@@ -103,26 +84,31 @@ contract SageNFT is
         address from,
         address to,
         uint256 tokenId
-    ) internal override(ERC721Upgradeable, ERC721EnumerableUpgradeable) {
+    ) internal override(ERC721, ERC721Enumerable) {
         super._beforeTokenTransfer(from, to, tokenId);
     }
 
     function _burn(uint256 tokenId)
         internal
-        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
+        override(ERC721, ERC721URIStorage)
     {
         super._burn(tokenId);
     }
 
-    function burnFromAuthorizedSC(uint256 id) public {
-        require(hasRole(BURNER_ROLE, msg.sender), "NFT: No burn privileges");
+    function burnFromAuthorizedAddress(uint256 id) public {
+        require(
+            sageStorage.getBool(
+                keccak256(abi.encodePacked("role.burner", msg.sender))
+            ),
+            "No burning rights"
+        );
         _burn(id);
     }
 
     function tokenURI(uint256 tokenId)
         public
         view
-        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
+        override(ERC721, ERC721URIStorage)
         returns (string memory)
     {
         return super.tokenURI(tokenId);
@@ -131,17 +117,16 @@ contract SageNFT is
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(
-            ERC721Upgradeable,
-            ERC721EnumerableUpgradeable,
-            AccessControlUpgradeable
-        )
+        override(ERC721, ERC721Enumerable)
         returns (bool)
     {
         return
             interfaceId == INTERFACE_ID_ERC2981 ||
-            interfaceId == type(IAccessControlUpgradeable).interfaceId ||
             super.supportsInterface(interfaceId);
+    }
+
+    function setArtistAddress(address newAddress) public onlyAdmin {
+        artistAddress = newAddress;
     }
 
     /**
@@ -154,10 +139,9 @@ contract SageNFT is
         view
         returns (address, uint256)
     {
-        return (royaltyDestination, (salePrice * royaltyPercentage) / 10000);
-    }
-
-    function getSalesDestination() public view returns (address) {
-        return salesDestination;
+        return (
+            address(this),
+            (salePrice * DEFAULT_ROYALTY_PERCENTAGE) / 10000
+        );
     }
 }

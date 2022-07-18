@@ -25,6 +25,9 @@ describe("Lottery Contract", function() {
         ] = await ethers.getSigners();
         artist = addr1;
 
+        SageStorage = await ethers.getContractFactory("SageStorage");
+        sageStorage = await SageStorage.deploy();
+
         Rewards = await ethers.getContractFactory("Rewards");
         rewards = await upgrades.deployProxy(Rewards, [owner.address], {
             kind: "uups"
@@ -39,25 +42,31 @@ describe("Lottery Contract", function() {
         Lottery = await ethers.getContractFactory("Lottery");
         lottery = await upgrades.deployProxy(
             Lottery,
-            [rewards.address, owner.address, mockERC20.address],
+            [rewards.address, owner.address, mockERC20.address, sageStorage.address],
             { kind: "uups" }
         );
         await lottery.deployed();
         await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
         await rewards.grantRole(MANAGE_POINTS_ROLE, owner.address);
 
-        Nft = await ethers.getContractFactory("SageNFT");
-        nft = await upgrades.deployProxy(
-            Nft,
-            ["Sage", "SAGE", artist.address, 200, artist.address],
-            {
-                kind: "uups"
-            }
+        NftFactory = await ethers.getContractFactory("NFTFactory");
+        nftFactory = await NftFactory.deploy(sageStorage.address);
+        await nftFactory.createNFTContract(artist.address, "Sage test", "SAGE");
+        nftContractAddress = await nftFactory.getContractAddress(
+            artist.address
         );
-        await nft.grantRole(MINTER_ROLE, lottery.address);
+        nft = await ethers.getContractAt("SageNFT", nftContractAddress);
 
         MockRNG = await ethers.getContractFactory("MockRNG");
         mockRng = await MockRNG.deploy(lottery.address);
+
+        await sageStorage.setBool(
+            ethers.utils.solidityKeccak256(
+                ["string", "address"],
+                ["role.minter", lottery.address]
+            ),
+            true
+        );
         await lottery.setRandomGenerator(mockRng.address);
 
         Whitelist = await ethers.getContractFactory("Whitelist");

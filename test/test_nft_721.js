@@ -1,9 +1,5 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const keccak256 = require("keccak256");
-
-const MINTER_ROLE = keccak256("MINTER_ROLE");
-const BURNER_ROLE = keccak256("BURNER_ROLE");
 
 const uri = "ipfs://aaaa/";
 
@@ -17,18 +13,31 @@ describe("NFT Contract", () => {
             artist,
             ...addrs
         ] = await ethers.getSigners();
-        Nft = await ethers.getContractFactory("SageNFT");
-        _lotteryAddress = addr1.address;
-        nft = await upgrades.deployProxy(
-            Nft,
-            ["Sage", "SAGE", artist.address, 200, artist.address],
-            {
-                kind: "uups"
-            }
-        );
-        await nft.grantRole(MINTER_ROLE, _lotteryAddress);
+        SageStorage = await ethers.getContractFactory("SageStorage");
+        sageStorage = await SageStorage.deploy();
 
-        await nft.grantRole(MINTER_ROLE, addr2.address);
+        NftFactory = await ethers.getContractFactory("NFTFactory");
+        nftFactory = await NftFactory.deploy(sageStorage.address);
+        await nftFactory.createNFTContract(artist.address, "Sage test", "SAGE");
+        nftContractAddress = await nftFactory.getContractAddress(
+            artist.address
+        );
+        nft = await ethers.getContractAt("SageNFT", nftContractAddress);
+        _lotteryAddress = addr1.address;
+        await sageStorage.setBool(
+            ethers.utils.solidityKeccak256(
+                ["string", "address"],
+                ["role.minter", _lotteryAddress]
+            ),
+            true
+        );
+        await sageStorage.setBool(
+            ethers.utils.solidityKeccak256(
+                ["string", "address"],
+                ["role.minter", addr2.address]
+            ),
+            true
+        );
         _id = 1;
 
         await nft.connect(addr2).safeMint(addr2.address, _id, uri);
@@ -40,6 +49,12 @@ describe("NFT Contract", () => {
 
     it("Should answer correct uri", async function() {
         expect(await nft.tokenURI(_id)).to.equal(uri);
+    });
+
+    it("Should revert trying to mint same id", async function() {
+        await expect(
+            nft.connect(addr2).safeMint(addr2.address, 1, uri)
+        ).to.be.revertedWith("ERC721: token already minted");
     });
 
     it("Should be able to burn", async function() {
@@ -55,14 +70,20 @@ describe("NFT Contract", () => {
     });
 
     it("Should be able to burn any token from authorized SC", async function() {
-        await nft.grantRole(BURNER_ROLE, addr3.address);
-        await nft.connect(addr3).burnFromAuthorizedSC(_id);
+        await sageStorage.setBool(
+            ethers.utils.solidityKeccak256(
+                ["string", "address"],
+                ["role.burner", addr3.address]
+            ),
+            true
+        );
+        await nft.connect(addr3).burnFromAuthorizedAddress(_id);
     });
 
     it("Should not be able to burn any token if not authorized SC", async function() {
         await expect(
-            nft.connect(addr3).burnFromAuthorizedSC(_id)
-        ).to.be.revertedWith("NFT: No burn privileges");
+            nft.connect(addr3).burnFromAuthorizedAddress(_id)
+        ).to.be.revertedWith("No burning rights");
     });
 
     it("Should not mint without minter role", async function() {
@@ -72,8 +93,8 @@ describe("NFT Contract", () => {
 
     it("Should calculate royalties", async function() {
         royaltyInfo = await nft.royaltyInfo(1, 100);
-        expect(royaltyInfo[0]).to.equal(artist.address);
-        expect(royaltyInfo[1]).to.equal(2);
+        expect(royaltyInfo[0]).to.equal(nft.address);
+        expect(royaltyInfo[1]).to.equal(10);
     });
 
     it("Should transfer from a to b", async function() {

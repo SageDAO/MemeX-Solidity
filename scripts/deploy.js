@@ -21,6 +21,10 @@ function shouldDeployContract(name) {
             return true;
         case "Auction":
             return true;
+        case "Factory":
+            return false;
+        case "Storage":
+            return false;
     }
     return false;
 }
@@ -91,7 +95,7 @@ deployNFT = async (deployer, lottery) => {
     return [nft, false];
 };
 
-deployLottery = async (rewards, deployer) => {
+deployLottery = async (rewards, storage, deployer) => {
     const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
     const ashAddress = CONTRACTS[hre.network.name]["ashAddress"];
     const Lottery = await hre.ethers.getContractFactory("Lottery");
@@ -99,7 +103,7 @@ deployLottery = async (rewards, deployer) => {
     if (shouldDeployContract("Lottery")) {
         const lottery = await upgrades.deployProxy(
             Lottery,
-            [rewards.address, deployer.address, ashAddress],
+            [rewards.address, deployer.address, ashAddress, storage.address],
             { kind: "uups" }
         );
         await lottery.deployed();
@@ -148,6 +152,43 @@ deployRNG = async () => {
     }
 
     return [randomness, false];
+};
+
+deployStorage = async deployer => {
+    const storageAddress = CONTRACTS[hre.network.name]["storageAddress"];
+
+    const Storage = await hre.ethers.getContractFactory("SageStorage");
+    if (shouldDeployContract("Storage")) {
+        const storage = await Storage.deploy();
+        await storage.deployed();
+        console.log("Storage deployed to:", storage.address);
+        replaceAddress(storageAddress, storage.address);
+        return [storage, true];
+    } else {
+        storage = Storage.attach(storageAddress);
+    }
+    return [storage, false];
+};
+
+deployNftFactory = async (storageAddress, deployer) => {
+    const factoryAddress = CONTRACTS[hre.network.name]["factoryAddress"];
+
+    const Factory = await hre.ethers.getContractFactory("NFTFactory");
+    if (shouldDeployContract("Factory")) {
+        const factory = await Factory.deploy(storageAddress);
+        await factory.deployed();
+        console.log("Factory deployed to:", factory.address);
+        // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+        // await hre.run("verify:verify", {
+        //   address: auction.address,
+        //   constructorArguments: [deployer.address],
+        // });
+        replaceAddress(factoryAddress, factory.address);
+        return [factory, true];
+    } else {
+        factory = Factory.attach(factoryAddress);
+    }
+    return [factory, false];
 };
 
 deployAuction = async deployer => {
@@ -216,11 +257,20 @@ async function main() {
     // //mockERC20 = await MockERC20.attach('0x20c99f1F5bdf00e3270572177C6e30FC6213cEfe');
     // console.log("MockERC20 deployed to:", mockERC20.address);
     // return;
+
+    result = await deployStorage(deployer);
+    storage = result[0];
+    newStorage = result[1];
+
+    result = await deployNftFactory(storage.address, deployer);
+    factory = result[0];
+    newFactory = result[1];
+
     result = await deployRewards(deployer);
     rewards = result[0];
     newRewards = result[1];
 
-    result = await deployLottery(rewards, deployer);
+    result = await deployLottery(rewards, storage, deployer);
     lottery = result[0];
     newLottery = result[1];
 

@@ -14,6 +14,7 @@ import "../../interfaces/IRandomNumberGenerator.sol";
 import "../../interfaces/INFT.sol";
 import "../../interfaces/ILottery.sol";
 import "../../interfaces/IWhitelist.sol";
+import "../../interfaces/ISageStorage.sol";
 
 contract Lottery is
     Initializable,
@@ -22,6 +23,7 @@ contract Lottery is
     UUPSUpgradeable,
     PausableUpgradeable
 {
+    ISageStorage private sageStorage;
     bytes32 internal requestId_;
 
     address public signerAddress;
@@ -46,7 +48,7 @@ contract Lottery is
     // participant address => lottery ids he entered
     mapping(address => uint256[]) internal participantHistory;
 
-    // lotteryId => ticketNumber => claimed state
+    // lotteryId => tokenId => claimed state
     mapping(uint256 => mapping(uint256 => bool)) public claimedPrizes;
 
     //lotteryid => address => participantInfo
@@ -56,10 +58,7 @@ contract Lottery is
     mapping(uint256 => uint256) public randomSeeds;
 
     //lotteryId => address array
-    mapping(uint256 => Ticket[]) public lotteryTickets;
-
-    //lotteryId => value already withdrawed from the lottery
-    mapping(uint256 => uint256) public withdrawals;
+    mapping(uint256 => address[]) public lotteryTickets;
 
     // Information about lotteries
     struct LotteryInfo {
@@ -82,12 +81,6 @@ contract Lottery is
     struct ParticipantInfo {
         uint16 totalTicketsBought;
         bool claimedPrize;
-        uint256 refundablePoints; // points are only refunded in case of a cancellation
-    }
-
-    struct Ticket {
-        uint256 ticketCostInCoins;
-        address owner;
     }
 
     enum Status {
@@ -120,10 +113,15 @@ contract Lottery is
     );
 
     /**
-     * @notice Throws if not called by an admin account.
+     * @dev Throws if not called by an admin account.
      */
     modifier onlyAdmin() {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
+        require(
+            sageStorage.getBool(
+                keccak256(abi.encodePacked("role.admin", msg.sender))
+            ),
+            "Admin calls only"
+        );
         _;
     }
 
@@ -151,15 +149,16 @@ contract Lottery is
     function initialize(
         address _rewardsContract,
         address _admin,
-        address _token
+        address _token,
+        address _sageStorage
     ) public initializer {
         __AccessControl_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         token = IERC20(_token);
         signerAddress = _admin;
         rewardsContract = IRewards(_rewardsContract);
+        sageStorage = ISageStorage(_sageStorage);
     }
 
     function setPrizeMerkleRoot(uint256 _lotteryId, bytes32 _root)
@@ -441,8 +440,8 @@ contract Lottery is
         uint256 _lotteryId,
         uint256 _from,
         uint256 _to
-    ) public view returns (Ticket[] memory) {
-        Ticket[] memory result = new Ticket[](_to - _from + 1);
+    ) public view returns (address[] memory) {
+        address[] memory result = new address[](_to - _from + 1);
         for (uint256 i = _from; i <= _to; i++) {
             result[i] = lotteryTickets[_lotteryId][i];
         }
@@ -516,7 +515,6 @@ contract Lottery is
         totalCostInPoints = _numberOfTicketsToBuy * lottery.ticketCostPoints;
 
         if (totalCostInPoints > 0) {
-            participantInfo.refundablePoints += totalCostInPoints;
             _burnUserPoints(msg.sender, totalCostInPoints);
         }
 
@@ -525,7 +523,11 @@ contract Lottery is
         lottery.numberOfTicketsSold += uint32(_numberOfTicketsToBuy);
         if (costPerTicketTokens > 0) {
             totalCostInTokens = _numberOfTicketsToBuy * costPerTicketTokens;
-            token.transferFrom(msg.sender, address(this), totalCostInTokens);
+            token.transferFrom(
+                msg.sender,
+                address(lottery.nftContract),
+                totalCostInTokens
+            );
         }
 
         if (numTicketsBought == 0) {
@@ -534,32 +536,11 @@ contract Lottery is
             participants[_lotteryId][msg.sender] = participantInfo;
         }
         participantInfo.totalTicketsBought += uint16(_numberOfTicketsToBuy);
+        address[] storage tickets = lotteryTickets[_lotteryId];
         for (uint256 i; i < _numberOfTicketsToBuy; ++i) {
-            assignNewTicketToParticipant(
-                _lotteryId,
-                msg.sender,
-                costPerTicketTokens
-            );
+            tickets.push(msg.sender);
+            emit TicketSold(_lotteryId, tickets.length, msg.sender);
         }
-    }
-
-    /**
-     * @notice Function called when user buys a ticket. Gives the user a new lottery entry.
-     * @param _lotteryId ID of the lottery to buy tickets for
-     * @param _participantAddress Address of the participant that will receive the new entry
-     */
-    function assignNewTicketToParticipant(
-        uint256 _lotteryId,
-        address _participantAddress,
-        uint256 _ticketValue
-    ) private {
-        Ticket memory ticket = Ticket(_ticketValue, _participantAddress);
-        lotteryTickets[_lotteryId].push(ticket);
-        emit TicketSold(
-            _lotteryId,
-            lotteryTickets[_lotteryId].length,
-            _participantAddress
-        );
     }
 
     function claimPrize(
