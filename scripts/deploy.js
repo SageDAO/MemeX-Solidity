@@ -18,13 +18,15 @@ function shouldDeployContract(name) {
         case "RNG":
             return false;
         case "Lottery":
-            return true;
-        case "Auction":
-            return true;
-        case "Factory":
             return false;
+        case "Auction":
+            return false;
+        case "Factory":
+            return true;
         case "Storage":
             return false;
+        case "Marketplace":
+            return true;
     }
     return false;
 }
@@ -191,6 +193,33 @@ deployNftFactory = async (storageAddress, deployer) => {
     return [factory, false];
 };
 
+deployMarketplace = async (storage, deployer) => {
+    const marketplaceAddress =
+        CONTRACTS[hre.network.name]["marketplaceAddress"];
+
+    const Marketplace = await hre.ethers.getContractFactory("Marketplace");
+    if (shouldDeployContract("Marketplace")) {
+        const marketplace = await Marketplace.deploy(storage.address);
+
+        await marketplace.deployed();
+        await storage.setAddress(
+            ethers.utils.solidityKeccak256(["string"], ["address.marketplace"]),
+            marketplace.address
+        );
+        console.log("Marketplace deployed to:", marketplace.address);
+        // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+        // await hre.run("verify:verify", {
+        //   address: auction.address,
+        //   constructorArguments: [deployer.address],
+        // });
+        replaceAddress(marketplaceAddress, marketplace.address);
+        return [marketplace, true];
+    } else {
+        marketplace = Marketplace.attach(marketplaceAddress);
+    }
+    return [marketplace, false];
+};
+
 deployAuction = async deployer => {
     const auctionAddress = CONTRACTS[hre.network.name]["auctionAddress"];
     const ashAddress = CONTRACTS[hre.network.name]["ashAddress"];
@@ -261,6 +290,10 @@ async function main() {
     result = await deployStorage(deployer);
     storage = result[0];
     newStorage = result[1];
+
+    result = await deployMarketplace(storage, deployer);
+    marketplace = result[0];
+    newMarketplace = result[1];
 
     result = await deployNftFactory(storage.address, deployer);
     factory = result[0];

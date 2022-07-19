@@ -128,6 +128,22 @@ contract SageNFT is
         return super.tokenURI(tokenId);
     }
 
+    function isApprovedForAll(address owner, address operator)
+        public
+        view
+        override(ERC721, IERC721)
+        returns (bool)
+    {
+        if (
+            sageStorage.getAddress(
+                keccak256(abi.encodePacked("address.marketplace", operator))
+            ) == operator
+        ) {
+            return true;
+        }
+        return super.isApprovedForAll(owner, operator);
+    }
+
     function supportsInterface(bytes4 interfaceId)
         public
         view

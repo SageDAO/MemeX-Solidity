@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/INFT.sol";
+import "../../interfaces/ISageStorage.sol";
 
 contract Marketplace {
     // contract address => tokenId => buy offer array
@@ -13,6 +14,7 @@ contract Marketplace {
     mapping(address => mapping(uint256 => Offer)) sellOffers;
 
     IERC20 public token;
+    ISageStorage immutable sageStorage;
 
     struct Offer {
         address from;
@@ -27,7 +29,15 @@ contract Marketplace {
         uint256 priceOffer
     );
 
-    event BuyOfferAccepted();
+    event ListedNFTSold(
+        address indexed buyer,
+        uint256 indexed tokenId,
+        uint256 price
+    );
+
+    constructor(address _storage) {
+        sageStorage = ISageStorage(_storage);
+    }
 
     function createBuyOffer(
         address contractAddress,
@@ -69,6 +79,7 @@ contract Marketplace {
         Offer storage offer = buyOffers[contractAddress][tokenId][index];
         token.transferFrom(offer.from, msg.sender, offer.priceOffer); // TODO market cut
         IERC721 nftContract = IERC721(contractAddress);
+        emit ListedNFTSold(offer.from, tokenId, offer.priceOffer);
         nftContract.safeTransferFrom(msg.sender, offer.from, tokenId, "");
         offer.priceOffer = 0;
     }
@@ -92,6 +103,7 @@ contract Marketplace {
         IERC721 nftContract = IERC721(contractAddress);
         nftContract.safeTransferFrom(sellOffer.from, msg.sender, tokenId, "");
         token.transferFrom(msg.sender, sellOffer.from, sellOffer.priceOffer); // TODO market cut
+        emit ListedNFTSold(msg.sender, tokenId, sellOffer.priceOffer);
         sellOffer.from = address(0);
         sellOffer.priceOffer = 0;
     }
