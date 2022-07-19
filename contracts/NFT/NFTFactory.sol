@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "./SageNFT.sol";
 import "../../interfaces/ISageStorage.sol";
 
+error PermissionDenied();
+
 contract NFTFactory {
     mapping(address => SageNFT) artistContracts;
     ISageStorage sageStorage = ISageStorage(address(0));
@@ -11,13 +13,12 @@ contract NFTFactory {
     /**
      * @dev Throws if not called by an admin account.
      */
-    modifier onlyAdmin() {
-        require(
-            sageStorage.getBool(
-                keccak256(abi.encodePacked("role.admin", msg.sender))
-            ),
-            "Admin calls only"
-        );
+    modifier onlyRole(string memory role) {
+        if (
+            !sageStorage.getBool(keccak256(abi.encodePacked(role, msg.sender)))
+        ) {
+            revert PermissionDenied();
+        }
         _;
     }
 
@@ -29,18 +30,23 @@ contract NFTFactory {
         address artistAddress,
         string calldata name,
         string calldata symbol
-    ) public onlyAdmin {
+    ) public onlyRole("role.admin") {
         require(
             address(artistContracts[artistAddress]) == address(0),
             "Contract already exists"
         );
-        SageNFT newContract = new SageNFT(
-            name,
-            symbol,
-            address(sageStorage),
-            artistAddress
-        );
+        SageNFT newContract = new SageNFT(name, symbol, address(sageStorage));
+        if (msg.sender != artistAddress) {
+            newContract.transferOwnership(artistAddress);
+        }
         artistContracts[artistAddress] = newContract;
+    }
+
+    function deployOwnContract(string calldata name, string calldata symbol)
+        public
+        onlyRole("role.creator")
+    {
+        createNFTContract(msg.sender, name, symbol);
     }
 
     function getContractAddress(address artistAddress)

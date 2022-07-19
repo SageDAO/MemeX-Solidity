@@ -26,12 +26,12 @@ contract Lottery is
     ISageStorage private sageStorage;
     bytes32 internal requestId_;
 
-    address public signerAddress;
+    address private signerAddress;
 
     IERC20 public token;
 
     // Address of the randomness generator
-    IRandomNumberGenerator public randomGenerator;
+    IRandomNumberGenerator private randomGenerator;
     IRewards public rewardsContract;
 
     uint256[] public lotteries;
@@ -44,9 +44,6 @@ contract Lottery is
 
     // loteryId => merkle tree root
     mapping(uint256 => bytes32) public prizeMerkleRoots;
-
-    // participant address => lottery ids he entered
-    mapping(address => uint256[]) internal participantHistory;
 
     // lotteryId => tokenId => claimed state
     mapping(uint256 => mapping(uint256 => bool)) public claimedPrizes;
@@ -199,14 +196,6 @@ contract Lottery is
         onlyAdmin
     {
         lotteryHistory[_lotteryId].maxTicketsPerUser = _maxTicketsPerUser;
-    }
-
-    function getParticipantHistory(address _participant)
-        public
-        view
-        returns (uint256[] memory)
-    {
-        return participantHistory[_participant];
     }
 
     function _burnUserPoints(address _user, uint256 _amount)
@@ -531,7 +520,6 @@ contract Lottery is
         }
 
         if (numTicketsBought == 0) {
-            participantHistory[msg.sender].push(_lotteryId);
             ++lottery.participantsCount;
             participants[_lotteryId][msg.sender] = participantInfo;
         }

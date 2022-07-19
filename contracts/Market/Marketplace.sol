@@ -3,23 +3,28 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../../interfaces/INFT.sol";
 
 contract Marketplace {
-    // contract address => tokenId => offer
-    mapping(address => mapping(uint256 => BuyOffer)) buyOffers;
+    // contract address => tokenId => buy offer array
+    mapping(address => mapping(uint256 => Offer[])) buyOffers;
+
+    // contract address => tokenId => current sell offer
+    mapping(address => mapping(uint256 => Offer)) sellOffers;
 
     IERC20 public token;
 
-    struct BuyOffer {
+    struct Offer {
         address from;
-        uint256 amount;
+        uint32 expiresAt;
+        uint256 priceOffer;
     }
 
     event NewBuyOffer(
         address indexed from,
         address indexed contractAddress,
         uint256 tokenId,
-        uint256 amount
+        uint256 priceOffer
     );
 
     event BuyOfferAccepted();
@@ -27,30 +32,45 @@ contract Marketplace {
     function createBuyOffer(
         address contractAddress,
         uint256 tokenId,
-        uint256 amount
+        uint256 _priceOffer,
+        uint32 expiresAt
     ) public {
-        BuyOffer storage offer = buyOffers[contractAddress][tokenId];
-        require(amount > offer.amount, "There is a higher offer");
-        offer.amount = amount;
-        offer.from = msg.sender;
+        Offer memory offer = Offer(msg.sender, expiresAt, _priceOffer);
+        buyOffers[contractAddress][tokenId].push(offer);
+        emit NewBuyOffer(msg.sender, contractAddress, tokenId, _priceOffer);
     }
 
-    function getBuyOffer(address contractAddress, uint256 tokenId)
+    function getBuyOffer(
+        address contractAddress,
+        uint256 tokenId,
+        uint256 index
+    )
         public
         view
-        returns (address, uint256)
+        returns (
+            address,
+            uint32,
+            uint256
+        )
     {
-        BuyOffer memory offer = buyOffers[contractAddress][tokenId];
-        return (offer.from, offer.amount);
+        Offer memory offer = buyOffers[contractAddress][tokenId][index];
+        return (offer.from, offer.expiresAt, offer.priceOffer);
     }
 
-    function acceptBuyOffer(address contractAddress, uint256 tokenId) public {
+    function acceptBuyOffer(
+        address contractAddress,
+        uint256 tokenId,
+        uint256 index
+    ) public {
         require(
             IERC721(contractAddress).ownerOf(tokenId) == msg.sender,
             "Only owner can accept offer"
         );
-        BuyOffer storage offer = buyOffers[contractAddress][tokenId];
-        token.transferFrom(offer.from, msg.sender, offer.amount); // TODO market cut
+        Offer storage offer = buyOffers[contractAddress][tokenId][index];
+        token.transferFrom(offer.from, msg.sender, offer.priceOffer); // TODO market cut
+        IERC721 nftContract = IERC721(contractAddress);
+        nftContract.safeTransferFrom(msg.sender, offer.from, tokenId, "");
+        offer.priceOffer = 0;
     }
 
     function createSellOffer(
@@ -58,11 +78,21 @@ contract Marketplace {
         uint256 tokenId,
         uint256 price
     ) public {
-        require(
-            IERC721(contractAddress).ownerOf(tokenId) == msg.sender,
-            "Only owner can create a sell offer"
-        );
+        address owner = IERC721(contractAddress).ownerOf(tokenId);
+        require(owner == msg.sender, "Only owner can create sell offers");
+
+        Offer storage sellOffer = sellOffers[contractAddress][tokenId];
+
+        sellOffer.priceOffer = price;
+        sellOffer.from = msg.sender;
     }
 
-    function takeSellOffer() public {}
+    function takeSellOffer(address contractAddress, uint256 tokenId) public {
+        Offer storage sellOffer = sellOffers[contractAddress][tokenId];
+        IERC721 nftContract = IERC721(contractAddress);
+        nftContract.safeTransferFrom(sellOffer.from, msg.sender, tokenId, "");
+        token.transferFrom(msg.sender, sellOffer.from, sellOffer.priceOffer); // TODO market cut
+        sellOffer.from = address(0);
+        sellOffer.priceOffer = 0;
+    }
 }

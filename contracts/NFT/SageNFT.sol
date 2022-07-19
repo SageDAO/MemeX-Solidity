@@ -5,26 +5,31 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../Utils/StringUtils.sol";
 import "../../interfaces/ISageStorage.sol";
+import "../../interfaces/INFT.sol";
 
-contract SageNFT is ERC721, ERC721Enumerable, ERC721Burnable, ERC721URIStorage {
+contract SageNFT is
+    ERC721,
+    ERC721Enumerable,
+    ERC721Burnable,
+    ERC721URIStorage,
+    Ownable,
+    INFT
+{
     ISageStorage immutable sageStorage;
     uint256 private constant DEFAULT_ROYALTY_PERCENTAGE = 1000; // in basis points (100 = 1%)
 
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a; // implements ERC-2981 interface
 
-    address public artistAddress;
-
     constructor(
         string memory _name,
         string memory _symbol,
-        address _sageStorage,
-        address _artistAddress
+        address _sageStorage
     ) ERC721(_name, _symbol) {
         sageStorage = ISageStorage(_sageStorage);
-        artistAddress = _artistAddress;
     }
 
     /**
@@ -40,10 +45,19 @@ contract SageNFT is ERC721, ERC721Enumerable, ERC721Burnable, ERC721URIStorage {
         _;
     }
 
+    function creatorMint(
+        address to,
+        uint256 tokenId,
+        string calldata uri
+    ) public onlyOwner {
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, uri);
+    }
+
     function safeMint(
         address to,
         uint256 tokenId,
-        string memory uri
+        string calldata uri
     ) public {
         require(
             sageStorage.getBool(
@@ -59,14 +73,14 @@ contract SageNFT is ERC721, ERC721Enumerable, ERC721Burnable, ERC721URIStorage {
         IERC20 token = IERC20(erc20);
         uint256 balance = token.balanceOf(address(this));
         uint256 artist = (balance * 8000) / 10000;
-        token.transfer(artistAddress, artist);
+        token.transfer(owner(), artist);
         token.transfer(msg.sender, balance - artist);
     }
 
     function withdraw() public onlyAdmin {
         uint256 balance = balanceOf(address(this));
         uint256 artist = (balance * 8000) / 10000;
-        (bool sent, ) = artistAddress.call{value: artist}("");
+        (bool sent, ) = owner().call{value: artist}("");
         if (!sent) {
             revert();
         }
@@ -123,10 +137,6 @@ contract SageNFT is ERC721, ERC721Enumerable, ERC721Burnable, ERC721URIStorage {
         return
             interfaceId == INTERFACE_ID_ERC2981 ||
             super.supportsInterface(interfaceId);
-    }
-
-    function setArtistAddress(address newAddress) public onlyAdmin {
-        artistAddress = newAddress;
     }
 
     /**

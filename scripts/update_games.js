@@ -160,9 +160,7 @@ async function fetchApprovedLotteries() {
         include: {
             Drop: {
                 include: {
-                    PrimarySplitter: true,
-                    SecondarySplitter: true,
-                    Artist: true
+                    NftContract: true
                 }
             }
         }
@@ -181,9 +179,7 @@ async function fetchApprovedAuctions() {
         include: {
             Drop: {
                 include: {
-                    PrimarySplitter: true,
-                    SecondarySplitter: true,
-                    Artist: true
+                    NftContract: true
                 }
             }
         }
@@ -247,8 +243,6 @@ async function inspectLotteryState(lottery) {
                 `A total of ${numberOfTicketsSold} tickets for lottery ${lottery.id}`
             );
 
-            defaultPrizeId = lotteryInfo.defaultPrizeId;
-
             randomSeed = await lotteryContract.randomSeeds(lottery.id);
             logger.info(`Random seed stored for this lottery: ${randomSeed}`);
 
@@ -311,23 +305,6 @@ async function inspectLotteryState(lottery) {
                 }
             }
 
-            // if lottery has defaultPrize, distribute it to all participants who did not win a prize above
-            if (defaultPrizeId != 0) {
-                for (i = 0; i < tickets.length; i++) {
-                    if (!winnerTicketNumbers.has(i)) {
-                        var leaf = {
-                            lotteryId: Number(lottery.id),
-                            winnerAddress: tickets[i],
-                            nftId: defaultPrizeId.toNumber(),
-                            ticketNumber: i,
-                            proof: "",
-                            createdAt: new Date()
-                        };
-                        winnerTicketNumbers.add(i);
-                        leaves.push(leaf);
-                    }
-                }
-            }
             logger.info(`All prizes awarded. Building the merkle tree`);
             hashedLeaves = leaves.map(leaf => getEncodedLeaf(lottery.id, leaf));
             const tree = new MerkleTree(hashedLeaves, keccak256, {
@@ -514,7 +491,7 @@ async function createLottery(lottery, nftContractAddress) {
             lotteryId: lottery.id
         },
         orderBy: {
-            numberOfEditions: "asc"
+            id: "asc"
         }
     });
     let prizeIds = Array();

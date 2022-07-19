@@ -8,28 +8,4 @@ interface INFT {
         uint256 _id,
         string memory _uri
     ) external;
-
-    function createCollection(
-        uint256 _collectionId,
-        address _artistAddress,
-        uint16 _royaltyPercentage,
-        string memory _dropMetadataURI,
-        address _primarySalesDestination
-    ) external;
-
-    function setCollectionBaseMetadataURI(
-        uint256 _collectionId,
-        string memory _newBaseMetadataURI
-    ) external;
-
-    function getCollectionInfo(uint256 _collectionId)
-        external
-        returns (
-            address,
-            uint16,
-            string memory,
-            address
-        );
-
-    function getPrimarySalesDestination() external returns (address);
 }

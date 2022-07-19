@@ -5,10 +5,8 @@ const createLogger = require("./logs.js");
 const BigNumber = require("bignumber.js");
 
 const ethers = hre.ethers;
-var abiCoder = ethers.utils.defaultAbiCoder;
 
 const { MerkleTree } = require("merkletreejs");
-const keccak256 = require("keccak256");
 
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
@@ -412,11 +410,9 @@ async function getRewardRates() {
 
 function getEncodedLeaf(leaf) {
     logger.info(`Encoding leaf: ${leaf.address} ${leaf.points}`);
-    return keccak256(
-        abiCoder.encode(
-            ["address", "uint256"],
-            [leaf.address, leaf.points.toNumber()]
-        )
+    return ethers.utils.solidityKeccak256(
+        ["address", "uint256"],
+        [leaf.address, leaf.points.toNumber()]
     );
 }
 

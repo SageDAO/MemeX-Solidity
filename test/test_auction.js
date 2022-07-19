@@ -14,14 +14,16 @@ describe("Auction Contract", function() {
             ...addrs
         ] = await ethers.getSigners();
 
-        Nft = await ethers.getContractFactory("SageNFT");
-        nft = await upgrades.deployProxy(
-            Nft,
-            ["Sage", "SAGE", artist.address, 200, artist.address],
-            {
-                kind: "uups"
-            }
+        SageStorage = await ethers.getContractFactory("SageStorage");
+        sageStorage = await SageStorage.deploy();
+
+        NftFactory = await ethers.getContractFactory("NFTFactory");
+        nftFactory = await NftFactory.deploy(sageStorage.address);
+        await nftFactory.createNFTContract(artist.address, "Sage test", "SAGE");
+        nftContractAddress = await nftFactory.getContractAddress(
+            artist.address
         );
+        nft = await ethers.getContractAt("SageNFT", nftContractAddress);
 
         MockERC20 = await ethers.getContractFactory("MockERC20");
         mockERC20 = await MockERC20.deploy();
@@ -32,14 +34,22 @@ describe("Auction Contract", function() {
         Auction = await ethers.getContractFactory("Auction");
         auction = await upgrades.deployProxy(
             Auction,
-            [owner.address, 3600, 100, mockERC20.address],
+            [owner.address, 3600, 100, mockERC20.address, sageStorage.address],
             { kind: "uups" }
+        );
+
+        await sageStorage.setBool(
+            ethers.utils.solidityKeccak256(
+                ["string", "address"],
+                ["role.minter", auction.address]
+            ),
+            true
         );
 
         // ContractBidder = await ethers.getContractFactory('MockAuctionBidder');
         // contractBidder = await ContractBidder.deploy(auction.address);
 
-        await nft.grantRole(MINTER_ROLE, auction.address);
+        //await nft.grantRole(MINTER_ROLE, auction.address);
 
         await auction.createAuction(
             1,

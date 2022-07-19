@@ -42,7 +42,12 @@ describe("Lottery Contract", function() {
         Lottery = await ethers.getContractFactory("Lottery");
         lottery = await upgrades.deployProxy(
             Lottery,
-            [rewards.address, owner.address, mockERC20.address, sageStorage.address],
+            [
+                rewards.address,
+                owner.address,
+                mockERC20.address,
+                sageStorage.address
+            ],
             { kind: "uups" }
         );
         await lottery.deployed();
@@ -222,14 +227,6 @@ describe("Lottery Contract", function() {
                 .connect(addr2)
                 .buyTicketsWithSignedMessage(1500, 1, 1, signedMessageB)
         ).to.be.revertedWith("Tickets sold out");
-    });
-
-    it("Should allow withdraw funds from ticket sales", async function() {
-        addr2Balance = await mockERC20.balanceOf(addr2.address);
-        await lottery.connect(addr2).buyTickets(2, 1);
-
-        await lottery.withdraw(addr2.address, 1);
-        expect(await mockERC20.balanceOf(addr2.address)).to.equal(addr2Balance);
     });
 
     it("Should return the correct # of tickets bought", async function() {

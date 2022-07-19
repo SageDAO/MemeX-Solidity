@@ -108,7 +108,6 @@ model Nft {
   lotteryId                Int?
   price                    Float?
   ownerAddress             String?      @db.Char(42)
-  metadataURL              String?
   artistAddress            String?      @db.Char(42) 
   PrizeProof               PrizeProof[]
   Auction                  Auction?  
@@ -191,6 +190,13 @@ model User {
   FavoriteDrops                 Drop[]        @relation("userFavoriteDrops")
 
   @@index([walletAddress])
+}
+
+model Follow {
+  walletAddress                 String @db.Char(42)
+  followedAddress               String @db.Char(42)
+
+  @@id([walletAddress, followedAddress])  
 }
 
 enum AssetType {

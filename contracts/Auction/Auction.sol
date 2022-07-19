@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/INFT.sol";
+import "../../interfaces/ISageStorage.sol";
 
 contract Auction is
     Initializable,
@@ -17,6 +18,7 @@ contract Auction is
     ReentrancyGuardUpgradeable
 {
     IERC20 public erc20;
+    ISageStorage private sageStorage;
 
     mapping(uint256 => AuctionInfo) public auctions;
 
@@ -61,7 +63,12 @@ contract Auction is
      * @dev Throws if not called by an admin account.
      */
     modifier onlyAdmin() {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
+        require(
+            sageStorage.getBool(
+                keccak256(abi.encodePacked("role.admin", msg.sender))
+            ),
+            "Admin calls only"
+        );
         _;
     }
 
@@ -72,7 +79,8 @@ contract Auction is
         address _admin,
         uint256 _defaultTimeExtension,
         uint256 _bidIncrementPercentage,
-        address _token
+        address _token,
+        address _storage
     ) public initializer {
         __AccessControl_init();
         __Pausable_init();
@@ -81,6 +89,7 @@ contract Auction is
         defaultTimeExtension = _defaultTimeExtension;
         bidIncrementPercentage = _bidIncrementPercentage;
         erc20 = IERC20(_token);
+        sageStorage = ISageStorage(_storage);
     }
 
     function setDefaultTimeExtension(uint16 _timeExtension) public onlyAdmin {

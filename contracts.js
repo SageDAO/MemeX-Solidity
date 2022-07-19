@@ -1,11 +1,11 @@
 CONTRACTS = {
     rinkeby: {
-        storageAddress: "0x73400eF18aCeB5dFf80F2a8Dd6479529bA5De755",
-        factoryAddress: "0x37AB4F6dbB330C53079Cc2EAFc6706e42a0C5eF3",
-        lotteryAddress: "0x87B69B2fd1e3665A1CF6D4Aa028c68F4BdD8d136",
+        storageAddress: "0xACb2d936daD56A254a037E28e80BB42Cd86cC042",
+        factoryAddress: "0x995D1762634A6d19E8092EF294875624C6c073FC",
+        lotteryAddress: "0x86295B8B322dBCA2f132FDb6390BbcEBd6573Ed4",
         randomnessAddress: "0xC98875cF81f78Aa7eD7F8Af0c122Cde94F3aec28",
         rewardsAddress: "0xAb35e1ed507aCBd0CBDacF50837476E61Eb57Abf", //imp 0x05A45Ee2E54DF5B273394Ac4368e6c3CDa89c5c6
-        auctionAddress: "0x0FF5E8AC48Dc2e3b9cf4FEA28b29A36B2f3B50CD", //imp 0xc827cef79121F5Cf41684C311D7C0C4AaDdDC7c5
+        auctionAddress: "0x26b5bB9352edbe338ef77cF90c69cB2a715974e1", //imp 0xc827cef79121F5Cf41684C311D7C0C4AaDdDC7c5
         ashAddress: "0xd7315632731b7be8c618dE4374433f7C7E37A1D8",
         vrfCoordinator: "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B",
         linkToken: "0x01BE23585060835E02B77ef475b0Cc51aA1e0709",
