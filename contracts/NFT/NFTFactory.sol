@@ -36,9 +36,7 @@ contract NFTFactory {
             "Contract already exists"
         );
         SageNFT newContract = new SageNFT(name, symbol, address(sageStorage));
-        if (msg.sender != artistAddress) {
-            newContract.transferOwnership(artistAddress);
-        }
+        newContract.transferOwnership(artistAddress);
         artistContracts[artistAddress] = newContract;
     }
 
