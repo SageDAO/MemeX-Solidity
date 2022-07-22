@@ -2,10 +2,22 @@ const hre = require("hardhat");
 const ethers = hre.ethers;
 require("dotenv").config();
 const createLogger = require("./logs.js");
+const nodemailer = require("nodemailer");
 const CONTRACTS = require("../contracts.js");
+
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
 const timer = ms => new Promise(res => setTimeout(res, ms));
 let logger;
+
+var transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: "notification@sage.art",
+        pass: process.env.MAIL_SERVICE_KEY
+    }
+});
 
 async function main() {
     logger = createLogger(
@@ -13,6 +25,7 @@ async function main() {
         `monitor_events_${hre.network.name}`
     );
     logger.info("Starting monitor_events script");
+    sendMail("dante@sage.art", "Test", "Test");
     const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
     const Lottery = await hre.ethers.getContractFactory("Lottery");
     const lottery = await Lottery.attach(lotteryAddress);
@@ -57,12 +70,6 @@ async function main() {
         );
     });
 
-    lottery.on("Refunded", (lotteryId, participantAddress, refundAmount) => {
-        logger.info(
-            `EVENT Refunded: lottery ${lotteryId} participant ${participantAddress} refunded ${refundAmount}`
-        );
-    });
-
     rewards.on(
         "PointsUsed",
         (participantAddress, amountUsed, amountRemaining) => {
@@ -95,7 +102,17 @@ async function main() {
 
     auction.on(
         "BidPlaced",
-        (auctionId, highestBidder, highestBid, newEndTime) => {
+        (auctionId, highestBidder, previousBidder, highestBid, newEndTime) => {
+            let email = getEMailFromUser(previousBidder);
+            let dropName = getDropName(auctionId);
+
+            if (email) {
+                sendMail(
+                    email,
+                    "Sage received a new bid",
+                    `Heads up, as as higher bid has been placed on the ${dropName} drop on the Sage app.`
+                );
+            }
             logger.info(
                 `EVENT BidPlaced: auction ${auctionId} received bid from ${highestBidder} for ${highestBid}. New end time ${newEndTime}`
             );
@@ -107,9 +124,48 @@ async function main() {
     }
 }
 
+async function getEMailFromUser(walletAddress) {
+    let user = prisma.user.findUnique({
+        where: {
+            walletAddress: walletAddress
+        }
+    });
+    return user.email;
+}
+
+async function getDropName(auctionId) {
+    let auction = prisma.auction.findUnique({
+        where: {
+            id: auctionId
+        },
+        include: {
+            Drop: true
+        }
+    });
+    return auction.Drop.name;
+}
+
+async function sendMail(to, subject, text) {
+    var mailOptions = {
+        from: "notification@sage.art",
+        to: to,
+        subject: subject,
+        text: text
+    };
+
+    transporter.sendMail(mailOptions, function(error, info) {
+        if (error) {
+            logger.error(error);
+        } else {
+            logger.info("email sent");
+        }
+    });
+}
+
 main()
     .then(() => process.exit(0))
     .catch(error => {
+        prisma.$disconnect();
         logger.info(error.stack);
         process.exit(1);
     });

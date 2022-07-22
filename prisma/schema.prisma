@@ -133,11 +133,11 @@ model PrizeProof {
   createdAt     DateTime
   nftId         Int
   lotteryId     Int
-  ticketNumber  Int 
+  uri           String
   Nft           Nft       @relation(fields: [nftId], references: [id])
   Lottery       Lottery   @relation(fields: [lotteryId], references: [id])
   
-  @@id([lotteryId, winnerAddress, nftId, ticketNumber])
+  @@id([lotteryId, winnerAddress, nftId])
 }
 
 model TokenTransaction {
@@ -174,10 +174,10 @@ model RewardType {
 model User {
   walletAddress                 String        @id @db.Char(42)
   email                         String?       @db.Char(40)
-  twitterUsername               String?       @db.Char(40)
-  instagramUsername             String?       @db.Char(40)
+  twitterLink                   String?       @db.Char(40)
+  instagramLink                 String?       @db.Char(40)
   webpage                       String?       @db.Char(50)
-  mediumUsername                String?       @db.Char(40)
+  mediumLink                    String?       @db.Char(40)
   createdAt                     DateTime      @default(now())
   role                          Role          @default(USER)
   bio                           String?       @db.VarChar(200)
