@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/INFT.sol";
 import "../../interfaces/ISageStorage.sol";
@@ -16,10 +17,15 @@ contract Marketplace {
     IERC20 public token;
     ISageStorage immutable sageStorage;
 
+    mapping(address => uint256) private salesNonces;
+    mapping(bytes32 => bool) private cancelledOrders;
+
     struct Offer {
         address from;
+        address nftContract;
         uint32 expiresAt;
         uint256 priceOffer;
+        uint256 tokenId;
     }
 
     event NewBuyOffer(
@@ -35,36 +41,35 @@ contract Marketplace {
         uint256 price
     );
 
-    constructor(address _storage) {
+    constructor(address _storage, address _token) {
         sageStorage = ISageStorage(_storage);
+        token = IERC20(_token);
     }
 
-    function createBuyOffer(
-        address contractAddress,
-        uint256 tokenId,
-        uint256 _priceOffer,
-        uint32 expiresAt
-    ) public {
-        Offer memory offer = Offer(msg.sender, expiresAt, _priceOffer);
-        buyOffers[contractAddress][tokenId].push(offer);
-        emit NewBuyOffer(msg.sender, contractAddress, tokenId, _priceOffer);
+    // Builds a prefixed hash to mimic the behavior of eth_sign.
+    function prefixed(bytes32 hash) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
+            );
     }
 
-    function getBuyOffer(
+    function verifySignature(
+        address from,
         address contractAddress,
+        uint256 price,
         uint256 tokenId,
-        uint256 index
-    )
-        public
-        view
-        returns (
-            address,
-            uint32,
-            uint256
-        )
-    {
-        Offer memory offer = buyOffers[contractAddress][tokenId][index];
-        return (offer.from, offer.expiresAt, offer.priceOffer);
+        uint256 salesNonce,
+        bytes calldata signature
+    ) internal pure returns (address) {
+        bytes32 message = prefixed(
+            keccak256(
+                abi.encode(from, contractAddress, price, tokenId, salesNonce)
+            )
+        );
+        address recoveredAddress = ECDSA.recover(message, signature);
+        require(recoveredAddress == from, "Invalid signature");
+        return recoveredAddress;
     }
 
     function acceptBuyOffer(
@@ -96,6 +101,34 @@ contract Marketplace {
 
         sellOffer.priceOffer = price;
         sellOffer.from = msg.sender;
+    }
+
+    function buyFromSellOffer(
+        address tokenOwner,
+        address contractAddress,
+        uint256 price,
+        uint256 tokenId,
+        uint256 salesNonce,
+        bytes calldata signature
+    ) public {
+        address signedOwner = verifySignature(
+            tokenOwner,
+            contractAddress,
+            price,
+            tokenId,
+            salesNonce,
+            signature
+        );
+        IERC721 nftContract = IERC721(contractAddress);
+        address currentOwner = nftContract.ownerOf(tokenId);
+        require(signedOwner == currentOwner, "Offer not signed by token owner");
+        require(salesNonce == salesNonces[signedOwner], "Wrong nonce");
+        incrementSalesNonce(signedOwner);
+        nftContract.safeTransferFrom(currentOwner, msg.sender, tokenId, "");
+    }
+
+    function incrementSalesNonce(address sellerAddress) private {
+        salesNonces[sellerAddress]++;
     }
 
     function takeSellOffer(address contractAddress, uint256 tokenId) public {
