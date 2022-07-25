@@ -3,6 +3,7 @@ require("dotenv").config();
 const hre = require("hardhat");
 const createLogger = require("./logs.js");
 const BigNumber = require("bignumber.js");
+const keccak256 = require("keccak256");
 
 const ethers = hre.ethers;
 
@@ -16,6 +17,7 @@ const TRANSFER_TOPIC =
     "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 let logger;
+var abiCoder = ethers.utils.defaultAbiCoder;
 
 /**
  * @param {*} assetType
@@ -410,9 +412,11 @@ async function getRewardRates() {
 
 function getEncodedLeaf(leaf) {
     logger.info(`Encoding leaf: ${leaf.address} ${leaf.points}`);
-    return ethers.utils.solidityKeccak256(
-        ["address", "uint256"],
-        [leaf.address, leaf.points.toNumber()]
+    return keccak256(
+        abiCoder.encode(
+            ["address", "uint256"],
+            [leaf.address, leaf.points.toNumber()]
+        )
     );
 }
 
