@@ -136,7 +136,7 @@ contract SageNFT is
     {
         if (
             sageStorage.getAddress(
-                keccak256(abi.encodePacked("address.marketplace", operator))
+                keccak256(abi.encodePacked("address.marketplace"))
             ) == operator
         ) {
             return true;
