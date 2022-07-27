@@ -113,6 +113,7 @@ model Nft {
   Auction                  Auction?  
   Lottery                  Lottery?     @relation(fields: [lotteryId], references: [id])
   NftContract              NftContract? @relation(fields: [artistAddress], references: [artistAddress])
+  Offers                   Offer[]   
 }
 
 model NftContract {
@@ -124,7 +125,6 @@ model NftContract {
   Artist                 User        @relation("ArtistContract", fields: [artistAddress], references: [walletAddress])
   Drops                  Drop[]  @relation("ContractDrops")
   ListingNfts            Nft[] 
-  Offers                 Offer[]       
 
   @@unique([contractAddress])      
 }
@@ -201,12 +201,12 @@ model Offer {
   signer                   String @db.Char(42)
   nftContractAddress       String @db.Char(42)
   price                    Float
-  tokenId                  Int
+  nftId                    Int
   expiresAt                Int
   isSellOffer              Boolean
   signedOffer              String
   state                    OrderState @default(ACTIVE)
-  NftContract              NftContract @relation(fields:[nftContractAddress], references: [contractAddress])
+  Nft                      Nft   @relation(fields:[nftId], references: [id])
   
 }
 

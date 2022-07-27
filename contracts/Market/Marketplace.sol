@@ -12,23 +12,7 @@ contract Marketplace {
     IERC20 public token;
     ISageStorage immutable sageStorage;
 
-    mapping(address => uint256) private salesNonces;
     mapping(bytes32 => bool) private cancelledOrders;
-
-    struct Offer {
-        address from;
-        address nftContract;
-        uint32 expiresAt;
-        uint256 priceOffer;
-        uint256 tokenId;
-    }
-
-    event NewBuyOffer(
-        address indexed from,
-        address indexed contractAddress,
-        uint256 tokenId,
-        uint256 priceOffer
-    );
 
     event ListedNFTSold(
         address indexed buyer,
@@ -95,18 +79,16 @@ contract Marketplace {
         uint256 price,
         uint256 tokenId,
         uint256 expiresAt,
-        bool sellOrder,
         bytes calldata signature
     ) public {
         require(expiresAt > block.timestamp, "Offer expired");
-        require(sellOrder, "Not a sell order");
         (address signedOwner, bytes32 message) = verifySignature(
             tokenOwner,
             contractAddress,
             price,
             tokenId,
             expiresAt,
-            sellOrder,
+            true,
             signature
         );
         IERC721 nftContract = IERC721(contractAddress);
@@ -129,18 +111,16 @@ contract Marketplace {
         uint256 price,
         uint256 tokenId,
         uint256 expiresAt,
-        bool sellOrder,
         bytes calldata signature
     ) public {
         require(expiresAt > block.timestamp, "Offer expired");
-        require(!sellOrder, "Not a buy order");
         (address signedBy, bytes32 message) = verifySignature(
             from,
             contractAddress,
             price,
             tokenId,
             expiresAt,
-            sellOrder,
+            false,
             signature
         );
         IERC721 nftContract = IERC721(contractAddress);
