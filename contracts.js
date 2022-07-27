@@ -1,6 +1,6 @@
 CONTRACTS = {
     rinkeby: {
-        marketplaceAddress: "0x1a04643f92Def62092017433670Af379164cbaA9",
+        marketplaceAddress: "0x9a9aD86c57F26f6d349A4e7dE08c01Aee890A020",
         storageAddress: "0xACb2d936daD56A254a037E28e80BB42Cd86cC042",
         factoryAddress: "0x9D406147F17BB4Fa92a4e4572ae21A8EaCE7f7c2",
         lotteryAddress: "0x86295B8B322dBCA2f132FDb6390BbcEBd6573Ed4",

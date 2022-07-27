@@ -5,15 +5,10 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/INFT.sol";
+import "../../interfaces/IERC2981.sol";
 import "../../interfaces/ISageStorage.sol";
 
 contract Marketplace {
-    // contract address => tokenId => buy offer array
-    mapping(address => mapping(uint256 => Offer[])) buyOffers;
-
-    // contract address => tokenId => current sell offer
-    mapping(address => mapping(uint256 => Offer)) sellOffers;
-
     IERC20 public token;
     ISageStorage immutable sageStorage;
 
@@ -59,48 +54,39 @@ contract Marketplace {
         address contractAddress,
         uint256 price,
         uint256 tokenId,
-        uint256 salesNonce,
+        uint256 expiresAt,
+        bool sellOrder,
         bytes calldata signature
-    ) internal pure returns (address) {
+    ) internal pure returns (address, bytes32) {
         bytes32 message = prefixed(
             keccak256(
-                abi.encode(from, contractAddress, price, tokenId, salesNonce)
+                abi.encode(
+                    from,
+                    contractAddress,
+                    price,
+                    tokenId,
+                    expiresAt,
+                    sellOrder
+                )
             )
         );
         address recoveredAddress = ECDSA.recover(message, signature);
         require(recoveredAddress == from, "Invalid signature");
-        return recoveredAddress;
+        return (recoveredAddress, message);
     }
 
-    function acceptBuyOffer(
+    function cancelSignedOffer(
+        address from,
         address contractAddress,
-        uint256 tokenId,
-        uint256 index
+        uint256 price,
+        uint256 tokenId
     ) public {
-        require(
-            IERC721(contractAddress).ownerOf(tokenId) == msg.sender,
-            "Only owner can accept offer"
+        require(msg.sender == from, "Can only cancel own offers");
+
+        bytes32 message = prefixed(
+            keccak256(abi.encode(from, contractAddress, price, tokenId))
         );
-        Offer storage offer = buyOffers[contractAddress][tokenId][index];
-        token.transferFrom(offer.from, msg.sender, offer.priceOffer); // TODO market cut
-        IERC721 nftContract = IERC721(contractAddress);
-        emit ListedNFTSold(offer.from, tokenId, offer.priceOffer);
-        nftContract.safeTransferFrom(msg.sender, offer.from, tokenId, "");
-        offer.priceOffer = 0;
-    }
-
-    function createSellOffer(
-        address contractAddress,
-        uint256 tokenId,
-        uint256 price
-    ) public {
-        address owner = IERC721(contractAddress).ownerOf(tokenId);
-        require(owner == msg.sender, "Only owner can create sell offers");
-
-        Offer storage sellOffer = sellOffers[contractAddress][tokenId];
-
-        sellOffer.priceOffer = price;
-        sellOffer.from = msg.sender;
+        cancelledOrders[message] = true;
     }
 
     function buyFromSellOffer(
@@ -108,36 +94,67 @@ contract Marketplace {
         address contractAddress,
         uint256 price,
         uint256 tokenId,
-        uint256 salesNonce,
+        uint256 expiresAt,
+        bool sellOrder,
         bytes calldata signature
     ) public {
-        address signedOwner = verifySignature(
+        require(expiresAt > block.timestamp, "Offer expired");
+        require(sellOrder, "Not a sell order");
+        (address signedOwner, bytes32 message) = verifySignature(
             tokenOwner,
             contractAddress,
             price,
             tokenId,
-            salesNonce,
+            expiresAt,
+            sellOrder,
             signature
         );
         IERC721 nftContract = IERC721(contractAddress);
         address currentOwner = nftContract.ownerOf(tokenId);
         require(signedOwner == currentOwner, "Offer not signed by token owner");
-        require(salesNonce == salesNonces[signedOwner], "Wrong nonce");
-        incrementSalesNonce(signedOwner);
+
+        require(!cancelledOrders[message], "Offer was cancelled");
+        cancelledOrders[message] = true;
         nftContract.safeTransferFrom(currentOwner, msg.sender, tokenId, "");
+        (address royaltyDest, uint256 royaltyValue) = IERC2981(contractAddress)
+            .royaltyInfo(tokenId, price);
+        token.transferFrom(msg.sender, royaltyDest, royaltyValue);
+        token.transferFrom(msg.sender, tokenOwner, price - royaltyValue);
+        emit ListedNFTSold(msg.sender, tokenId, price);
     }
 
-    function incrementSalesNonce(address sellerAddress) private {
-        salesNonces[sellerAddress]++;
-    }
-
-    function takeSellOffer(address contractAddress, uint256 tokenId) public {
-        Offer storage sellOffer = sellOffers[contractAddress][tokenId];
+    function sellFromBuyOffer(
+        address from,
+        address contractAddress,
+        uint256 price,
+        uint256 tokenId,
+        uint256 expiresAt,
+        bool sellOrder,
+        bytes calldata signature
+    ) public {
+        require(expiresAt > block.timestamp, "Offer expired");
+        require(!sellOrder, "Not a buy order");
+        (address signedBy, bytes32 message) = verifySignature(
+            from,
+            contractAddress,
+            price,
+            tokenId,
+            expiresAt,
+            sellOrder,
+            signature
+        );
         IERC721 nftContract = IERC721(contractAddress);
-        nftContract.safeTransferFrom(sellOffer.from, msg.sender, tokenId, "");
-        token.transferFrom(msg.sender, sellOffer.from, sellOffer.priceOffer); // TODO market cut
-        emit ListedNFTSold(msg.sender, tokenId, sellOffer.priceOffer);
-        sellOffer.from = address(0);
-        sellOffer.priceOffer = 0;
+        address currentOwner = nftContract.ownerOf(tokenId);
+        require(msg.sender == currentOwner, "Not the token owner");
+        require(from == signedBy, "Invalid signature");
+
+        require(!cancelledOrders[message], "Offer was cancelled");
+        cancelledOrders[message] = true;
+        nftContract.safeTransferFrom(currentOwner, from, tokenId, "");
+        (address royaltyDest, uint256 royaltyValue) = IERC2981(contractAddress)
+            .royaltyInfo(tokenId, price);
+        token.transferFrom(from, royaltyDest, royaltyValue);
+        token.transferFrom(from, currentOwner, price - royaltyValue);
+        emit ListedNFTSold(from, tokenId, price);
     }
 }
