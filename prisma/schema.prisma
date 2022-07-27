@@ -205,12 +205,12 @@ model Offer {
   expiresAt                Int
   isSellOffer              Boolean
   signedOffer              String
-  state                    OrderState @default(ACTIVE)
+  state                    OfferState @default(ACTIVE)
   Nft                      Nft   @relation(fields:[nftId], references: [id])
   
 }
 
-enum OrderState {
+enum OfferState {
   ACTIVE
   USED
   CANCELLED
