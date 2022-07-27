@@ -123,7 +123,10 @@ model NftContract {
   Splitter               Splitter?   @relation("Splitter", fields: [splitterId], references: [id])
   Artist                 User        @relation("ArtistContract", fields: [artistAddress], references: [walletAddress])
   Drops                  Drop[]  @relation("ContractDrops")
-  ListingNfts            Nft[]              
+  ListingNfts            Nft[] 
+  Offers                 Offer[]       
+
+  @@unique([contractAddress])      
 }
 
 model PrizeProof {
@@ -174,14 +177,15 @@ model RewardType {
 model User {
   walletAddress                 String        @id @db.Char(42)
   email                         String?       @db.Char(40)
-  twitterLink                   String?       @db.Char(40)
-  instagramLink                 String?       @db.Char(40)
+  twitterUsername               String?       @db.Char(40)
+  instagramUsername             String?       @db.Char(40)
   webpage                       String?       @db.Char(50)
-  mediumLink                    String?       @db.Char(40)
+  mediumUsername                String?       @db.Char(40)
   createdAt                     DateTime      @default(now())
   role                          Role          @default(USER)
   bio                           String?       @db.VarChar(200)
   profilePicture                String?
+  receiveEmailNotification      Boolean       @default(true)
   username                      String?       @db.VarChar(40)
   displayName                   String?       @db.VarChar(40)
   DropsApproved                 Drop[]        @relation("Drop_approvedByToUser")
@@ -190,6 +194,27 @@ model User {
   FavoriteDrops                 Drop[]        @relation("userFavoriteDrops")
 
   @@index([walletAddress])
+}
+
+model Offer {
+  id                       Int    @id @default(autoincrement())
+  signer                   String @db.Char(42)
+  nftContractAddress       String @db.Char(42)
+  price                    Float
+  tokenId                  Int
+  expiresAt                Int
+  isSellOffer              Boolean
+  signedOffer              String
+  state                    OrderState @default(ACTIVE)
+  NftContract              NftContract @relation(fields:[nftContractAddress], references: [contractAddress])
+  
+}
+
+enum OrderState {
+  ACTIVE
+  USED
+  CANCELLED
+  INVALID
 }
 
 model Follow {
