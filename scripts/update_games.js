@@ -55,29 +55,6 @@ async function updateAuctions() {
         if (auction.claimedAt != null) {
             continue;
         }
-        // let primarySplitterAddress =
-        //     auction.Drop.PrimarySplitter?.splitterAddress;
-        // if (
-        //     auction.Drop.primarySplitterId != null &&
-        //     primarySplitterAddress == null
-        // ) {
-        //     auction.Drop.PrimarySplitter.splitterAddress = await deploySplitter(
-        //         auction.dropId,
-        //         auction.Drop.primarySplitterId
-        //     );
-        // }
-
-        // let secondarySplitterAddress =
-        //     auction.Drop.SecondarySplitter?.splitterAddress;
-        // if (
-        //     auction.Drop.secondarySplitterId != null &&
-        //     secondarySplitterAddress == null
-        // ) {
-        //     auction.Drop.SecondarySplitter.splitterAddress = await deploySplitter(
-        //         auction.dropId,
-        //         auction.Drop.secondarySplitterId
-        //     );
-        // }
         const endTime = Math.floor(auction.endTime / 1000);
         if (auction.contractAddress != null) {
             // if we're past endTime, inspect the auction and take the required actions
@@ -233,13 +210,8 @@ async function inspectLotteryState(lottery) {
             logger.info(`Lottery #${lottery.id} starting prize distribution`);
             const winnerTicketNumbers = new Set();
             var leaves = new Array();
-            console.log(tickets);
 
             for (let i = 0; i < totalPrizes; i++) {
-                // for (i = 0; i < prizes[prizeIndex].numberOfEditions; i++) {
-                //     if (prizesAwarded == totalPrizes) {
-                //         break;
-                //     }
                 hashOfSeed = keccak256(
                     abiCoder.encode(
                         ["uint256", "uint256"],
@@ -265,7 +237,6 @@ async function inspectLotteryState(lottery) {
                 logger.info(
                     `Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${tickets[randomPosition]}`
                 );
-                console.log(prizes[i]);
 
                 var leaf = {
                     lotteryId: Number(lottery.id),
@@ -286,11 +257,17 @@ async function inspectLotteryState(lottery) {
             });
 
             const root = tree.getHexRoot().toString("hex");
-            logger.info(
-                `Storing the Merkle tree root in the contract: ${root}`
+            const storedMerkleRoot = await lotteryContract.prizeMerkleRoots(
+                lottery.id
             );
-            await lotteryContract.setPrizeMerkleRoot(lottery.id, root);
-
+            if (root == storedMerkleRoot) {
+                logger.info(`Merkle root stored: ${storedMerkleRoot}`);
+            } else {
+                logger.info(
+                    `Storing the Merkle tree root in the contract: ${root}`
+                );
+                await lotteryContract.setPrizeMerkleRoot(lottery.id, root);
+            }
             // generate and store proofs for each winner
             await generateAndStoreProofs(leaves, tree, lottery.id);
 
