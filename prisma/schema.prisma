@@ -194,6 +194,7 @@ model User {
   FavoriteDrops                 Drop[]        @relation("userFavoriteDrops")
 
   @@index([walletAddress])
+  @@unique([username])
 }
 
 model Offer {
