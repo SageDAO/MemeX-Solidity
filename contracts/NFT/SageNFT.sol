@@ -9,15 +9,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../Utils/StringUtils.sol";
 import "../../interfaces/ISageStorage.sol";
-import "../../interfaces/INFT.sol";
 
 contract SageNFT is
     ERC721,
     ERC721Enumerable,
     ERC721Burnable,
     ERC721URIStorage,
-    Ownable,
-    INFT
+    Ownable
 {
     ISageStorage immutable sageStorage;
     uint256 private constant DEFAULT_ROYALTY_PERCENTAGE = 1000; // in basis points (100 = 1%)
@@ -45,7 +43,7 @@ contract SageNFT is
         _;
     }
 
-    function creatorMint(
+    function artistMint(
         address to,
         uint256 tokenId,
         string calldata uri

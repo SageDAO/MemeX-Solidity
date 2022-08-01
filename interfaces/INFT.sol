@@ -8,4 +8,6 @@ interface INFT {
         uint256 _id,
         string memory _uri
     ) external;
+
+    function owner() external view returns (address);
 }

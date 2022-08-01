@@ -15,8 +15,10 @@ contract Marketplace {
     mapping(bytes32 => bool) private cancelledOrders;
 
     event ListedNFTSold(
+        address indexed seller,
         address indexed buyer,
-        uint256 indexed tokenId,
+        address indexed contractAddress,
+        uint256 tokenId,
         uint256 price
     );
 
@@ -34,18 +36,18 @@ contract Marketplace {
     }
 
     function verifySignature(
-        address from,
+        address signer,
         address contractAddress,
         uint256 price,
         uint256 tokenId,
         uint256 expiresAt,
         bool sellOrder,
         bytes calldata signature
-    ) internal pure returns (address, bytes32) {
+    ) internal pure returns (bytes32) {
         bytes32 message = prefixed(
             keccak256(
                 abi.encode(
-                    from,
+                    signer,
                     contractAddress,
                     price,
                     tokenId,
@@ -54,27 +56,38 @@ contract Marketplace {
                 )
             )
         );
-        address recoveredAddress = ECDSA.recover(message, signature);
-        require(recoveredAddress == from, "Invalid signature");
-        return (recoveredAddress, message);
+        require(
+            ECDSA.recover(message, signature) == signer,
+            "Invalid signature"
+        );
+        return message;
     }
 
     function cancelSignedOffer(
-        address from,
+        address signer,
         address contractAddress,
         uint256 price,
-        uint256 tokenId
+        uint256 tokenId,
+        uint256 expiresAt,
+        bool isSellOffer,
+        bytes calldata signature
     ) public {
-        require(msg.sender == from, "Can only cancel own offers");
+        require(msg.sender == signer, "Can only cancel own offers");
 
-        bytes32 message = prefixed(
-            keccak256(abi.encode(from, contractAddress, price, tokenId))
+        bytes32 message = verifySignature(
+            signer,
+            contractAddress,
+            price,
+            tokenId,
+            expiresAt,
+            isSellOffer,
+            signature
         );
         cancelledOrders[message] = true;
     }
 
     function buyFromSellOffer(
-        address tokenOwner,
+        address signer,
         address contractAddress,
         uint256 price,
         uint256 tokenId,
@@ -82,8 +95,8 @@ contract Marketplace {
         bytes calldata signature
     ) public {
         require(expiresAt > block.timestamp, "Offer expired");
-        (address signedOwner, bytes32 message) = verifySignature(
-            tokenOwner,
+        bytes32 message = verifySignature(
+            signer,
             contractAddress,
             price,
             tokenId,
@@ -93,20 +106,31 @@ contract Marketplace {
         );
         IERC721 nftContract = IERC721(contractAddress);
         address currentOwner = nftContract.ownerOf(tokenId);
-        require(signedOwner == currentOwner, "Offer not signed by token owner");
+        require(signer == currentOwner, "Offer not signed by token owner");
 
         require(!cancelledOrders[message], "Offer was cancelled");
         cancelledOrders[message] = true;
         nftContract.safeTransferFrom(currentOwner, msg.sender, tokenId, "");
-        (address royaltyDest, uint256 royaltyValue) = IERC2981(contractAddress)
-            .royaltyInfo(tokenId, price);
-        token.transferFrom(msg.sender, royaltyDest, royaltyValue);
-        token.transferFrom(msg.sender, tokenOwner, price - royaltyValue);
-        emit ListedNFTSold(msg.sender, tokenId, price);
+        if (currentOwner == INFT(contractAddress).owner()) {
+            token.transferFrom(msg.sender, contractAddress, price);
+        } else {
+            (address royaltyDest, uint256 royaltyValue) = IERC2981(
+                contractAddress
+            ).royaltyInfo(tokenId, price);
+            token.transferFrom(msg.sender, royaltyDest, royaltyValue);
+            token.transferFrom(msg.sender, signer, price - royaltyValue);
+        }
+        emit ListedNFTSold(
+            currentOwner,
+            msg.sender,
+            contractAddress,
+            tokenId,
+            price
+        );
     }
 
     function sellFromBuyOffer(
-        address from,
+        address buyer,
         address contractAddress,
         uint256 price,
         uint256 tokenId,
@@ -114,8 +138,8 @@ contract Marketplace {
         bytes calldata signature
     ) public {
         require(expiresAt > block.timestamp, "Offer expired");
-        (address signedBy, bytes32 message) = verifySignature(
-            from,
+        bytes32 message = verifySignature(
+            buyer,
             contractAddress,
             price,
             tokenId,
@@ -126,15 +150,25 @@ contract Marketplace {
         IERC721 nftContract = IERC721(contractAddress);
         address currentOwner = nftContract.ownerOf(tokenId);
         require(msg.sender == currentOwner, "Not the token owner");
-        require(from == signedBy, "Invalid signature");
 
         require(!cancelledOrders[message], "Offer was cancelled");
         cancelledOrders[message] = true;
-        nftContract.safeTransferFrom(currentOwner, from, tokenId, "");
-        (address royaltyDest, uint256 royaltyValue) = IERC2981(contractAddress)
-            .royaltyInfo(tokenId, price);
-        token.transferFrom(from, royaltyDest, royaltyValue);
-        token.transferFrom(from, currentOwner, price - royaltyValue);
-        emit ListedNFTSold(from, tokenId, price);
+        nftContract.safeTransferFrom(currentOwner, buyer, tokenId, "");
+        if (currentOwner == INFT(contractAddress).owner()) {
+            token.transferFrom(buyer, contractAddress, price);
+        } else {
+            (address royaltyDest, uint256 royaltyValue) = IERC2981(
+                contractAddress
+            ).royaltyInfo(tokenId, price);
+            token.transferFrom(buyer, royaltyDest, royaltyValue);
+            token.transferFrom(buyer, currentOwner, price - royaltyValue);
+        }
+        emit ListedNFTSold(
+            currentOwner,
+            buyer,
+            contractAddress,
+            tokenId,
+            price
+        );
     }
 }

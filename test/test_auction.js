@@ -248,7 +248,7 @@ describe("Auction Contract", function() {
     });
 
     it("Should settle auction - ERC20", async function() {
-        ercBalance = await mockERC20.balanceOf(artist.address);
+        ercBalance = await mockERC20.balanceOf(nft.address);
         await mockERC20.connect(addr2).approve(auction.address, 2);
         await auction.connect(addr2).bid(2, 2);
         await ethers.provider.send("evm_increaseTime", [2 * 86401]);
@@ -256,7 +256,7 @@ describe("Auction Contract", function() {
         expect(await nft.tokenURI(2)).to.be.equal("ipfs://bbbb");
         balance = await nft.balanceOf(addr2.address);
         expect(balance).to.equal(1);
-        expect(await mockERC20.balanceOf(artist.address)).to.equal(
+        expect(await mockERC20.balanceOf(nft.address)).to.equal(
             ercBalance.add(2)
         );
     });

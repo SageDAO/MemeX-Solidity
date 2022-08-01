@@ -30,7 +30,7 @@ contract NFTFactory {
         address artistAddress,
         string calldata name,
         string calldata symbol
-    ) public onlyRole("role.admin") {
+    ) internal {
         require(
             address(artistContracts[artistAddress]) == address(0),
             "Contract already exists"
@@ -40,9 +40,17 @@ contract NFTFactory {
         artistContracts[artistAddress] = newContract;
     }
 
-    function deployOwnContract(string calldata name, string calldata symbol)
+    function deployByAdmin(
+        address artistAddress,
+        string calldata name,
+        string calldata symbol
+    ) public onlyRole("role.admin") {
+        createNFTContract(artistAddress, name, symbol);
+    }
+
+    function deployByArtist(string calldata name, string calldata symbol)
         public
-        onlyRole("role.creator")
+        onlyRole("role.artist")
     {
         createNFTContract(msg.sender, name, symbol);
     }
