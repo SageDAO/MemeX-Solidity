@@ -69,7 +69,7 @@ async function main() {
                 `EVENT ListedNFTSold: NFT ${tokenId}/${contractAddress} sold for ${price}`
             );
             let sellerInfo = await getUserInfo(seller);
-            let nft = await getNFTInfo(tokenId);
+            let nft = await getNFTInfo(tokenId.toNumber());
 
             if (sellerInfo.email) {
                 sendMail(
