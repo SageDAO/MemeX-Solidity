@@ -187,7 +187,6 @@ model User {
   profilePicture                String?
   receiveEmailNotification      Boolean       @default(true)
   username                      String?       @db.VarChar(40)
-  displayName                   String?       @db.VarChar(40)
   DropsApproved                 Drop[]        @relation("Drop_approvedByToUser")
   NftContract                   NftContract?  @relation("ArtistContract")
   EarnedPoints                  EarnedPoints?
