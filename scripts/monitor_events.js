@@ -153,7 +153,7 @@ async function main() {
             let email = user.email;
             let auction = getAuctionInfo(auctionId.toNumber());
 
-            if (email) {
+            if (email && user.receiveEmailNotification) {
                 sendMail(
                     email,
                     "Sage Auction - NEW BID",
