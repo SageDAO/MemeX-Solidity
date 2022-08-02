@@ -4,6 +4,7 @@ require("dotenv").config();
 const createLogger = require("./logs.js");
 const nodemailer = require("nodemailer");
 const CONTRACTS = require("../contracts.js");
+const fs = require("fs");
 
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
@@ -19,13 +20,30 @@ var transporter = nodemailer.createTransport({
     }
 });
 
+const baseUrl = process.env.BASE_URL;
+
 async function main() {
     logger = createLogger(
         `sage_scripts_${hre.network.name}`,
         `monitor_events_${hre.network.name}`
     );
     logger.info("Starting monitor_events script");
-    sendMail("dante@sage.art", "Test", "Test");
+
+    // let test = await getUserInfo("0x58a26F4048CdFd3785aD2139AeD336595af22fF5");
+    // let nft = await getNFTInfo(64);
+
+    // if (test.email) {
+    //     sendMail(
+    //         test.email,
+    //         "New NFT Sale",
+    //         "NFT Sale",
+    //         "Your NFT sale was a success, time to celebrate.",
+    //         nft.s3Path,
+    //         `${baseUrl}artists/${test.username}`,
+    //         "See your galery"
+    //     );
+    // }
+
     const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
     const Lottery = await hre.ethers.getContractFactory("Lottery");
     const lottery = await Lottery.attach(lotteryAddress);
@@ -38,7 +56,35 @@ async function main() {
     const Auction = await hre.ethers.getContractFactory("Auction");
     const auction = await Auction.attach(auctionAddress);
 
+    const marketplaceAddress =
+        CONTRACTS[hre.network.name]["marketplaceAddress"];
+    const Marketplace = await hre.ethers.getContractFactory("Marketplace");
+    const marketplace = await Marketplace.attach(marketplaceAddress);
+
     // listen to events
+    marketplace.on(
+        "ListedNFTSold",
+        async (seller, buyer, contractAddress, tokenId, price) => {
+            logger.info(
+                `EVENT ListedNFTSold: NFT ${tokenId}/${contractAddress} sold for ${price}`
+            );
+            let sellerInfo = await getUserInfo(seller);
+            let nft = await getNFTInfo(tokenId);
+
+            if (sellerInfo.email) {
+                sendMail(
+                    sellerInfo.email,
+                    "New NFT Sale",
+                    "NFT Sale",
+                    "Your NFT sale was a success, time to celebrate.",
+                    nft.s3Path,
+                    `${baseUrl}artists/${sellerInfo.username}`,
+                    "See your galery"
+                );
+            }
+        }
+    );
+
     lottery.on("LotteryStatusChanged", (lotteryId, stat) => {
         logger.info(
             `EVENT LotteryStatusChanged: Lottery ${lotteryId} status changed to ${stat}`
@@ -103,14 +149,19 @@ async function main() {
     auction.on(
         "BidPlaced",
         (auctionId, highestBidder, previousBidder, highestBid, newEndTime) => {
-            let email = getEMailFromUser(previousBidder);
-            let dropName = getDropName(auctionId);
+            let user = getUserInfo(previousBidder);
+            let email = user.email;
+            let auction = getAuctionInfo(auctionId);
 
             if (email) {
                 sendMail(
                     email,
-                    "Sage received a new bid",
-                    `Heads up, as as higher bid has been placed on the ${dropName} drop on the Sage app.`
+                    "Sage Auction - NEW BID",
+                    "New bid on auction",
+                    `The NFT "${auctionInfo.Nft.name}" received a new bid, but there's time if you want it.`,
+                    auctionInfo.Nft.s3Path,
+                    `${baseUrl}drops/${auctionInfo.Drop.id}`,
+                    "View"
                 );
             }
             logger.info(
@@ -119,38 +170,172 @@ async function main() {
         }
     );
 
+    let nftContracts = await getNFTContracts();
+    const NFTContract = await hre.ethers.getContractFactory("SageNFT");
+    for (contract of nftContracts) {
+        let attachedContract = await NFTContract.attach(
+            contract.contractAddress
+        );
+        // monitor nft contract events?
+    }
+
     while (true) {
         await timer(60000);
     }
 }
 
-async function getEMailFromUser(walletAddress) {
-    let user = prisma.user.findUnique({
+async function getNFTContracts() {
+    return await prisma.nftContract.findMany({
+        where: {
+            contractAddress: {
+                not: null
+            }
+        }
+    });
+}
+
+async function getUserInfo(walletAddress) {
+    let user = await prisma.user.findUnique({
         where: {
             walletAddress: walletAddress
         }
     });
-    return user.email;
+    return user;
 }
 
-async function getDropName(auctionId) {
-    let auction = prisma.auction.findUnique({
+async function getNFTInfo(tokenId) {
+    return await prisma.nft.findUnique({
+        where: {
+            id: tokenId
+        }
+    });
+}
+
+async function getAuctionInfo(auctionId) {
+    let auction = await prisma.auction.findUnique({
         where: {
             id: auctionId
         },
         include: {
-            Drop: true
+            Drop: true,
+            Nft: true
         }
     });
-    return auction.Drop.name;
+    return auction;
 }
 
-async function sendMail(to, subject, text) {
+async function sendMail(to, subject, header, message, img, link, action) {
+    const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta http-equiv="Content-Type" content="text/html charset=UTF-8" />
+        </head>
+        <body style="margin: 0">
+            <center
+                style="
+                    max-width: 600px;
+                    margin-left: auto;
+                    margin-right: auto;
+                    background-color: #fff;
+                "
+            >
+                <h1
+                    style="
+                        border: none;
+                        margin-top: 40px;
+                        text-transform: uppercase;
+                        font-family: 'Marine';
+                        font-weight: 400;
+                        font-size: 20px;
+                        line-height: 136.6%;
+                        text-align: center;
+                        letter-spacing: 0.1em;
+                    "
+                >
+                    ${header}
+                </h1>
+                <h4
+                    style="
+                        margin-top: 24px;
+                        text-transform: uppercase;
+                        font-family: 'Marine';
+                        font-weight: 400;
+                        font-size: 12px;
+                        line-height: 130%;
+                        text-align: center;
+                        color: #161619;
+                    "
+                >
+                    ${message}
+                </h4>
+                <img
+                    src="${img}"
+                    alt="sdf"
+                    class="content-img"
+                    style="
+                        display: block;
+                        margin-top: 20px;
+                        width: 311px;
+                        height: 300px;
+                        margin-left: auto;
+                        margin-right: auto;
+                    "
+                />
+                <a
+                    href="${link}"
+                    target="_blank"
+                    style="text-decoration: none"
+                >
+                    <button
+                        style="
+                            display: block;
+                            text-decoration: none;
+                            width: 311px;
+                            vertical-align: center;
+                            height: 51px;
+                            font-family: 'Marine';
+                            margin-top: 32px;
+                            background-color: red;
+                            border: none;
+                            border-radius: 0;
+                            color: #fff;
+                            text-transform: uppercase;
+                            font-size: 14px;
+                            line-height: 130%;
+                            text-align: center;
+                            letter-spacing: 0.2em;
+                            text-transform: uppercase;
+                            cursor: pointer;
+                        "
+                    >
+                        ${action}
+                    </button>
+                </a>
+                <table style=""></table>
+                <h5
+                    style="
+                        margin-top: 39px;
+                        font-family: 'Marine';
+                        font-style: normal;
+                        font-weight: 400;
+                        font-size: 8px;
+                        line-height: 9px;
+                        letter-spacing: 0.1em;
+                        color: #161619;
+                    "
+                >
+                    SAGE™️ - ALL RIGHTS RESERVED
+                </h5>
+            </center>
+        </body>
+    </html>
+`;
     var mailOptions = {
         from: "notification@sage.art",
         to: to,
         subject: subject,
-        text: text
+        html: html
     };
 
     transporter.sendMail(mailOptions, function(error, info) {
@@ -161,6 +346,10 @@ async function sendMail(to, subject, text) {
         }
     });
 }
+
+// fs.readFile("test.html", "utf-8", function(err, body) {
+//     sendMail("dante@sage.art", "Sage notification", body);
+// });
 
 main()
     .then(() => process.exit(0))
