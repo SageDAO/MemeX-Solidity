@@ -71,7 +71,7 @@ async function main() {
             let sellerInfo = await getUserInfo(seller);
             let nft = await getNFTInfo(tokenId.toNumber());
 
-            if (sellerInfo.email) {
+            if (sellerInfo.email && sellerInfo.receiveEmailNotification) {
                 sendMail(
                     sellerInfo.email,
                     "New NFT Sale",
@@ -151,7 +151,7 @@ async function main() {
         (auctionId, highestBidder, previousBidder, highestBid, newEndTime) => {
             let user = getUserInfo(previousBidder);
             let email = user.email;
-            let auction = getAuctionInfo(auctionId);
+            let auction = getAuctionInfo(auctionId.toNumber());
 
             if (email) {
                 sendMail(
