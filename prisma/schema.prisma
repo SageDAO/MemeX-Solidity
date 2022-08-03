@@ -176,11 +176,11 @@ model RewardType {
 
 model User {
   walletAddress                 String        @id @db.Char(42)
-  email                         String?       @db.Char(40)
-  twitterUsername               String?       @db.Char(40)
-  instagramUsername             String?       @db.Char(40)
-  webpage                       String?       @db.Char(50)
-  mediumUsername                String?       @db.Char(40)
+  email                         String?       @db.VarChar(40)
+  twitterUsername               String?       @db.VarChar(40)
+  instagramUsername             String?       @db.VarChar(40)
+  webpage                       String?       @db.VarChar(50)
+  mediumUsername                String?       @db.VarChar(40)
   createdAt                     DateTime      @default(now())
   role                          Role          @default(USER)
   bio                           String?       @db.VarChar(200)
