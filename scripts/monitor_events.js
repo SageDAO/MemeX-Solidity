@@ -157,7 +157,7 @@ async function main() {
         ) => {
             let user = await getUserInfo(previousBidder);
             let email = user.email;
-            let auction = await getAuctionInfo(auctionId.toNumber());
+            let auctionInfo = await getAuctionInfo(auctionId.toNumber());
 
             if (email && user.receiveEmailNotification) {
                 sendMail(
