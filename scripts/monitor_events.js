@@ -148,10 +148,16 @@ async function main() {
 
     auction.on(
         "BidPlaced",
-        (auctionId, highestBidder, previousBidder, highestBid, newEndTime) => {
-            let user = getUserInfo(previousBidder);
+        async (
+            auctionId,
+            highestBidder,
+            previousBidder,
+            highestBid,
+            newEndTime
+        ) => {
+            let user = await getUserInfo(previousBidder);
             let email = user.email;
-            let auction = getAuctionInfo(auctionId.toNumber());
+            let auction = await getAuctionInfo(auctionId.toNumber());
 
             if (email && user.receiveEmailNotification) {
                 sendMail(
