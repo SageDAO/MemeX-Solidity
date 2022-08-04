@@ -58,7 +58,7 @@ async function updateAuctions() {
         const endTime = Math.floor(auction.endTime / 1000);
         if (auction.contractAddress != null) {
             // if we're past endTime, inspect the auction and take the required actions
-            if (now >= endTime) {
+            if (now >= endTime && auction.winnerAddress == null) {
                 await updateAuctionInfo(auction);
             }
         }
@@ -95,7 +95,7 @@ async function updateLotteries() {
         if (lottery.contractAddress != null) {
             const endTime = Math.floor(lottery.endTime / 1000);
             // if we're past endTime, inspect the lottery and take the required actions
-            if (now >= endTime) {
+            if (now >= endTime && lottery.prizesAwardedAt == null) {
                 await inspectLotteryState(lottery);
             }
         }
