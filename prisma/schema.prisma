@@ -18,7 +18,6 @@ model Drop {
   approvedBy                       String?     @db.Char(42)
   bannerImageS3Path                String
   description                      String
-  tags                             String
   artistAddress                    String      @db.Char(42)
   NftContract                      NftContract @relation("ContractDrops", fields:[artistAddress], references: [artistAddress])
   ApprovedByUser                   User?       @relation("Drop_approvedByToUser", fields: [approvedBy], references: [walletAddress])
