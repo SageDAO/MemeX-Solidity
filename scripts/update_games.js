@@ -6,6 +6,7 @@ const keccak256 = require("keccak256");
 const createLogger = require("./logs.js");
 
 const sendMail = require("../util/email.js");
+const baseUrl = process.env.BASE_URL;
 
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();

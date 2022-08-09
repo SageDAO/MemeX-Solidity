@@ -54,10 +54,10 @@ model Auction {
   startTime             DateTime
   endTime               DateTime
   isLive                Boolean    @default(false) 
-  nftId                 Int 
-  winnerAddress         String?     @db.Char(42)
+  nftId                 Int        @unique
+  winnerAddress         String?    @db.Char(42)
   claimedAt             DateTime?
-  contractAddress       String?   @db.Char(42)
+  contractAddress       String?    @db.Char(42)
   Drop                  Drop @relation(fields: [dropId], references: [id])
   Nft                   Nft  @relation(fields: [nftId], references: [id])
 }
