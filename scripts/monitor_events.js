@@ -32,7 +32,7 @@ async function main() {
     //         "Your NFT sale was a success, time to celebrate.",
     //         nft.s3Path,
     //         `${baseUrl}artists/${test.username}`,
-    //         "See your galery",
+    //         "Visit your gallery",
     //         logger
     //     );
     // }
@@ -61,9 +61,9 @@ async function main() {
                 `EVENT ListedNFTSold: NFT ${tokenId}/${contractAddress} sold for ${price}`
             );
             let sellerInfo = await getUserInfo(seller);
-            let nft = await getNFTInfo(tokenId.toNumber());
 
             if (sellerInfo.email && sellerInfo.receiveEmailNotification) {
+                let nft = await getNFTInfo(tokenId.toNumber());
                 sendMail(
                     sellerInfo.email,
                     "New NFT Sale",
@@ -71,7 +71,7 @@ async function main() {
                     "Your NFT sale was a success, time to celebrate.",
                     nft.s3Path,
                     `${baseUrl}artists/${sellerInfo.username}`,
-                    "See your galery",
+                    "Visit your gallery",
                     logger
                 );
             }
@@ -150,14 +150,14 @@ async function main() {
         ) => {
             let user = await getUserInfo(previousBidder);
             let email = user.email;
-            let auctionInfo = await getAuctionInfo(auctionId.toNumber());
 
             if (email && user.receiveEmailNotification) {
+                let auctionInfo = await getAuctionInfo(auctionId.toNumber());
                 sendMail(
                     email,
                     "Sage Auction - NEW BID",
                     "New bid on auction",
-                    `The NFT "${auctionInfo.Nft.name}" received a new bid, but there's time if you want it.`,
+                    `The NFT "${auctionInfo.Nft.name}" received a new bid, but there's still time if you want it!`,
                     auctionInfo.Nft.s3Path,
                     `${baseUrl}drops/${auctionInfo.Drop.id}`,
                     "View",

@@ -5,6 +5,8 @@ const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
 const createLogger = require("./logs.js");
 
+const sendMail = require("../util/email.js");
+
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
@@ -271,6 +273,8 @@ async function inspectLotteryState(lottery) {
             // generate and store proofs for each winner
             await generateAndStoreProofs(leaves, tree, lottery.id);
 
+            await sendEmailNotificationsToWinners(leaves);
+
             await prisma.lottery.update({
                 where: {
                     id: lottery.id
@@ -302,6 +306,34 @@ async function generateAndStoreProofs(leaves, tree, lotteryId) {
     if (hre.network.name != "hardhat") {
         created = await prisma.prizeProof.createMany({ data: leaves });
         logger.info(`${created.count} Proofs created in the DB.`);
+    }
+}
+
+async function sendEmailNotificationsToWinners(leaves) {
+
+    async function getUserInfo(walletAddress) {
+        return await prisma.user.findUnique({ where: { walletAddress } });
+    }
+    
+    async function getNFTInfo(id) {
+        return await prisma.nft.findUnique({ where: { id } });
+    }
+
+    for (const leaf of leaves) {
+        const winner = await getUserInfo(leaf.winnerAddress);
+        if (winner.email && winner.receiveEmailNotification) {
+            const nft = await getNFTInfo(leaf.nftId);
+            sendMail(
+                winner.email,
+                "You won a SAGE NFT prize!", // subject
+                "Sage NFT Game Prize", // header
+                "Your ticket was selected for minting an NFT!", // message
+                nft.s3Path, // img
+                `${baseUrl}profile`, // link
+                "Claim NFT", // action
+                logger
+            );
+        }
     }
 }
 
