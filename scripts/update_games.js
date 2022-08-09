@@ -330,7 +330,7 @@ async function sendEmailNotificationsToWinners(leaves) {
                 "Sage NFT Game Prize", // header
                 "Your ticket was selected for minting an NFT!", // message
                 nft.s3Path, // img
-                `${baseUrl}profile`, // link
+                `${baseUrl}profile?notifications`, // link
                 "Claim NFT", // action
                 logger
             );
