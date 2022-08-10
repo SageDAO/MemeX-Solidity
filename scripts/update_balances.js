@@ -391,7 +391,7 @@ async function getUserEarnedPoints(rewardRateTypes, user) {
         logger.info(
             `This is a testnet and ${user.walletAddress} has 0 points. Adding some test points`
         );
-        earnedPoints = BigNumber(150);
+        earnedPoints = BigNumber(1000);
     }
     return earnedPoints;
 }

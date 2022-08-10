@@ -26,7 +26,7 @@ function shouldDeployContract(name) {
         case "Storage":
             return false;
         case "Marketplace":
-            return true;
+            return false;
     }
     return false;
 }
@@ -196,10 +196,14 @@ deployNftFactory = async (storageAddress, deployer) => {
 deployMarketplace = async (storage, deployer) => {
     const marketplaceAddress =
         CONTRACTS[hre.network.name]["marketplaceAddress"];
+    const ashAddress = CONTRACTS[hre.network.name]["ashAddress"];
 
     const Marketplace = await hre.ethers.getContractFactory("Marketplace");
     if (shouldDeployContract("Marketplace")) {
-        const marketplace = await Marketplace.deploy(storage.address);
+        const marketplace = await Marketplace.deploy(
+            storage.address,
+            ashAddress
+        );
 
         await marketplace.deployed();
         await storage.setAddress(
