@@ -76,7 +76,7 @@ contract SageNFT is
     }
 
     function withdraw() public onlyAdmin {
-        uint256 balance = balanceOf(address(this));
+        uint256 balance = address(this).balance;
         uint256 artist = (balance * 8000) / 10000;
         (bool sent, ) = owner().call{value: artist}("");
         if (!sent) {
