@@ -41,6 +41,7 @@ contract Marketplace {
         uint256 price,
         uint256 tokenId,
         uint256 expiresAt,
+        uint256 chainId,
         bool sellOrder,
         bytes calldata signature
     ) internal pure returns (bytes32) {
@@ -52,6 +53,7 @@ contract Marketplace {
                     price,
                     tokenId,
                     expiresAt,
+                    chainId,
                     sellOrder
                 )
             )
@@ -69,6 +71,7 @@ contract Marketplace {
         uint256 price,
         uint256 tokenId,
         uint256 expiresAt,
+        uint256 chainId,
         bool isSellOffer,
         bytes calldata signature
     ) public {
@@ -80,6 +83,7 @@ contract Marketplace {
             price,
             tokenId,
             expiresAt,
+            chainId,
             isSellOffer,
             signature
         );
@@ -92,6 +96,7 @@ contract Marketplace {
         uint256 price,
         uint256 tokenId,
         uint256 expiresAt,
+        uint256 chainId,
         bytes calldata signature
     ) public {
         require(expiresAt > block.timestamp, "Offer expired");
@@ -101,6 +106,7 @@ contract Marketplace {
             price,
             tokenId,
             expiresAt,
+            chainId,
             true,
             signature
         );
@@ -135,6 +141,7 @@ contract Marketplace {
         uint256 price,
         uint256 tokenId,
         uint256 expiresAt,
+        uint256 chainId,
         bytes calldata signature
     ) public {
         require(expiresAt > block.timestamp, "Offer expired");
@@ -144,6 +151,7 @@ contract Marketplace {
             price,
             tokenId,
             expiresAt,
+            chainId,
             false,
             signature
         );
