@@ -10,6 +10,11 @@ contract NFTFactory {
     mapping(address => SageNFT) artistContracts;
     ISageStorage sageStorage = ISageStorage(address(0));
 
+    event NewNFTContract(
+        address indexed contractAddress,
+        address indexed artistAddress
+    );
+
     /**
      * @dev Throws if not called by an admin account.
      */
@@ -44,6 +49,8 @@ contract NFTFactory {
             ),
             true
         );
+
+        emit NewNFTContract(address(newContract), artistAddress);
     }
 
     function deployByAdmin(
