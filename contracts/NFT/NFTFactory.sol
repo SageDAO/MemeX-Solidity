@@ -38,6 +38,12 @@ contract NFTFactory {
         SageNFT newContract = new SageNFT(name, symbol, address(sageStorage));
         newContract.transferOwnership(artistAddress);
         artistContracts[artistAddress] = newContract;
+        sageStorage.setBool(
+            keccak256(
+                abi.encodePacked("market.contract_wl", address(newContract))
+            ),
+            true
+        );
     }
 
     function deployByAdmin(
@@ -61,5 +67,17 @@ contract NFTFactory {
         returns (address)
     {
         return address(artistContracts[artistAddress]);
+    }
+
+    function removeWhitelistedContract(address contractAddress)
+        public
+        onlyRole("role.admin")
+    {
+        sageStorage.setBool(
+            keccak256(
+                abi.encodePacked("market.contract_wl", address(contractAddress))
+            ),
+            false
+        );
     }
 }
