@@ -4,7 +4,7 @@ const keccak256 = require("keccak256");
 
 const uri = "ipfs://aaaa/";
 
-const futureTimestamp = Math.round(new Date().getTime() / 1000) + 1000000;
+const futureTimestamp = Math.round(new Date().getTime() / 1000) + 10000000;
 const pastTimestamp = Math.round(new Date().getTime() / 1000) - 10000;
 
 describe("Marketplace Contract", () => {
@@ -27,6 +27,14 @@ describe("Marketplace Contract", () => {
 
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
+        await sageStorage.setBool(
+            ethers.utils.solidityKeccak256(
+                ["string", "address"],
+                ["role.admin", nftFactory.address]
+            ),
+            true
+        );
+
         await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
         nftContractAddress = await nftFactory.getContractAddress(
             artist.address
