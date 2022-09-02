@@ -8,7 +8,7 @@ error PermissionDenied();
 
 contract NFTFactory {
     mapping(address => SageNFT) artistContracts;
-    ISageStorage sageStorage = ISageStorage(address(0));
+    ISageStorage immutable sageStorage;
 
     event NewNFTContract(
         address indexed contractAddress,
