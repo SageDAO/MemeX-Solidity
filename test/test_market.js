@@ -4,7 +4,7 @@ const keccak256 = require("keccak256");
 
 const uri = "ipfs://aaaa/";
 
-const futureTimestamp = Math.round(new Date().getTime() / 1000) + 1000000;
+const futureTimestamp = Math.round(new Date().getTime() / 1000) + 10000000;
 const pastTimestamp = Math.round(new Date().getTime() / 1000) - 10000;
 
 describe("Marketplace Contract", () => {
@@ -27,6 +27,14 @@ describe("Marketplace Contract", () => {
 
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
+        await sageStorage.setBool(
+            ethers.utils.solidityKeccak256(
+                ["string", "address"],
+                ["role.admin", nftFactory.address]
+            ),
+            true
+        );
+
         await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
         nftContractAddress = await nftFactory.getContractAddress(
             artist.address
@@ -68,13 +76,22 @@ describe("Marketplace Contract", () => {
             .approve(market.address, "1000000000000000000");
         let message = keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ["address", "address", "uint256", "uint256", "uint256", "bool"],
+                [
+                    "address",
+                    "address",
+                    "uint256",
+                    "uint256",
+                    "uint256",
+                    "uint256",
+                    "bool"
+                ],
                 [
                     artist.address,
                     nftContractAddress,
                     "1000000000000000000",
                     1,
                     futureTimestamp,
+                    1,
                     true
                 ]
             )
@@ -89,6 +106,7 @@ describe("Marketplace Contract", () => {
                 "1000000000000000000",
                 1,
                 futureTimestamp,
+                1,
                 signedOffer
             );
         expect(await mockERC20.balanceOf(addr1.address)).to.be.eq(0);
@@ -130,6 +148,7 @@ describe("Marketplace Contract", () => {
                         "uint256",
                         "uint256",
                         "uint256",
+                        "uint256",
                         "bool"
                     ],
                     [
@@ -138,6 +157,7 @@ describe("Marketplace Contract", () => {
                         100, //price
                         1, //tokenId
                         futureTimestamp, //expireAt
+                        1, //chainId
                         true //isSellOrder
                     ]
                 )
@@ -151,6 +171,7 @@ describe("Marketplace Contract", () => {
                 100,
                 1,
                 futureTimestamp,
+                1,
                 signedOffer
             );
         await nft.connect(addr1).transferFrom(addr1.address, artist.address, 1);
@@ -161,6 +182,7 @@ describe("Marketplace Contract", () => {
                 100, //price
                 1, //tokenId
                 futureTimestamp, //expireAt
+                1, // chainId
                 signedOffer
             )
         ).to.be.revertedWith("Offer was cancelled");
@@ -177,6 +199,7 @@ describe("Marketplace Contract", () => {
                         "uint256",
                         "uint256",
                         "uint256",
+                        "uint256",
                         "bool"
                     ],
                     [
@@ -185,6 +208,7 @@ describe("Marketplace Contract", () => {
                         100,
                         1,
                         pastTimestamp,
+                        1,
                         true
                     ]
                 )
@@ -199,6 +223,7 @@ describe("Marketplace Contract", () => {
                     100,
                     1,
                     pastTimestamp,
+                    1,
                     signedOffer
                 )
         ).to.be.revertedWith("Offer expired");
@@ -215,6 +240,7 @@ describe("Marketplace Contract", () => {
                         "uint256",
                         "uint256",
                         "uint256",
+                        "uint256",
                         "bool"
                     ],
                     [
@@ -223,6 +249,7 @@ describe("Marketplace Contract", () => {
                         100,
                         1,
                         futureTimestamp,
+                        1,
                         false
                     ]
                 )
@@ -237,6 +264,7 @@ describe("Marketplace Contract", () => {
                     100,
                     1,
                     futureTimestamp,
+                    1,
                     signedOffer
                 )
         ).to.be.revertedWith("Invalid signature");
@@ -253,6 +281,7 @@ describe("Marketplace Contract", () => {
                         "uint256",
                         "uint256",
                         "uint256",
+                        "uint256",
                         "bool"
                     ],
                     [
@@ -261,6 +290,7 @@ describe("Marketplace Contract", () => {
                         100,
                         1,
                         futureTimestamp,
+                        1,
                         true
                     ]
                 )
@@ -275,6 +305,7 @@ describe("Marketplace Contract", () => {
                     100,
                     10,
                     futureTimestamp,
+                    1,
                     signedOffer
                 )
         ).to.be.revertedWith("Invalid signature");

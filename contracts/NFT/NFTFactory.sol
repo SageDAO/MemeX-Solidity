@@ -10,6 +10,11 @@ contract NFTFactory {
     mapping(address => SageNFT) artistContracts;
     ISageStorage immutable sageStorage;
 
+    event NewNFTContract(
+        address indexed contractAddress,
+        address indexed artistAddress
+    );
+
     /**
      * @dev Throws if not called by an admin account.
      */
@@ -38,6 +43,14 @@ contract NFTFactory {
         SageNFT newContract = new SageNFT(name, symbol, address(sageStorage));
         newContract.transferOwnership(artistAddress);
         artistContracts[artistAddress] = newContract;
+        sageStorage.setBool(
+            keccak256(
+                abi.encodePacked("market.contract_wl", address(newContract))
+            ),
+            true
+        );
+
+        emit NewNFTContract(address(newContract), artistAddress);
     }
 
     function deployByAdmin(
@@ -61,5 +74,17 @@ contract NFTFactory {
         returns (address)
     {
         return address(artistContracts[artistAddress]);
+    }
+
+    function removeWhitelistedContract(address contractAddress)
+        public
+        onlyRole("role.admin")
+    {
+        sageStorage.setBool(
+            keccak256(
+                abi.encodePacked("market.contract_wl", address(contractAddress))
+            ),
+            false
+        );
     }
 }

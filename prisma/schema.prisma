@@ -54,10 +54,10 @@ model Auction {
   startTime             DateTime
   endTime               DateTime
   isLive                Boolean    @default(false) 
-  nftId                 Int        @unique
-  winnerAddress         String?    @db.Char(42)
+  nftId                 Int 
+  winnerAddress         String?     @db.Char(42)
   claimedAt             DateTime?
-  contractAddress       String?    @db.Char(42)
+  contractAddress       String?   @db.Char(42)
   Drop                  Drop @relation(fields: [dropId], references: [id])
   Nft                   Nft  @relation(fields: [nftId], references: [id])
 }
@@ -100,9 +100,9 @@ model Nft {
   description              String
   metadataPath             String
   s3Path                   String
+  s3PathOptimized          String
   tags                     String
   numberOfEditions         Int          @default(0)
-  isVideo                  Boolean      @default(false)
   isHidden                 Boolean      @default(false)
   lotteryId                Int?
   price                    Float?
@@ -182,8 +182,9 @@ model User {
   mediumUsername                String?       @db.VarChar(40)
   createdAt                     DateTime      @default(now())
   role                          Role          @default(USER)
-  bio                           String?       @db.VarChar(200)
+  bio                           String?       @db.VarChar(400)
   profilePicture                String?
+  bannerImageS3Path            	String?
   receiveEmailNotification      Boolean       @default(true)
   username                      String?       @db.VarChar(40)
   DropsApproved                 Drop[]        @relation("Drop_approvedByToUser")
