@@ -26,12 +26,16 @@ describe("Lottery Contract", function() {
         artist = addr1;
 
         SageStorage = await ethers.getContractFactory("SageStorage");
-        sageStorage = await SageStorage.deploy();
+        sageStorage = await SageStorage.deploy(owner.address);
 
         Rewards = await ethers.getContractFactory("Rewards");
-        rewards = await upgrades.deployProxy(Rewards, [owner.address], {
-            kind: "uups"
-        });
+        rewards = await upgrades.deployProxy(
+            Rewards,
+            [owner.address, sageStorage.address],
+            {
+                kind: "uups"
+            }
+        );
         await rewards.deployed();
 
         MockERC20 = await ethers.getContractFactory("MockERC20");
@@ -51,18 +55,19 @@ describe("Lottery Contract", function() {
             { kind: "uups" }
         );
         await lottery.deployed();
-        await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
-        await rewards.grantRole(MANAGE_POINTS_ROLE, owner.address);
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.points"]),
+            lottery.address
+        );
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.points"]),
+            owner.address
+        );
 
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.admin", nftFactory.address]
-            ),
-            true
-        );
+        await sageStorage.grantAdmin(nftFactory.address);
+
         await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
         nftContractAddress = await nftFactory.getContractAddress(
             artist.address
@@ -73,12 +78,9 @@ describe("Lottery Contract", function() {
         MockRNG = await ethers.getContractFactory("MockRNG");
         mockRng = await MockRNG.deploy(lottery.address);
 
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.minter", lottery.address]
-            ),
-            true
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
+            lottery.address
         );
         await lottery.setRandomGenerator(mockRng.address);
 

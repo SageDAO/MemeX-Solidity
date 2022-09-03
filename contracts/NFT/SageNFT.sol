@@ -34,12 +34,7 @@ contract SageNFT is
      * @dev Throws if not called by an admin account.
      */
     modifier onlyAdmin() {
-        require(
-            sageStorage.getBool(
-                keccak256(abi.encodePacked("role.admin", msg.sender))
-            ),
-            "Admin calls only"
-        );
+        require(sageStorage.hasRole(0x00, msg.sender), "Admin calls only");
         _;
     }
 
@@ -58,9 +53,7 @@ contract SageNFT is
         string calldata uri
     ) public {
         require(
-            sageStorage.getBool(
-                keccak256(abi.encodePacked("role.minter", msg.sender))
-            ),
+            sageStorage.hasRole(keccak256("role.minter"), msg.sender),
             "No minting rights"
         );
         _safeMint(to, tokenId);

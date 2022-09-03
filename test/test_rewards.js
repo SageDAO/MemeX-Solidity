@@ -9,10 +9,23 @@ const MANAGE_POINTS_ROLE = keccak256("MANAGE_POINTS_ROLE");
 describe("Rewards Contract", function() {
     beforeEach(async () => {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
+
+        SageStorage = await ethers.getContractFactory("SageStorage");
+        sageStorage = await SageStorage.deploy(owner.address);
+
         Rewards = await ethers.getContractFactory("Rewards");
-        rewards = await upgrades.deployProxy(Rewards, [owner.address], {
-            kind: "uups"
-        });
+        rewards = await upgrades.deployProxy(
+            Rewards,
+            [owner.address, sageStorage.address],
+            {
+                kind: "uups"
+            }
+        );
+
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.points"]),
+            addr2.address
+        );
         // addr2 will simulate the lottery contract
         await rewards.grantRole(MANAGE_POINTS_ROLE, addr2.address);
     });
@@ -30,7 +43,7 @@ describe("Rewards Contract", function() {
     it("Should throw if burn points not called by lottery contract", async function() {
         await expect(
             rewards.connect(addr1).burnUserPoints(addr1.address, 1500000000)
-        ).to.be.revertedWith("Smart contract role required");
+        ).to.be.revertedWith("Missing point manager role");
     });
 
     it("Should set and update reward rates", async function() {

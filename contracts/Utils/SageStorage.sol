@@ -2,25 +2,28 @@
 pragma solidity ^0.8.0;
 
 import "../../interfaces/ISageStorage.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract SageStorage is ISageStorage {
-    bool initialized;
+contract SageStorage is ISageStorage, AccessControl {
+    //    mapping(address => bytes32) private roles;
+
+    bytes32 public constant ADMIN_ROLE = keccak256("role.admin");
+    bytes32 public constant ARTIST_ROLE = keccak256("role.artist");
+    bytes32 public constant MINTER_ROLE = keccak256("role.minter");
+    bytes32 public constant BURNER_ROLE = keccak256("role.burner");
+    bytes32 public constant MANAGE_POINTS_ROLE = keccak256("role.points");
+
     /**
      * @dev Throws if not called by an admin account.
      */
     modifier onlyAdmin() {
-        require(
-            !initialized ||
-                getBool(keccak256(abi.encodePacked("role.admin", msg.sender))),
-            "Admin calls only"
-        );
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
         _;
     }
 
     /// @dev Construct
-    constructor() {
-        setBool(keccak256(abi.encodePacked("role.admin", msg.sender)), true);
-        initialized = true;
+    constructor(address admin) {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
     // Storage maps
@@ -147,5 +150,9 @@ contract SageStorage is ISageStorage {
     /// @param _amount An amount to subtract from the record's value
     function subUint(bytes32 _key, uint256 _amount) public onlyAdmin {
         uintStorage[_key] = uintStorage[_key] -= _amount;
+    }
+
+    function grantAdmin(address account) public onlyAdmin {
+        _grantRole(DEFAULT_ADMIN_ROLE, account);
     }
 }
