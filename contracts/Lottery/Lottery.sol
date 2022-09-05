@@ -87,12 +87,11 @@ contract Lottery is
         Completed // The lottery has been completed and the numbers drawn
     }
 
-    event ResponseReceived(bytes32 indexed requestId);
     event LotteryStatusChanged(
         uint256 indexed lotteryId,
         Status indexed status
     );
-    event RequestNumbers(uint256 indexed lotteryId, bytes32 indexed requestId);
+
     event TicketCostChanged(
         address operator,
         uint256 lotteryId,
@@ -394,26 +393,22 @@ contract Lottery is
         }
         // should fail if the lottery is completed (already called drawWinningNumbers and received a response)
         require(lottery.status == Status.Closed, "Lottery must be closed!");
-        requestId_ = randomGenerator.getRandomNumber(_lotteryId);
-        // Emits that random number has been requested
-        emit RequestNumbers(_lotteryId, requestId_);
+        randomGenerator.getRandomNumber(_lotteryId);
     }
 
     /**
      * @notice Callback function called by the RNG contract after receiving the chainlink response.
      * Will use the received random number to assign prizes to random participants.
      * @param _lotteryId ID of the lottery the random number is for
-     * @param _requestId ID of the request that was sent to the RNG contract
      * @param _randomNumber Random number provided by the VRF chainlink oracle
      */
-    function receiveRandomNumber(
-        uint256 _lotteryId,
-        bytes32 _requestId,
-        uint256 _randomNumber
-    ) external onlyRandomGenerator {
+    function receiveRandomNumber(uint256 _lotteryId, uint256 _randomNumber)
+        external
+        onlyRandomGenerator
+    {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(lottery.status == Status.Closed, "Lottery must be closed");
-        emit ResponseReceived(_requestId);
+
         lottery.status = Status.Completed;
         randomSeeds[_lotteryId] = _randomNumber;
         emit LotteryStatusChanged(_lotteryId, lottery.status);
