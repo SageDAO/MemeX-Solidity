@@ -67,7 +67,6 @@ contract Lottery is
         uint32 numberOfTicketsSold; // number of tickets sold
         Status status; // Status for lotto
         INFT nftContract; // reference to the NFT Contract
-        bool isRefundable; // if true, users who don't win can withdraw their ETH back
         uint128 firstPrizeId;
         uint128 lastPrizeId;
         uint256 lotteryID; // ID for lotto
@@ -119,6 +118,12 @@ contract Lottery is
             ),
             "Admin calls only"
         );
+        _;
+    }
+
+    modifier validLottery(uint32 startTime, uint32 closeTime) {
+        require(startTime > 0, "Invalid start time");
+        require(closeTime > startTime, "Close time must be after start time");
         _;
     }
 
@@ -314,12 +319,10 @@ contract Lottery is
         INFT _nftContract,
         uint16 _maxTickets,
         Status _status,
-        bool _isRefundable,
         uint128 _firstPrizeId,
         uint128 _lastPrizeId
-    ) public onlyAdmin {
+    ) public onlyAdmin validLottery(_startTime, _closeTime) {
         LotteryInfo storage lottery = lotteryHistory[lotteryId];
-        require(lottery.startTime > 0, "Lottery does not exist");
         lottery.startTime = _startTime;
         lottery.closeTime = _closeTime;
         lottery.ticketCostPoints = _ticketCostPoints;
@@ -327,7 +330,6 @@ contract Lottery is
         lottery.nftContract = _nftContract;
         lottery.maxTickets = _maxTickets;
         lottery.status = _status;
-        lottery.isRefundable = _isRefundable;
         lottery.firstPrizeId = _firstPrizeId;
         lottery.lastPrizeId = _lastPrizeId;
         emit LotteryStatusChanged(lotteryId, _status);
@@ -341,7 +343,6 @@ contract Lottery is
      * @param _startTime lottery start time
      * @param _closeTime lottery closing time
      * @param _nftContract reference to the NFT contract
-     * @param _isRefundable refundable games allow users who didn't win to receive their ETH back
      */
     function createLottery(
         uint256 _lotteryId,
@@ -350,15 +351,11 @@ contract Lottery is
         uint32 _startTime,
         uint32 _closeTime,
         INFT _nftContract,
-        bool _isRefundable,
         uint16 _maxTickets,
         uint16 _maxTicketsPerUser,
         uint128 _firstPrizeId,
         uint128 _lastPrizeId
-    ) public onlyAdmin {
-        require(_startTime > 0, "Invalid start time");
-        require(_closeTime > _startTime, "Close time must be after start time");
-
+    ) public onlyAdmin validLottery(_startTime, _closeTime) {
         lotteries.push(_lotteryId);
         LotteryInfo memory newLottery = LotteryInfo(
             _startTime,
@@ -369,7 +366,6 @@ contract Lottery is
             0,
             Status.Created,
             _nftContract,
-            _isRefundable,
             _firstPrizeId,
             _lastPrizeId,
             _lotteryId,

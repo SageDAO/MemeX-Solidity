@@ -95,7 +95,6 @@ describe("Lottery Contract", function() {
             block.timestamp,
             block.timestamp + 86400 * 3,
             nft.address,
-            true,
             0,
             0,
             1,
@@ -108,7 +107,6 @@ describe("Lottery Contract", function() {
             block.timestamp,
             block.timestamp + 86400 * 3,
             nft.address,
-            true,
             0,
             0,
             3,
@@ -141,7 +139,6 @@ describe("Lottery Contract", function() {
             nft.address,
             1,
             3,
-            true,
             1,
             2
         );
@@ -349,7 +346,6 @@ describe("Lottery Contract", function() {
                     block.timestamp,
                     block.timestamp + 86400 * 3,
                     nft.address,
-                    true,
                     0,
                     0,
                     1,
