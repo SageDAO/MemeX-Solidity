@@ -295,6 +295,12 @@ describe("Lottery Contract", function() {
         );
     });
 
+    it("Should revert if calling requestRandomNumber with invalid lottery id", async function() {
+        await expect(lottery.requestRandomNumber(10)).to.be.revertedWith(
+            "Invalid lottery id"
+        );
+    });
+
     it("Should not call requestRandomNumber if not admin", async function() {
         await expect(
             lottery.connect(addr1).requestRandomNumber(1)

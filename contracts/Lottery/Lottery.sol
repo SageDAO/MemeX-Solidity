@@ -386,6 +386,7 @@ contract Lottery is
      */
     function requestRandomNumber(uint256 _lotteryId) external onlyAdmin {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        require(lottery.startTime > 0, "Invalid lottery id");
         require(lottery.closeTime < block.timestamp, "Lottery is not closed");
         if (lottery.status == Status.Created) {
             lottery.status = Status.Closed;
