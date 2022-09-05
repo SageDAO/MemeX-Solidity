@@ -46,20 +46,6 @@ describe("Marketplace Contract", () => {
         );
 
         _lotteryAddress = addr1.address;
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.minter", _lotteryAddress]
-            ),
-            true
-        );
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.minter", addr2.address]
-            ),
-            true
-        );
         _id = 1;
         await nft.connect(artist).artistMint(artist.address, _id, uri);
     });

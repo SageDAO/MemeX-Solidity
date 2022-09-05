@@ -303,6 +303,10 @@ async function main() {
     factory = result[0];
     newFactory = result[1];
 
+    if (newFactory) {
+        await sageStorage.grantAdmin(nftFactory.address);
+    }
+
     result = await deployRewards(deployer);
     rewards = result[0];
     newRewards = result[1];
@@ -314,10 +318,6 @@ async function main() {
     values = await deployRNG(lottery.address);
     randomness = values[0];
     newRandomness = values[1];
-
-    // result = await deployNFT(deployer, lottery);
-    // nft = result[0];
-    // newNft = result[1];
 
     result = await deployAuction(deployer);
     auction = result[0];

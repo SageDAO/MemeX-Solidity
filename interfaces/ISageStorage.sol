@@ -54,4 +54,10 @@ interface ISageStorage is IAccessControl {
     function subUint(bytes32 _key, uint256 _amount) external;
 
     function grantAdmin(address account) external;
+
+    function ARTIST_ROLE() external returns (bytes32);
+
+    function MINTER_ROLE() external returns (bytes32);
+
+    function BURNER_ROLE() external returns (bytes32);
 }

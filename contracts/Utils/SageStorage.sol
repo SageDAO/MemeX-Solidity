@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract SageStorage is ISageStorage, AccessControl {
     //    mapping(address => bytes32) private roles;
 
-    bytes32 public constant ADMIN_ROLE = keccak256("role.admin");
     bytes32 public constant ARTIST_ROLE = keccak256("role.artist");
     bytes32 public constant MINTER_ROLE = keccak256("role.minter");
     bytes32 public constant BURNER_ROLE = keccak256("role.burner");

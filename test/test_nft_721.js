@@ -66,12 +66,9 @@ describe("NFT Contract", () => {
     });
 
     it("Should be able to burn any token from authorized SC", async function() {
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.burner", addr3.address]
-            ),
-            true
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.burner"]),
+            addr3.address
         );
         await nft.connect(addr3).burnFromAuthorizedAddress(_id);
     });

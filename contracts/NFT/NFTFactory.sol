@@ -7,7 +7,7 @@ import "../../interfaces/ISageStorage.sol";
 error PermissionDenied();
 
 contract NFTFactory {
-    bytes32 public constant ARTIST_ROLE = keccak256("role.artist");
+    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
     mapping(address => SageNFT) artistContracts;
     ISageStorage immutable sageStorage;
@@ -21,13 +21,16 @@ contract NFTFactory {
      * @dev Throws if not called by an admin account.
      */
     modifier onlyAdmin() {
-        require(sageStorage.hasRole(0x00, msg.sender), "Admin calls only");
+        require(
+            sageStorage.hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            "Admin calls only"
+        );
         _;
     }
 
     modifier onlyArtist() {
         require(
-            sageStorage.hasRole(ARTIST_ROLE, msg.sender),
+            sageStorage.hasRole(sageStorage.ARTIST_ROLE(), msg.sender),
             "Artist calls only"
         );
         _;
