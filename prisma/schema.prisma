@@ -25,6 +25,7 @@ model Drop {
   Auctions                         Auction[]
   Lotteries                        Lottery[]
   UserFavoriteDrops                User[]      @relation("userFavoriteDrops")
+  FeaturedDropConfig               Config?     @relation("ConfigFeaturedDrop")
 }
 
 model Lottery {
@@ -217,6 +218,13 @@ enum OfferState {
   INVALID
 }
 
+model Config {
+  id              Int    @id @default(autoincrement())
+  featuredDropId  Int
+  FeaturedDrop    Drop  @relation("ConfigFeaturedDrop", fields:[featuredDropId], references:[id])
+  welcomeMessage  String
+}
+
 model Follow {
   walletAddress                 String @db.Char(42)
   followedAddress               String @db.Char(42)
@@ -240,4 +248,25 @@ enum WhitelistType {
   ERC721
   ERC1155
   MERKLE
+}
+
+enum SaleEventType { 
+  LOTTERY
+  AUCTION
+  MARKETPLACE
+}
+
+model SaleEvent {
+  id              Int    @id @default(autoincrement())
+  eventType       SaleEventType
+  eventId         Int    // lotteryId | auctionId | nftId
+  seller          String @db.Char(42) // artistAddress
+  buyer           String @db.Char(42)
+  amountTokens    Float // ASH
+  amountPoints    Int?
+  amountUSD       Float?
+  txHash          String @db.Char(66)
+  blockTimestamp  Int
+
+  @@unique([txHash])
 }
