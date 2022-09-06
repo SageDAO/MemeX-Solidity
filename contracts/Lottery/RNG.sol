@@ -9,9 +9,13 @@ contract RNG is Ownable, VRFConsumerBase {
     bytes32 internal keyHash;
     uint256 internal fee;
     address public lotteryAddr;
-    uint256 public currentLotteryId;
 
-    event lotteryAddressChanged(address oldAddr, address newAddr);
+    mapping(bytes32 => uint256) requestToLotteryId;
+
+    event RequestNumbers(uint256 indexed lotteryId, bytes32 indexed requestId);
+    event ResponseReceived(bytes32 indexed requestId);
+    event LotteryAddressChanged(address oldAddr, address newAddr);
+
     modifier onlyLottery() {
         require(msg.sender == lotteryAddr, "Lottery calls only");
         _;
@@ -33,7 +37,7 @@ contract RNG is Ownable, VRFConsumerBase {
         require(_lotteryAddr != address(0));
         address oldAddr = lotteryAddr;
         lotteryAddr = _lotteryAddr;
-        emit lotteryAddressChanged(oldAddr, _lotteryAddr);
+        emit LotteryAddressChanged(oldAddr, _lotteryAddr);
     }
 
     function getLotteryAddress() public view returns (address) {
@@ -43,17 +47,16 @@ contract RNG is Ownable, VRFConsumerBase {
     /**
      * Requests randomness
      */
-    function getRandomNumber(uint256 lotteryId)
-        public
-        onlyLottery
-        returns (bytes32 requestId)
-    {
+    function getRandomNumber(uint256 lotteryId) public onlyLottery {
         require(
             LINK.balanceOf(address(this)) >= fee,
             "Not enough LINK - fill contract"
         );
-        currentLotteryId = lotteryId;
-        return requestRandomness(keyHash, fee);
+        bytes32 requestId = requestRandomness(keyHash, fee);
+        requestToLotteryId[requestId] = lotteryId;
+
+        // Emits that random number has been requested
+        emit RequestNumbers(lotteryId, requestId);
     }
 
     /**
@@ -64,10 +67,10 @@ contract RNG is Ownable, VRFConsumerBase {
         override
     {
         ILottery(lotteryAddr).receiveRandomNumber(
-            currentLotteryId,
-            requestId,
+            requestToLotteryId[requestId],
             randomness
         );
+        emit ResponseReceived(requestId);
     }
 
     /**
