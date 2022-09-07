@@ -598,10 +598,3 @@ contract Lottery is
         onlyAdmin
     {}
 }
-
-interface IBalanceOf {
-    /**
-     * @dev Returns the number of tokens in ``owner``'s account.
-     */
-    function balanceOf(address owner) external view returns (uint256 balance);
-}

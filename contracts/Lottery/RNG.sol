@@ -40,10 +40,6 @@ contract RNG is Ownable, VRFConsumerBase {
         emit LotteryAddressChanged(oldAddr, _lotteryAddr);
     }
 
-    function getLotteryAddress() public view returns (address) {
-        return lotteryAddr;
-    }
-
     /**
      * Requests randomness
      */
