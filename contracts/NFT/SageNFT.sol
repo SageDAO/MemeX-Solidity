@@ -18,6 +18,8 @@ contract SageNFT is
     Ownable
 {
     ISageStorage immutable sageStorage;
+    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
+
     uint256 private constant DEFAULT_ROYALTY_PERCENTAGE = 1000; // in basis points (100 = 1%)
 
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a; // implements ERC-2981 interface
@@ -35,9 +37,7 @@ contract SageNFT is
      */
     modifier onlyAdmin() {
         require(
-            sageStorage.getBool(
-                keccak256(abi.encodePacked("role.admin", msg.sender))
-            ),
+            sageStorage.hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
             "Admin calls only"
         );
         _;
@@ -58,9 +58,7 @@ contract SageNFT is
         string calldata uri
     ) public {
         require(
-            sageStorage.getBool(
-                keccak256(abi.encodePacked("role.minter", msg.sender))
-            ),
+            sageStorage.hasRole(sageStorage.MINTER_ROLE(), msg.sender),
             "No minting rights"
         );
         _safeMint(to, tokenId);
@@ -109,9 +107,7 @@ contract SageNFT is
 
     function burnFromAuthorizedAddress(uint256 id) public {
         require(
-            sageStorage.getBool(
-                keccak256(abi.encodePacked("role.burner", msg.sender))
-            ),
+            sageStorage.hasRole(sageStorage.BURNER_ROLE(), msg.sender),
             "No burning rights"
         );
         _burn(id);

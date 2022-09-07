@@ -63,12 +63,7 @@ contract Auction is
      * @dev Throws if not called by an admin account.
      */
     modifier onlyAdmin() {
-        require(
-            sageStorage.getBool(
-                keccak256(abi.encodePacked("role.admin", msg.sender))
-            ),
-            "Admin calls only"
-        );
+        require(sageStorage.hasRole(0x00, msg.sender), "Admin calls only");
         _;
     }
 

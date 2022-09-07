@@ -18,7 +18,7 @@ describe("Marketplace Contract", () => {
             ...addrs
         ] = await ethers.getSigners();
         SageStorage = await ethers.getContractFactory("SageStorage");
-        sageStorage = await SageStorage.deploy();
+        sageStorage = await SageStorage.deploy(owner.address);
 
         MockERC20 = await ethers.getContractFactory("MockERC20");
         mockERC20 = await MockERC20.deploy();
@@ -27,13 +27,7 @@ describe("Marketplace Contract", () => {
 
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.admin", nftFactory.address]
-            ),
-            true
-        );
+        await sageStorage.grantAdmin(nftFactory.address);
 
         await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
         nftContractAddress = await nftFactory.getContractAddress(
@@ -52,20 +46,6 @@ describe("Marketplace Contract", () => {
         );
 
         _lotteryAddress = addr1.address;
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.minter", _lotteryAddress]
-            ),
-            true
-        );
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.minter", addr2.address]
-            ),
-            true
-        );
         _id = 1;
         await nft.connect(artist).artistMint(artist.address, _id, uri);
     });
@@ -116,12 +96,9 @@ describe("Marketplace Contract", () => {
     });
 
     it("Artist should deploy contract and mint", async function() {
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.artist", artist2.address]
-            ),
-            true
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.artist"]),
+            artist2.address
         );
         await nftFactory.connect(artist2).deployByArtist("Artist2", "SAGE");
         let cAddress = await nftFactory.getContractAddress(artist2.address);

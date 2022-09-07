@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../../interfaces/IRewards.sol";
+import "../../interfaces/ISageStorage.sol";
 
 contract Rewards is
     Initializable,
@@ -12,8 +13,8 @@ contract Rewards is
     UUPSUpgradeable,
     IRewards
 {
-    bytes32 public constant MANAGE_POINTS_ROLE =
-        keccak256("MANAGE_POINTS_ROLE");
+    ISageStorage private sageStorage;
+
     mapping(address => uint256) public totalPointsUsed;
 
     mapping(address => uint256) public totalPointsEarned;
@@ -42,14 +43,26 @@ contract Rewards is
     event PointsEarned(address indexed user, uint256 amount);
 
     modifier onlyAdmin() {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
+        require(sageStorage.hasRole(0x00, msg.sender), "Admin calls only");
         _;
     }
 
-    function initialize(address _admin) public initializer {
+    modifier onlyPointManager() {
+        require(
+            sageStorage.hasRole(keccak256("role.points"), msg.sender),
+            "Missing point manager role"
+        );
+        _;
+    }
+
+    function initialize(address _admin, address _sageStorage)
+        public
+        initializer
+    {
         __AccessControl_init();
         __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        sageStorage = ISageStorage(_sageStorage);
     }
 
     function getPointsUsedBatch(address[] calldata addresses)
@@ -106,12 +119,9 @@ contract Rewards is
 
     function burnUserPoints(address _account, uint256 _amount)
         public
+        onlyPointManager
         returns (uint256)
     {
-        require(
-            hasRole(MANAGE_POINTS_ROLE, msg.sender),
-            "Smart contract role required"
-        );
         uint256 available = totalPointsEarned[_account] -
             totalPointsUsed[_account];
         require(_amount > 0, "Can't use 0 points");
@@ -122,22 +132,20 @@ contract Rewards is
         return available - _amount;
     }
 
-    function refundPoints(address _account, uint256 _points) public {
-        require(
-            hasRole(MANAGE_POINTS_ROLE, msg.sender),
-            "No role to do refunds"
-        );
+    function refundPoints(address _account, uint256 _points)
+        public
+        onlyPointManager
+    {
         require(_points > 0, "Can't refund 0 points");
         uint256 used = totalPointsUsed[_account];
         require(_points <= used, "Can't refund more points than used");
         totalPointsUsed[_account] = used - _points;
     }
 
-    function claimPoints(address _address, uint256 _points) public {
-        require(
-            hasRole(MANAGE_POINTS_ROLE, msg.sender),
-            "No role to claim points"
-        );
+    function claimPoints(address _address, uint256 _points)
+        public
+        onlyPointManager
+    {
         uint256 newPoints = _points - totalPointsEarned[_address];
         require(newPoints > 0, "Participant already claimed all points");
 

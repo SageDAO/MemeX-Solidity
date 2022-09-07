@@ -14,17 +14,11 @@ describe("NFT Contract", () => {
             ...addrs
         ] = await ethers.getSigners();
         SageStorage = await ethers.getContractFactory("SageStorage");
-        sageStorage = await SageStorage.deploy();
+        sageStorage = await SageStorage.deploy(owner.address);
 
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.admin", nftFactory.address]
-            ),
-            true
-        );
+        await sageStorage.grantAdmin(nftFactory.address);
         await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
 
         nftContractAddress = await nftFactory.getContractAddress(
@@ -32,19 +26,13 @@ describe("NFT Contract", () => {
         );
         nft = await ethers.getContractAt("SageNFT", nftContractAddress);
         _lotteryAddress = addr1.address;
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.minter", _lotteryAddress]
-            ),
-            true
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
+            _lotteryAddress
         );
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.minter", addr2.address]
-            ),
-            true
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
+            addr2.address
         );
         _id = 1;
 
@@ -78,12 +66,9 @@ describe("NFT Contract", () => {
     });
 
     it("Should be able to burn any token from authorized SC", async function() {
-        await sageStorage.setBool(
-            ethers.utils.solidityKeccak256(
-                ["string", "address"],
-                ["role.burner", addr3.address]
-            ),
-            true
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.burner"]),
+            addr3.address
         );
         await nft.connect(addr3).burnFromAuthorizedAddress(_id);
     });
