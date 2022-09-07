@@ -220,8 +220,8 @@ enum OfferState {
 
 model Config {
   id              Int    @id @default(autoincrement())
-  featuredDropId  Int
-  FeaturedDrop    Drop  @relation("ConfigFeaturedDrop", fields:[featuredDropId], references:[id])
+  featuredDropId  Int?
+  FeaturedDrop    Drop?  @relation("ConfigFeaturedDrop", fields:[featuredDropId], references:[id])
   welcomeMessage  String
 }
 
