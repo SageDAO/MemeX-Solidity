@@ -197,6 +197,7 @@ contract Auction is
         uint256 endTime = auction.endTime;
         uint256 startTime = auction.startTime;
         uint256 timestamp = block.timestamp;
+        require(startTime > 0, "Auction doesn't exist");
         require(timestamp >= startTime, "Auction not available");
         require(endTime == 0 || endTime > timestamp, "Auction has ended");
         require(!auction.settled, "Auction already settled");
