@@ -95,7 +95,43 @@ function sendMail(to, subject, header, message, img, link, action, logger) {
                         ${action}
                     </button>
                 </a>
-                <table style=""></table>
+                <table>
+				<a href="https://discord.gg/sageweb3">  
+                    <img
+                        src="https://sage-utils.s3.amazonaws.com/DISCORD+-+MAIL.png"
+                        alt=""
+                        style="width: 40px"
+                    />
+                </a>
+                <a href="https://twitter.com/SAGE_WEB3">
+                    <img
+                        src="https://sage-utils.s3.amazonaws.com/TWITTER+-+MAIL.png"
+                        alt=""
+                        style="width: 40px"
+                    />
+                </a>
+                <a href="https://medium.com/@SAGE_WEB3">
+                    <img
+                        src="https://sage-utils.s3.amazonaws.com/MEDIUM+-+MAIL.png"
+                        alt=""
+                        style="width: 40px"
+                    />
+                </a>
+                <a href="https://app.uniswap.org/#/swap?chain=mainnet&inputCurrency=ETH&outputCurrency=0x64D91f12Ece7362F91A6f8E7940Cd55F05060b92">
+                    <img
+                        src="https://sage-utils.s3.amazonaws.com/UNISWAP+-+MAIL.png"
+                        alt=""
+                        style="width: 40px"
+                    />
+                </a>
+                <a href="https://coinmarketcap.com/currencies/ash/">
+                    <img
+                        src="https://sage-utils.s3.amazonaws.com/COINMARKET+-+MAIL.png"
+                        alt=""
+                        style="width: 40px"
+                    />
+                </a>
+			</table>
                 <h5
                     style="
                         margin-top: 39px;
