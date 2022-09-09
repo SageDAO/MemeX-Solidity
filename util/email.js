@@ -23,6 +23,14 @@ function sendMail(to, subject, header, message, img, link, action, logger) {
                     background-color: #fff;
                 "
             >
+            <img
+				src="https://sage-utils.s3.amazonaws.com/SAGE+-+logotype+-+MAIL.png"
+				alt=""
+				style="
+                    width: 250px;
+                    margin-top: 30px;
+                "
+			/>
                 <h1
                     style="
                         border: none;

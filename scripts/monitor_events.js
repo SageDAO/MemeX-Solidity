@@ -21,21 +21,21 @@ async function main() {
     );
     logger.info("Starting monitor_events script");
 
-    let test = await getUserInfo("0x58a26F4048CdFd3785aD2139AeD336595af22fF5");
-    let nft = await getNFTInfo(900);
+    // let test = await getUserInfo("0x58a26F4048CdFd3785aD2139AeD336595af22fF5");
+    // let nft = await getNFTInfo(900);
 
-    if (test.email) {
-        sendMail(
-            "dante@sage.art", //test.email,
-            "New NFT Sale",
-            "NFT Sale",
-            "Your NFT sale was a success, time to celebrate.",
-            nft.s3Path,
-            `${baseUrl}artists/${test.username}`,
-            "Visit your gallery",
-            logger
-        );
-    }
+    // if (test.email) {
+    //     sendMail(
+    //         test.email,
+    //         "New NFT Sale",
+    //         "NFT Sale",
+    //         "Your NFT sale was a success, time to celebrate.",
+    //         nft.s3Path,
+    //         `${baseUrl}artists/${test.username}`,
+    //         "Visit your gallery",
+    //         logger
+    //     );
+    // }
     const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
     const Lottery = await hre.ethers.getContractFactory("Lottery");
     const lottery = await Lottery.attach(lotteryAddress);
