@@ -167,7 +167,7 @@ contract Auction is
         uint32 _endTime
     ) public onlyAdmin {
         require(!auctions[_auctionId].settled, "Auction already settled");
-        require(auctions[_auctionId].endTime > 0, "Auction not found");
+        require(auctions[_auctionId].startTime > 0, "Auction not found");
         AuctionInfo storage auction = auctions[_auctionId];
         auction.minimumPrice = _minimumPrice;
         auction.endTime = _endTime;
