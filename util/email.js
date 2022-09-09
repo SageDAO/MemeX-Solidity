@@ -26,9 +26,9 @@ function sendMail(to, subject, header, message, img, link, action, logger) {
                 <h1
                     style="
                         border: none;
-                        margin-top: 40px;
                         text-transform: uppercase;
-                        font-family: 'Marine';
+                        margin-top: 10px;
+                        font-family: 'HelveticaNeue';
                         font-weight: 400;
                         font-size: 20px;
                         line-height: 136.6%;
@@ -42,7 +42,7 @@ function sendMail(to, subject, header, message, img, link, action, logger) {
                     style="
                         margin-top: 24px;
                         text-transform: uppercase;
-                        font-family: 'Marine';
+                        font-family: 'HelveticaNeue';
                         font-weight: 400;
                         font-size: 12px;
                         line-height: 130%;
@@ -77,7 +77,7 @@ function sendMail(to, subject, header, message, img, link, action, logger) {
                             width: 311px;
                             vertical-align: center;
                             height: 51px;
-                            font-family: 'Marine';
+                            font-family: 'HelveticaNeue';
                             margin-top: 32px;
                             background-color: red;
                             border: none;
@@ -95,6 +95,21 @@ function sendMail(to, subject, header, message, img, link, action, logger) {
                         ${action}
                     </button>
                 </a>
+                <h5
+				style="
+					margin-top: 71px;
+					text-transform: uppercase;
+					font-family: 'HelveticaNeue';
+					font-style: normal;
+					font-weight: 400;
+					font-size: 14px;
+					line-height: 17px;
+					text-align: center;
+					color: #161619;
+				"
+			>
+				follow us on
+			</h5>
                 <table>
 				<a href="https://discord.gg/sageweb3">  
                     <img
@@ -135,7 +150,7 @@ function sendMail(to, subject, header, message, img, link, action, logger) {
                 <h5
                     style="
                         margin-top: 39px;
-                        font-family: 'Marine';
+                        font-family: 'HelveticaNeue';
                         font-style: normal;
                         font-weight: 400;
                         font-size: 8px;
