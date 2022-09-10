@@ -300,7 +300,7 @@ describe("Lottery Contract", function() {
         expect(lot.status).to.equal(1);
     });
 
-    it.only("Should revert trying to buy tickets on a cancelled lottery", async function() {
+    it("Should revert trying to buy tickets on a cancelled lottery", async function() {
         await lottery.cancelLottery(1);
         await expect(
             lottery
