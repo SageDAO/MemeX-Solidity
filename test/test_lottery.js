@@ -294,6 +294,21 @@ describe("Lottery Contract", function() {
         );
     });
 
+    it("Should be able to cancel a lottery", async function() {
+        await lottery.cancelLottery(1);
+        lot = await lottery.getLotteryInfo(1);
+        expect(lot.status).to.equal(1);
+    });
+
+    it.only("Should revert trying to buy tickets on a cancelled lottery", async function() {
+        await lottery.cancelLottery(1);
+        await expect(
+            lottery
+                .connect(addr1)
+                .buyTicketsWithSignedMessage(150, 1, 1, signedMessageA)
+        ).to.be.revertedWith("Lottery is not open");
+    });
+
     it("Should revert if calling requestRandomNumber with invalid lottery id", async function() {
         await expect(lottery.requestRandomNumber(10)).to.be.revertedWith(
             "Invalid lottery id"

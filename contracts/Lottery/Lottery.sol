@@ -484,7 +484,8 @@ contract Lottery is
         }
         require(
             lottery.startTime <= block.timestamp &&
-                lottery.closeTime > block.timestamp,
+                lottery.closeTime > block.timestamp &&
+                lottery.status != Status.Cancelled,
             "Lottery is not open"
         );
 
