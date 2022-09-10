@@ -91,7 +91,8 @@ async function updateLotteries() {
 
     const now = Math.floor(Date.now() / 1000);
     for (const lottery of lotteries) {
-        if (lottery.prizesAwardedAt != null) {
+        if (lottery.prizesAwardedAt != null || lottery.status == 1) {
+            // skip if prizes awarded or lottery was cancelled
             continue;
         }
 
@@ -311,11 +312,10 @@ async function generateAndStoreProofs(leaves, tree, lotteryId) {
 }
 
 async function sendEmailNotificationsToWinners(leaves) {
-
     async function getUserInfo(walletAddress) {
         return await prisma.user.findUnique({ where: { walletAddress } });
     }
-    
+
     async function getNFTInfo(id) {
         return await prisma.nft.findUnique({ where: { id } });
     }
