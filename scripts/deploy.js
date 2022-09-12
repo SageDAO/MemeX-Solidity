@@ -20,9 +20,9 @@ function shouldDeployContract(name) {
         case "Lottery":
             return false;
         case "Auction":
-            return false;
-        case "Factory":
             return true;
+        case "Factory":
+            return false;
         case "Storage":
             return false;
         case "Marketplace":
@@ -50,13 +50,17 @@ replaceAddress = async (oldAddress, newAddress) => {
     }
 };
 
-deployRewards = async deployer => {
+deployRewards = async (deployer, sageStorage) => {
     const rewardsAddress = CONTRACTS[hre.network.name]["rewardsAddress"];
     const Rewards = await hre.ethers.getContractFactory("Rewards");
     if (shouldDeployContract("Rewards")) {
-        rewards = await upgrades.deployProxy(Rewards, [deployer.address], {
-            kind: "uups"
-        });
+        rewards = await upgrades.deployProxy(
+            Rewards,
+            [deployer.address, sageStorage.address],
+            {
+                kind: "uups"
+            }
+        );
         await rewards.deployed();
         console.log("Rewards contract deployed to:", rewards.address);
         // await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
@@ -135,8 +139,8 @@ deployRNG = async () => {
             "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311";
         _fee = ethers.utils.parseEther("0.1"); // 0.1 LINK
         randomness = await Randomness.deploy(
-            _vrfCoordinator,
-            _linkToken,
+            vrfCoordinator,
+            linkToken,
             _lotteryAddr,
             _keyHash,
             _fee
@@ -160,10 +164,15 @@ deployStorage = async deployer => {
     const storageAddress = CONTRACTS[hre.network.name]["storageAddress"];
 
     const Storage = await hre.ethers.getContractFactory("SageStorage");
+    const treasuryAddress = "0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E";
     if (shouldDeployContract("Storage")) {
-        const storage = await Storage.deploy();
+        const storage = await Storage.deploy(deployer.address);
         await storage.deployed();
         console.log("Storage deployed to:", storage.address);
+        await storage.setAddress(
+            keccak256("address.treasury"),
+            treasuryAddress
+        );
         replaceAddress(storageAddress, storage.address);
         return [storage, true];
     } else {
@@ -224,7 +233,7 @@ deployMarketplace = async (storage, deployer) => {
     return [marketplace, false];
 };
 
-deployAuction = async deployer => {
+deployAuction = async (deployer, sageStorage) => {
     const auctionAddress = CONTRACTS[hre.network.name]["auctionAddress"];
     const ashAddress = CONTRACTS[hre.network.name]["ashAddress"];
 
@@ -232,7 +241,7 @@ deployAuction = async deployer => {
     if (shouldDeployContract("Auction")) {
         const auction = await upgrades.deployProxy(
             Auction,
-            [deployer.address, 3600, 100, ashAddress],
+            [deployer.address, 3600, 100, ashAddress, sageStorage.address],
             { kind: "uups" }
         );
         await auction.deployed();
@@ -300,14 +309,14 @@ async function main() {
     newMarketplace = result[1];
 
     result = await deployNftFactory(storage.address, deployer);
-    factory = result[0];
+    nftFactory = result[0];
     newFactory = result[1];
 
     if (newFactory) {
-        await sageStorage.grantAdmin(nftFactory.address);
+        await storage.grantAdmin(nftFactory.address);
     }
 
-    result = await deployRewards(deployer);
+    result = await deployRewards(deployer, storage);
     rewards = result[0];
     newRewards = result[1];
 
@@ -319,7 +328,7 @@ async function main() {
     randomness = values[0];
     newRandomness = values[1];
 
-    result = await deployAuction(deployer);
+    result = await deployAuction(deployer, storage);
     auction = result[0];
     newAuction = result[1];
 

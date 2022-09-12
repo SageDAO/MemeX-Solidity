@@ -65,22 +65,30 @@ contract SageNFT is
         _setTokenURI(tokenId, uri);
     }
 
-    function withdrawERC20(address erc20) public onlyAdmin {
+    function getTreasuryAddress() public view returns (address) {
+        return sageStorage.getAddress(keccak256("address.treasury"));
+    }
+
+    function withdrawERC20(address erc20) public {
+        address treasury = getTreasuryAddress();
+        require(treasury != address(0), "No treasury address");
         IERC20 token = IERC20(erc20);
         uint256 balance = token.balanceOf(address(this));
         uint256 artist = (balance * 8000) / 10000;
         token.transfer(owner(), artist);
-        token.transfer(msg.sender, balance - artist);
+        token.transfer(treasury, balance - artist);
     }
 
-    function withdraw() public onlyAdmin {
+    function withdraw() public {
+        address treasury = getTreasuryAddress();
+        require(treasury != address(0), "No treasury address");
         uint256 balance = address(this).balance;
         uint256 artist = (balance * 8000) / 10000;
         (bool sent, ) = owner().call{value: artist}("");
         if (!sent) {
             revert();
         }
-        (sent, ) = msg.sender.call{value: balance - artist}("");
+        (sent, ) = treasury.call{value: balance - artist}("");
         if (!sent) {
             revert();
         }
