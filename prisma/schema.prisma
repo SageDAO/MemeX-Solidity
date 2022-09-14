@@ -102,7 +102,7 @@ model Nft {
   metadataPath             String
   s3Path                   String
   s3PathOptimized          String
-  tags                     String
+  tags                     String?
   numberOfEditions         Int          @default(0)
   isHidden                 Boolean      @default(false)
   lotteryId                Int?
