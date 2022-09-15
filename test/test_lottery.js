@@ -439,7 +439,7 @@ describe("Lottery Contract", function() {
             expect(await lottery.prizeMerkleRoots(2)).to.equal(root);
         });
 
-        it.only("Should claim prize with a merkle proof", async function() {
+        it("Should claim prize with a merkle proof", async function() {
             expect(await mockERC20.balanceOf(nftContractAddress)).to.equal(0);
             await lottery.connect(addr1).buyTickets(2, 1);
             await lottery.updateLottery(
