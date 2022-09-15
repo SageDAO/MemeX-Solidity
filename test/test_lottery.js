@@ -439,12 +439,29 @@ describe("Lottery Contract", function() {
             expect(await lottery.prizeMerkleRoots(2)).to.equal(root);
         });
 
-        it("Should claim prize with a merkle proof", async function() {
+        it.only("Should claim prize with a merkle proof", async function() {
+            expect(await mockERC20.balanceOf(nftContractAddress)).to.equal(0);
             await lottery.connect(addr1).buyTickets(2, 1);
+            await lottery.updateLottery(
+                1,
+                5,
+                ONE_ETH,
+                block.timestamp,
+                block.timestamp + 86400 * 3,
+                nft.address,
+                1,
+                3,
+                1,
+                2
+            );
             await lottery
                 .connect(addr1)
                 .claimPrize(2, addr1.address, 1, "ipfs://aaa", prizeProofA);
             expect(await nft.balanceOf(addr1.address)).to.equal(1);
+            expect(await mockERC20.balanceOf(nftContractAddress)).to.equal(1);
+            await expect(
+                lottery.connect(addr1).refund(1, 1)
+            ).to.be.revertedWith("Can't refund the amount requested");
         });
 
         it("Should allow to claim more than one prize", async function() {
