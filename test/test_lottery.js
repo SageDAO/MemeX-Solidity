@@ -223,6 +223,26 @@ describe("Lottery Contract", function() {
         expect(await lottery.getLotteryTicketCount(1)).to.equal(10);
     });
 
+    it("Should let user refund 10 lottery tickets", async function() {
+        await mockERC20.connect(addr2).approve(lottery.address, 1000);
+        await lottery.connect(addr2).buyTickets(2, 10);
+        expect(await lottery.getParticipantsCount(2)).to.equal(1);
+        expect(await lottery.getLotteryTicketCount(2)).to.equal(10);
+        await lottery.updateLottery(
+            2,
+            0,
+            1,
+            block.timestamp,
+            block.timestamp + 86400 * 3,
+            nft.address,
+            1,
+            3,
+            1,
+            2
+        );
+        expect(await lottery.connect(addr2).refund(2, 10)).to.emit("Refunded");
+    });
+
     it("Should not let users buy tickets when lottery sold out", async function() {
         await lottery.setMaxTickets(1, 1);
         await lottery

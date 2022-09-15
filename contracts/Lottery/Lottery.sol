@@ -51,6 +51,9 @@ contract Lottery is
     //lotteryid => address => participantInfo
     mapping(uint256 => mapping(address => ParticipantInfo)) public participants;
 
+    // lotteryid => address => available refund
+    mapping(uint256 => mapping(address => uint256)) public refunds;
+
     //loteryId => randomNumber received from RNG
     mapping(uint256 => uint256) public randomSeeds;
 
@@ -105,6 +108,12 @@ contract Lottery is
         uint256 indexed lotteryId,
         address indexed participantAddress,
         uint256 indexed prizeId
+    );
+
+    event Refunded(
+        uint256 indexed lotteryId,
+        address indexed participantAddress,
+        uint256 amount
     );
 
     /**
@@ -500,11 +509,8 @@ contract Lottery is
         lottery.numberOfTicketsSold += uint32(_numberOfTicketsToBuy);
         if (costPerTicketTokens > 0) {
             totalCostInTokens = _numberOfTicketsToBuy * costPerTicketTokens;
-            token.transferFrom(
-                msg.sender,
-                address(lottery.nftContract),
-                totalCostInTokens
-            );
+            token.transferFrom(msg.sender, address(this), totalCostInTokens);
+            refunds[_lotteryId][msg.sender] += totalCostInTokens;
         }
 
         if (numTicketsBought == 0) {
@@ -539,6 +545,15 @@ contract Lottery is
             ),
             "Invalid merkle proof"
         );
+
+        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        uint256 ticketCostTokens = lottery.ticketCostTokens;
+        if (ticketCostTokens > 0) {
+            // After claiming a prize the refundable balance should decrease.
+            // Reverts if the user doesn't have enough refundable balance.
+            refunds[_lotteryId][msg.sender] -= ticketCostTokens;
+            token.transfer(address(lottery.nftContract), ticketCostTokens);
+        }
 
         participants[_lotteryId][_winner].claimedPrize = true;
         INFT nftContract = lotteryHistory[_lotteryId].nftContract;
@@ -583,6 +598,21 @@ contract Lottery is
      */
     function withdraw(address _to, uint256 _amount) external onlyAdmin {
         token.transfer(_to, _amount);
+    }
+
+    function refund(uint256 _lotteryId, uint256 _amount)
+        external
+        whenNotPaused
+    {
+        LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        require(lottery.status != Status.Created, "Invalid lottery state");
+        require(
+            refunds[_lotteryId][msg.sender] >= _amount,
+            "Can't refund the amount requested"
+        );
+        refunds[_lotteryId][msg.sender] -= _amount;
+        token.transfer(msg.sender, _amount);
+        emit Refunded(_lotteryId, msg.sender, _amount);
     }
 
     function pause() external onlyAdmin {
