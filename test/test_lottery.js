@@ -240,7 +240,9 @@ describe("Lottery Contract", function() {
             1,
             2
         );
-        expect(await lottery.connect(addr2).refund(2, 10)).to.emit("Refunded");
+        expect(
+            await lottery.connect(addr2).refund(addr2.address, 2, 10)
+        ).to.emit("Refunded");
     });
 
     it("Should not let users buy tickets when lottery sold out", async function() {
@@ -460,7 +462,7 @@ describe("Lottery Contract", function() {
             expect(await nft.balanceOf(addr1.address)).to.equal(1);
             expect(await mockERC20.balanceOf(nftContractAddress)).to.equal(1);
             await expect(
-                lottery.connect(addr1).refund(1, 1)
+                lottery.connect(addr1).refund(addr1.address, 1, 1)
             ).to.be.revertedWith("Can't refund the amount requested");
         });
 

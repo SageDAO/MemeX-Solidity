@@ -600,19 +600,20 @@ contract Lottery is
         token.transfer(_to, _amount);
     }
 
-    function refund(uint256 _lotteryId, uint256 _amount)
-        external
-        whenNotPaused
-    {
+    function refund(
+        address _assetOwner,
+        uint256 _lotteryId,
+        uint256 _amount
+    ) external whenNotPaused {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(lottery.status != Status.Created, "Invalid lottery state");
         require(
-            refunds[_lotteryId][msg.sender] >= _amount,
+            refunds[_lotteryId][_assetOwner] >= _amount,
             "Can't refund the amount requested"
         );
-        refunds[_lotteryId][msg.sender] -= _amount;
-        token.transfer(msg.sender, _amount);
-        emit Refunded(_lotteryId, msg.sender, _amount);
+        refunds[_lotteryId][_assetOwner] -= _amount;
+        token.transfer(_assetOwner, _amount);
+        emit Refunded(_lotteryId, _assetOwner, _amount);
     }
 
     function pause() external onlyAdmin {
