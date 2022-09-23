@@ -22,14 +22,18 @@ async function main() {
     logger.info("Starting monitor_events script");
 
     // let test = await getUserInfo("0x58a26F4048CdFd3785aD2139AeD336595af22fF5");
-    // let nft = await getNFTInfo(900);
+    // let nft = await getNFTInfo(3265);
+    // let bigintPrice = ethers.BigNumber.from("900000000000000000");
+    // let salePrice = bigintPrice / 1e18;
 
     // if (test.email) {
     //     sendMail(
     //         test.email,
     //         "New NFT Sale",
     //         "NFT Sale",
-    //         "Your NFT sale was a success, time to celebrate.",
+    //         "Your NFT sale for " +
+    //             salePrice +
+    //             " ASH was a success, time to celebrate.",
     //         nft.s3Path,
     //         `${baseUrl}artists/${test.username}`,
     //         "Visit your gallery",
@@ -65,14 +69,17 @@ async function main() {
                 `EVENT ListedNFTSold: NFT ${tokenId}/${contractAddress} sold for ${price}`
             );
             let sellerInfo = await getUserInfo(seller);
-
+            let salePrice = price / 1e18;
             if (sellerInfo.email && sellerInfo.receiveEmailNotification) {
                 let nft = await getNFTInfo(tokenId.toNumber());
+
                 sendMail(
                     sellerInfo.email,
                     "New NFT Sale",
                     "NFT Sale",
-                    "Your NFT sale was a success, time to celebrate.",
+                    "Your NFT sale for " +
+                        salePrice +
+                        " ASH was a success, time to celebrate.",
                     nft.s3Path,
                     `${baseUrl}artists/${sellerInfo.username}`,
                     "Visit your gallery",
@@ -154,14 +161,16 @@ async function main() {
         ) => {
             let user = await getUserInfo(previousBidder);
             let email = user.email;
-
+            let bidValue = highestBid / 1e18;
             if (email && user.receiveEmailNotification) {
                 let auctionInfo = await getAuctionInfo(auctionId.toNumber());
                 sendMail(
                     email,
                     "Sage Auction - NEW BID",
                     "New bid on auction",
-                    `The NFT "${auctionInfo.Nft.name}" received a new bid, but there's still time if you want it!`,
+                    `The NFT "${auctionInfo.Nft.name}" received a new bid of ` +
+                        bidValue +
+                        ` ASH, but there's still time if you want it!`,
                     auctionInfo.Nft.s3Path,
                     `${baseUrl}drops/${auctionInfo.Drop.id}`,
                     "View",
