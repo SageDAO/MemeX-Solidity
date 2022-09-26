@@ -20,7 +20,7 @@ function shouldDeployContract(name) {
         case "Lottery":
             return false;
         case "Auction":
-            return true;
+            return false;
         case "Factory":
             return false;
         case "Storage":
@@ -339,7 +339,10 @@ async function main() {
         await lottery.setRandomGenerator(randomness.address);
         await lottery.setRewardsContract(rewards.address);
         // await nft.grantRole(MINTER_ROLE, lottery.address);
-        await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
+        await storage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.points"]),
+            lottery.address
+        );
     } else {
         // else, update only the new contract references
 
@@ -359,12 +362,15 @@ async function main() {
             await lottery.setRandomGenerator(randomness.address);
             await lottery.setRewardsContract(rewards.address);
             // await nft.grantRole(MINTER_ROLE, lottery.address);
-            await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
+            await storage.grantRole(
+                ethers.utils.solidityKeccak256(["string"], ["role.points"]),
+                lottery.address
+            );
+            //await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
             await randomness.setLotteryAddress(lottery.address);
         }
         if (newRewards) {
             if (lottery && lottery.address != "") {
-                await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
                 await lottery.setRewardsContract(rewards.address);
             }
         }
