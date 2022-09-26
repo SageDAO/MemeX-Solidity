@@ -1,17 +1,17 @@
 CONTRACTS = {
-    rinkeby: {
-        marketplaceAddress: "0x5344d50C739C699b33377778763A03484875cd72",
-        storageAddress: "0x93414b220a8456B8899062411843da66b7D5659D",
-        factoryAddress: "0x0AF81caAB2C4E199DeBe4906D0B30cc5E5ed949C",
-        lotteryAddress: "0xc057dd2Dc853CCd555902231EE5669279EF27906",
-        randomnessAddress: "0xb1Cbb29DF07FE5aB52A9A485636d4612d8E934f0",
-        rewardsAddress: "0x75B9c97456Cf1921078d6f5b6DbD0AC4Ddf4237F", //imp 0x05A45Ee2E54DF5B273394Ac4368e6c3CDa89c5c6
-        auctionAddress: "0x18034a13fA7a0BD3a4aC9C5c39DE8480Db5791d7", //imp 0xc827cef79121F5Cf41684C311D7C0C4AaDdDC7c5
-        ashAddress: "0xd7315632731b7be8c618dE4374433f7C7E37A1D8",
-        vrfCoordinator: "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B",
-        linkToken: "0x01BE23585060835E02B77ef475b0Cc51aA1e0709",
+    goerli: {
+        marketplaceAddress: "0x40DC903878049BF2ca14E43eD422b9947c97bBD9",
+        storageAddress: "0xF615Ea96BEac2C8f0B3a467474D4c5d89E1CE0Bb",
+        factoryAddress: "0x3C3920be49eab5F949f9Fd332E458f1f4F092E8f",
+        lotteryAddress: "0xa3219F75fb49F0Ee7376511e7104ca61db3bb974",
+        randomnessAddress: "0x6AABB403177Be6209046eA4809408b62D22e8eD8",
+        rewardsAddress: "0x29292dbA15c6DeDb50aFD8B8CaF1C30A74331768", //imp 0x05A45Ee2E54DF5B273394Ac4368e6c3CDa89c5c6
+        auctionAddress: "0x18e981161b2021392B3F2D844793eE50A52f8232", //imp 0xc827cef79121F5Cf41684C311D7C0C4AaDdDC7c5
+        ashAddress: "0x4afD23683118561B39084Cc26BaE966e03033174",
+        vrfCoordinator: "0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D",
+        linkToken: "0x326C977E6efc84E512bB9C30f76E30c160eD06FB",
         keyHash:
-            "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311"
+            "0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15"
     },
     mainnet: {
         lotteryAddress: "0xf71aaedd6a10dB52D885472747823edDb78f7619",

@@ -333,7 +333,7 @@ async function main() {
     newAuction = result[1];
 
     // if launching from scratch, update all contract references and roles just once
-    if (newRandomness && newNft && newLottery && newRewards) {
+    if (newRandomness && newFactory && newLottery && newRewards) {
         console.log("Updating all references and roles");
         await randomness.setLotteryAddress(lottery.address);
         await lottery.setRandomGenerator(randomness.address);

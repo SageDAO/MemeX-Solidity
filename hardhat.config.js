@@ -27,6 +27,10 @@ module.exports = {
             url: process.env.PROVIDER_URL,
             accounts: [process.env.DEPLOYER_PK]
         },
+        goerli: {
+            url: process.env.PROVIDER_URL,
+            accounts: [process.env.DEPLOYER_PK]
+        },
         dev: {
             url: process.env.PROVIDER_URL,
             accounts: [process.env.DEPLOYER_PK],

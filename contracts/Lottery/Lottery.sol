@@ -604,8 +604,9 @@ contract Lottery is
         address _assetOwner,
         uint256 _lotteryId,
         uint256 _amount
-    ) external whenNotPaused {
+    ) public whenNotPaused {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        require(_amount > 0, "Can't refund 0");
         require(lottery.status != Status.Created, "Invalid lottery state");
         require(
             refunds[_lotteryId][_assetOwner] >= _amount,
@@ -614,6 +615,18 @@ contract Lottery is
         refunds[_lotteryId][_assetOwner] -= _amount;
         token.transfer(_assetOwner, _amount);
         emit Refunded(_lotteryId, _assetOwner, _amount);
+    }
+
+    function refundBatch(
+        address[] memory _owners,
+        uint256 _lotteryId,
+        uint256[] memory _amounts
+    ) external {
+        uint256 arrayLength = _owners.length;
+        require(arrayLength == _amounts.length, "Wrong arguments");
+        for (uint256 i = 0; i < arrayLength; ++i) {
+            refund(_owners[i], _lotteryId, _amounts[i]);
+        }
     }
 
     function pause() external onlyAdmin {

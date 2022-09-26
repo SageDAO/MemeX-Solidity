@@ -265,8 +265,16 @@ model SaleEvent {
   amountTokens    Float // ASH
   amountPoints    Int?
   amountUSD       Float?
-  txHash          String @db.Char(66)
+  txHash          String? @db.Char(66)
   blockTimestamp  Int
 
-  @@unique([txHash])
+}
+
+model Refund {
+  id               Int @id @default(autoincrement())
+  buyer            String @db.Char(42)
+  lotteryId        Int
+  refundableTokens Float
+  txHash           String? @db.Char(66)
+  
 }
