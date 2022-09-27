@@ -286,11 +286,41 @@ async function inspectLotteryState(lottery) {
                 }
             });
 
+            await createRefundRecords(
+                lotteryInfo,
+                tickets,
+                winnerTicketNumbers
+            );
+
             logger.info(
                 `Lottery #${lottery.id} had ${leaves.length} prizes distributed.`
             );
         }
     }
+}
+
+async function createRefundRecords(lotteryInfo, tickets, winnerTicketNumbers) {
+    const ticketCost = lotteryInfo.ticketCostTokens;
+    var refunds = new Map();
+    for (let i = 0; i < tickets.length; i++) {
+        var refund = {
+            lotteryId: lotteryInfo.id,
+            buyer: tickets[i],
+            refundableTokens: 0
+        };
+        if (!refunds.has(tickets[i])) {
+            refunds.put(tickets[i], refund);
+        }
+        if (!winnerTicketNumbers.has(tickets[i])) {
+            let value = map.get(tickets[i]).refundableTokens;
+            refund.refundableTokens = value + ticketCost;
+            map.put(tickets[i], refund);
+        }
+    }
+    const refundsArray = Array.from(map.values());
+    await prisma.ticketRefund.createMany({
+        data: refundsArray
+    });
 }
 
 async function generateAndStoreProofs(leaves, tree, lotteryId) {
