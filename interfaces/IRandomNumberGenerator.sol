@@ -5,7 +5,7 @@ interface IRandomNumberGenerator {
     /**
      * Requests randomness for a given lottery id
      */
-    function getRandomNumber(uint256 lotteryId)
+    function requestRandomWords(uint256 lotteryId)
         external
-        returns (bytes32 requestId);
+        returns (uint256 requestId);
 }

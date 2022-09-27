@@ -393,7 +393,7 @@ contract Lottery is
         }
         // should fail if the lottery is completed (already called drawWinningNumbers and received a response)
         require(lottery.status == Status.Closed, "Lottery must be closed!");
-        randomGenerator.getRandomNumber(_lotteryId);
+        randomGenerator.requestRandomWords(_lotteryId);
     }
 
     /**

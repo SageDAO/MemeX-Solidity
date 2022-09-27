@@ -1,20 +1,30 @@
-//SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import "../../interfaces/ILottery.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract RNG is Ownable, VRFConsumerBase {
-    bytes32 internal keyHash;
-    uint256 internal fee;
-    address public lotteryAddr;
-
-    mapping(bytes32 => uint256) requestToLotteryId;
-
-    event RequestNumbers(uint256 indexed lotteryId, bytes32 indexed requestId);
-    event ResponseReceived(bytes32 indexed requestId);
+contract RNG is VRFConsumerBaseV2, Ownable {
+    event RequestNumbers(uint256 indexed lotteryId, uint256 indexed requestId);
+    event ResponseReceived(uint256 indexed requestId, uint256 randomWord);
     event LotteryAddressChanged(address oldAddr, address newAddr);
+
+    mapping(uint256 => uint256) requestToLotteryId;
+    VRFCoordinatorV2Interface COORDINATOR;
+
+    uint64 s_subscriptionId;
+
+    bytes32 internal keyHash;
+
+    uint32 callbackGasLimit = 200000;
+
+    uint16 requestConfirmations = 3;
+
+    uint32 numWords = 1;
+
+    address public lotteryAddr;
 
     modifier onlyLottery() {
         require(msg.sender == lotteryAddr, "Lottery calls only");
@@ -22,15 +32,45 @@ contract RNG is Ownable, VRFConsumerBase {
     }
 
     constructor(
+        uint64 _subscriptionId,
         address _vrfCoordinator,
-        address _linkToken,
         address _lotteryAddr,
-        bytes32 _keyHash,
-        uint256 _fee
-    ) VRFConsumerBase(_vrfCoordinator, _linkToken) {
+        bytes32 _keyHash
+    ) VRFConsumerBaseV2(_vrfCoordinator) {
+        COORDINATOR = VRFCoordinatorV2Interface(_vrfCoordinator);
+        s_subscriptionId = _subscriptionId;
         keyHash = _keyHash;
-        fee = _fee;
         lotteryAddr = _lotteryAddr;
+    }
+
+    function requestRandomWords(uint256 _lotteryId)
+        external
+        onlyLottery
+        returns (uint256 requestId)
+    {
+        // Will revert if subscription is not set and funded.
+        requestId = COORDINATOR.requestRandomWords(
+            keyHash,
+            s_subscriptionId,
+            requestConfirmations,
+            callbackGasLimit,
+            numWords
+        );
+        requestToLotteryId[requestId] = _lotteryId;
+        emit RequestNumbers(_lotteryId, requestId);
+        return requestId;
+    }
+
+    function fulfillRandomWords(
+        uint256 _requestId,
+        uint256[] memory _randomWords
+    ) internal override {
+        require(requestToLotteryId[_requestId] != 0, "request not found");
+        ILottery(lotteryAddr).receiveRandomNumber(
+            requestToLotteryId[_requestId],
+            _randomWords[0]
+        );
+        emit ResponseReceived(_requestId, _randomWords[0]);
     }
 
     function setLotteryAddress(address _lotteryAddr) public onlyOwner {
@@ -38,41 +78,5 @@ contract RNG is Ownable, VRFConsumerBase {
         address oldAddr = lotteryAddr;
         lotteryAddr = _lotteryAddr;
         emit LotteryAddressChanged(oldAddr, _lotteryAddr);
-    }
-
-    /**
-     * Requests randomness
-     */
-    function getRandomNumber(uint256 lotteryId) public onlyLottery {
-        require(
-            LINK.balanceOf(address(this)) >= fee,
-            "Not enough LINK - fill contract"
-        );
-        bytes32 requestId = requestRandomness(keyHash, fee);
-        requestToLotteryId[requestId] = lotteryId;
-
-        // Emits that random number has been requested
-        emit RequestNumbers(lotteryId, requestId);
-    }
-
-    /**
-     * Callback function used by VRF Coordinator
-     */
-    function fulfillRandomness(bytes32 requestId, uint256 randomness)
-        internal
-        override
-    {
-        ILottery(lotteryAddr).receiveRandomNumber(
-            requestToLotteryId[requestId],
-            randomness
-        );
-        emit ResponseReceived(requestId);
-    }
-
-    /**
-     * Function to allow removing LINK from the contract
-     */
-    function withdrawLink(uint256 amount) external onlyOwner {
-        LINK.transfer(msg.sender, amount);
     }
 }

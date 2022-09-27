@@ -129,21 +129,18 @@ deployLottery = async (rewards, storage, deployer) => {
 
 deployRNG = async () => {
     const randAddress = CONTRACTS[hre.network.name]["randomnessAddress"];
-    const linkToken = CONTRACTS[hre.network.name]["linkToken"];
     const vrfCoordinator = CONTRACTS[hre.network.name]["vrfCoordinator"];
 
     const Randomness = await hre.ethers.getContractFactory("RNG");
     if (shouldDeployContract("RNG")) {
-        _lotteryAddr = CONTRACTS[hre.network.name]["lotteryAddress"];
-        _keyHash =
-            "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311";
-        _fee = ethers.utils.parseEther("0.1"); // 0.1 LINK
+        lotteryAddr = CONTRACTS[hre.network.name]["lotteryAddress"];
+        keyHash = CONTRACTS[hre.network.name]["keyHash"];
+        subscriptionId = CONTRACTS[hre.network.name]["chainlinkSubscriptionId"];
         randomness = await Randomness.deploy(
+            subscriptionId,
             vrfCoordinator,
-            linkToken,
-            _lotteryAddr,
-            _keyHash,
-            _fee
+            lotteryAddr,
+            keyHash
         );
         console.log("Randomness deployed to:", randomness.address);
         // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
