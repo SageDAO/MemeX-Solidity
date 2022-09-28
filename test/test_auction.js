@@ -49,51 +49,29 @@ describe("Auction Contract", function() {
 
         //await nft.grantRole(MINTER_ROLE, auction.address);
 
-        await auction.createAuction(
-            1,
-            1,
-            2,
-            parseInt(Date.now() / 1000),
-            0,
-            nft.address,
-            "ipfs://aaaaa"
-        );
-        await auction.createAuction(
-            2,
-            2,
-            2,
-            parseInt(Date.now() / 1000),
-            parseInt(Date.now() / 1000) + 2 * 86400,
-            nft.address,
-            "ipfs://bbbb"
-        );
+        auctionInfo = {
+            highestBidder: "0x0000000000000000000000000000000000000000",
+            nftContract: nft.address,
+            startTime: parseInt(Date.now() / 1000),
+            endTime: 0,
+            settled: false,
+            nftId: 1,
+            minimumPrice: 2,
+            highestBid: 0,
+            auctionId: 1,
+            nftUri: "ipfs://aaaaa"
+        };
+        await auction.createAuction(auctionInfo);
+        auctionInfo.auctionId = 2;
+        auctionInfo.nftId = 2;
+        auctionInfo.endTime = parseInt(Date.now() / 1000) + 2 * 86400;
+        auctionInfo.nftUri = "ipfs://bbbb";
+        await auction.createAuction(auctionInfo);
     });
 
     it("Should create auction - ERC20", async function() {
         let resp = await auction.getAuction(2);
         expect(resp.startTime).to.be.greaterThan(0);
-        await expect(
-            auction.createAuction(
-                3,
-                1,
-                2,
-                parseInt(Date.now() / 1000),
-                parseInt(Date.now() / 1000) + 86400,
-                nft.address,
-                "ipfs://cccc"
-            )
-        ).to.emit(auction, "AuctionCreated");
-        await expect(
-            auction.createAuction(
-                4,
-                1,
-                2,
-                parseInt(Date.now() / 1000),
-                0,
-                nft.address,
-                "ipfs://dddd"
-            )
-        ).to.emit(auction, "AuctionCreated");
     });
 
     it("Should cancel auction", async function() {
@@ -114,15 +92,8 @@ describe("Auction Contract", function() {
     });
 
     it("Should revert if bid lower than higest bid increment", async function() {
-        await auction.createAuction(
-            4,
-            1,
-            0,
-            parseInt(Date.now() / 1000),
-            parseInt(Date.now() / 1000) + 3 * 86400,
-            nft.address,
-            "ipfs://dddd"
-        );
+        auctionInfo.auctionId = 4;
+        await auction.createAuction(auctionInfo);
         await mockERC20.connect(addr2).approve(auction.address, 10000);
         await auction.connect(addr2).bid(4, 200);
         await expect(auction.connect(addr2).bid(4, 201)).to.be.revertedWith(
@@ -142,33 +113,14 @@ describe("Auction Contract", function() {
     });
 
     it("Should revert if bid = 0", async function() {
-        await auction.createAuction(
-            3,
-            1,
-            0,
-            parseInt(Date.now() / 1000),
-            parseInt(Date.now() / 1000) + 86400,
-            nft.address,
-            "ipfs://cccc"
-        );
-        await expect(auction.connect(addr2).bid(3, 0)).to.be.revertedWith(
+        await expect(auction.connect(addr2).bid(1, 0)).to.be.revertedWith(
             "Bid is lower than minimum"
         );
     });
 
     it("Should revert if calling create not being admin", async function() {
         await expect(
-            auction
-                .connect(addr1)
-                .createAuction(
-                    3,
-                    1,
-                    2,
-                    parseInt(Date.now() / 1000),
-                    parseInt(Date.now() / 1000) + 86400,
-                    nft.address,
-                    "ipfs://aaaaa"
-                )
+            auction.connect(addr1).createAuction(auctionInfo)
         ).to.be.revertedWith("Admin calls only");
     });
 

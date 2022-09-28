@@ -35,6 +35,7 @@ contract Auction is
         uint256 nftId;
         uint256 minimumPrice;
         uint256 highestBid;
+        uint256 auctionId;
         string nftUri;
     }
 
@@ -98,34 +99,29 @@ contract Auction is
         bidIncrementPercentage = _bidIncrementPercentage;
     }
 
-    function createAuction(
-        uint256 _auctionId,
-        uint256 _nftId,
-        uint256 _minimumPrice,
-        uint32 _startTime,
-        uint32 _endTime,
-        INFT _nftContract,
-        string memory _nftUri
-    ) public onlyAdmin returns (uint256 auctionId) {
-        require(_endTime == 0 || _endTime > _startTime, "Invalid auction time");
-
-        AuctionInfo memory auction = AuctionInfo(
-            address(0),
-            _nftContract,
-            _startTime,
-            _endTime,
-            false,
-            _nftId,
-            _minimumPrice,
-            0,
-            _nftUri
+    function createAuction(AuctionInfo calldata _auctionInfo) public onlyAdmin {
+        require(
+            _auctionInfo.endTime == 0 ||
+                _auctionInfo.endTime > _auctionInfo.startTime,
+            "Invalid auction time"
         );
+        require(
+            auctions[_auctionInfo.auctionId].startTime == 0,
+            "Auction already exists"
+        );
+        auctions[_auctionInfo.auctionId] = _auctionInfo;
 
-        auctions[_auctionId] = auction;
+        emit AuctionCreated(_auctionInfo.auctionId, _auctionInfo.nftId);
+    }
 
-        emit AuctionCreated(_auctionId, _nftId);
-
-        return auctionId;
+    function createAuctionBatch(AuctionInfo[] calldata _auctions)
+        public
+        onlyAdmin
+    {
+        uint256 length = _auctions.length;
+        for (uint256 i = 0; i < length; ++i) {
+            createAuction(_auctions[i]);
+        }
     }
 
     function settleAuction(uint256 _auctionId) public whenNotPaused {
