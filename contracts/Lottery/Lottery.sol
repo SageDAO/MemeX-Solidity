@@ -24,7 +24,6 @@ contract Lottery is
     PausableUpgradeable
 {
     ISageStorage private sageStorage;
-    bytes32 internal requestId_;
 
     address private signerAddress;
 
@@ -299,7 +298,6 @@ contract Lottery is
         bytes calldata _sig
     ) public {
         address _user = msg.sender;
-        // This recreates the message that was signed on the server.
         bytes32 message = prefixed(keccak256(abi.encode(_user, _points)));
         require(
             ECDSAUpgradeable.recover(message, _sig) == signerAddress,
@@ -340,43 +338,32 @@ contract Lottery is
 
     /**
      * @notice Creates a new lottery.
-     * @param _lotteryId the lottery id
-     * @param _ticketCostPoints cost in pixels
-     * @param _ticketCostTokens cost in $ASH
-     * @param _startTime lottery start time
-     * @param _closeTime lottery closing time
-     * @param _nftContract reference to the NFT contract
+     * @param _lotteryInfo lotteryInfo struct
      */
-    function createLottery(
-        uint256 _lotteryId,
-        uint256 _ticketCostPoints,
-        uint256 _ticketCostTokens,
-        uint32 _startTime,
-        uint32 _closeTime,
-        INFT _nftContract,
-        uint16 _maxTickets,
-        uint16 _maxTicketsPerUser,
-        uint128 _firstPrizeId,
-        uint128 _lastPrizeId
-    ) public onlyAdmin validLottery(_startTime, _closeTime) {
-        lotteries.push(_lotteryId);
-        LotteryInfo memory newLottery = LotteryInfo(
-            _startTime,
-            _closeTime,
-            0,
-            _maxTickets,
-            _maxTicketsPerUser,
-            0,
-            Status.Created,
-            _nftContract,
-            _firstPrizeId,
-            _lastPrizeId,
-            _lotteryId,
-            _ticketCostPoints,
-            _ticketCostTokens
+    function createLottery(LotteryInfo calldata _lotteryInfo)
+        public
+        onlyAdmin
+        validLottery(_lotteryInfo.startTime, _lotteryInfo.closeTime)
+    {
+        require(_lotteryInfo.firstPrizeId > 0, "Invalid prizes");
+        require(_lotteryInfo.numberOfTicketsSold == 0, "Invalid value");
+        require(
+            lotteryHistory[_lotteryInfo.lotteryID].firstPrizeId == 0,
+            "Lottery already exists"
         );
-        lotteryHistory[_lotteryId] = newLottery;
-        emit LotteryStatusChanged(_lotteryId, Status.Created);
+        lotteries.push(_lotteryInfo.lotteryID);
+        lotteryHistory[_lotteryInfo.lotteryID] = _lotteryInfo;
+        emit LotteryStatusChanged(_lotteryInfo.lotteryID, Status.Created);
+    }
+
+    function createLotteryBatch(LotteryInfo[] calldata _lotteries)
+        public
+        onlyAdmin
+    {
+        uint256 length = _lotteries.length;
+        for (uint256 i = 0; i < length; ++i) {
+            createLottery(_lotteries[i]);
+        }
     }
 
     /**

@@ -90,32 +90,46 @@ describe("Lottery Contract", function() {
         // create a new lottery
         blockNum = await ethers.provider.getBlockNumber();
         block = await ethers.provider.getBlock(blockNum);
-        await lottery.createLottery(
-            1,
-            10,
-            0,
-            block.timestamp,
-            block.timestamp + 86400 * 3,
-            nft.address,
-            0,
-            0,
-            1,
-            2
-        );
-        await lottery.createLottery(
-            2,
-            0,
-            1,
-            block.timestamp,
-            block.timestamp + 86400 * 3,
-            nft.address,
-            0,
-            0,
-            3,
-            4
-        );
-        lottery.setSignerAddress(owner.address);
-
+        lotteryInfo = {
+            startTime: block.timestamp,
+            closeTime: block.timestamp + 86400 * 3,
+            participantsCount: 0,
+            maxTickets: 0,
+            maxTicketsPerUser: 0,
+            numberOfTicketsSold: 0,
+            status: 0,
+            nftContract: nft.address,
+            firstPrizeId: 1,
+            lastPrizeId: 2,
+            lotteryID: 1,
+            ticketCostPoints: 10,
+            ticketCostTokens: 0
+        };
+        await lottery.createLottery(lotteryInfo);
+        //     1,
+        //     10,
+        //     0,
+        //     block.timestamp,
+        //     block.timestamp + 86400 * 3,
+        //     nft.address,
+        //     0,
+        //     0,
+        //     1,
+        //     2
+        // );
+        lotteryInfo.lotteryID = 2;
+        lotteryInfo.ticketCostPoints = 0;
+        lotteryInfo.ticketCostTokens = 1;
+        await lottery.createLottery(lotteryInfo);
+        //     2,
+        //     0,
+        //     1,
+        //     block.timestamp,
+        //     block.timestamp + 86400 * 3,
+        //     nft.address,
+        //     0,
+        //     0,
+        //     3,[i - 10]
         abiCoder = ethers.utils.defaultAbiCoder;
         leafA = keccak256(
             abiCoder.encode(["address", "uint256"], [addr1.address, 150])
@@ -129,6 +143,36 @@ describe("Lottery Contract", function() {
 
     it("Should create lotteries", async function() {
         expect(await lottery.getLotteryCount()).to.equal(2);
+    });
+
+    it("Should revert trying to create same lottery", async function() {
+        await expect(lottery.createLottery(lotteryInfo)).to.be.revertedWith(
+            "Lottery already exists"
+        );
+    });
+
+    it("Should create 5 lotteries in one tx", async function() {
+        let lotteries = new Array();
+        for (let i = 0; i < 5; i++) {
+            let lot = {
+                startTime: block.timestamp,
+                closeTime: block.timestamp + 86400 * 3,
+                participantsCount: 0,
+                maxTickets: 0,
+                maxTicketsPerUser: 0,
+                numberOfTicketsSold: 0,
+                status: 0,
+                nftContract: nft.address,
+                firstPrizeId: 1,
+                lastPrizeId: 2,
+                lotteryID: i + 10,
+                ticketCostPoints: 10,
+                ticketCostTokens: 0
+            };
+            lotteries.push(lot);
+        }
+        await lottery.createLotteryBatch(lotteries);
+        expect(await lottery.getLotteryCount()).to.equal(7);
     });
 
     it("Should update a lottery", async function() {
@@ -297,7 +341,7 @@ describe("Lottery Contract", function() {
         await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
         await ethers.provider.send("evm_mine", []);
         await lottery.requestRandomNumber(2);
-        await mockRng.fulfillRequest(2, 1);
+        await mockRng.fulfillRandomWords(2, [1]);
         await expect(lottery.requestRandomNumber(2)).to.be.revertedWith(
             "Lottery must be closed"
         );
@@ -310,7 +354,7 @@ describe("Lottery Contract", function() {
         await lottery.requestRandomNumber(2);
         await ethers.provider.send("evm_mine", []);
         await lottery.requestRandomNumber(2);
-        expect(await mockRng.fulfillRequest(2, 1)).to.have.emit(
+        expect(await mockRng.fulfillRandomWords(2, [1])).to.have.emit(
             lottery,
             "LotteryStatusChanged"
         );
@@ -376,20 +420,7 @@ describe("Lottery Contract", function() {
 
     it("Should not call createLottery if not admin", async function() {
         await expect(
-            lottery
-                .connect(addr1)
-                .createLottery(
-                    3,
-                    10,
-                    TWO_ETH,
-                    block.timestamp,
-                    block.timestamp + 86400 * 3,
-                    nft.address,
-                    0,
-                    0,
-                    1,
-                    2
-                )
+            lottery.connect(addr1).createLottery(lotteryInfo)
         ).to.be.revertedWith("Admin calls only");
     });
 

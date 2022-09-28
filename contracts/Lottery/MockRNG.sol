@@ -20,7 +20,7 @@ contract MockRNG is Ownable {
     /**
      * Requests randomness
      */
-    function getRandomNumber(uint256 lotteryId)
+    function requestRandomWords(uint256 lotteryId)
         public
         returns (bytes32 requestId)
     {
@@ -32,7 +32,10 @@ contract MockRNG is Ownable {
     /**
      * Simulates callback function used by VRF Coordinator
      */
-    function fulfillRequest(uint256 lotteryId, uint256 randomness) public {
-        ILottery(lotteryAddr).receiveRandomNumber(lotteryId, randomness);
+    function fulfillRandomWords(
+        uint256 _requestId,
+        uint256[] memory _randomWords
+    ) public {
+        ILottery(lotteryAddr).receiveRandomNumber(_requestId, _randomWords[0]);
     }
 }

@@ -93,7 +93,7 @@ async function updateLotteries() {
     for (const lottery of lotteries) {
         if (lottery.prizesAwardedAt != null || lottery.status == 1) {
             // skip if prizes awarded or lottery was cancelled
-            continue;
+            //continue;
         }
 
         if (lottery.contractAddress != null) {
@@ -110,6 +110,9 @@ async function fetchApprovedLotteries() {
     return await prisma.lottery.findMany({
         where: {
             Drop: {
+                id: {
+                    equals: 105 // REMOVER!!!!
+                },
                 approvedAt: {
                     not: null
                 }
@@ -300,7 +303,9 @@ async function inspectLotteryState(lottery) {
 }
 
 async function createRefundRecords(lotteryInfo, tickets, winnerTicketNumbers) {
-    const ticketCost = lotteryInfo.ticketCostTokens;
+    const ticketCost =
+        ethers.BigNumber.from(lotteryInfo.ticketCostTokens) /
+        1000000000000000000;
     var refunds = new Map();
     for (let i = 0; i < tickets.length; i++) {
         var refund = {
@@ -309,15 +314,15 @@ async function createRefundRecords(lotteryInfo, tickets, winnerTicketNumbers) {
             refundableTokens: 0
         };
         if (!refunds.has(tickets[i])) {
-            refunds.put(tickets[i], refund);
+            refunds.set(tickets[i], refund);
         }
         if (!winnerTicketNumbers.has(tickets[i])) {
-            let value = map.get(tickets[i]).refundableTokens;
+            let value = refunds.get(tickets[i]).refundableTokens;
             refund.refundableTokens = value + ticketCost;
-            map.put(tickets[i], refund);
+            refunds.set(tickets[i], refund);
         }
     }
-    const refundsArray = Array.from(map.values());
+    const refundsArray = Array.from(refunds.values());
     await prisma.ticketRefund.createMany({
         data: refundsArray
     });
