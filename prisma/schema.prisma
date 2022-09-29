@@ -277,4 +277,5 @@ model Refund {
   refundableTokens Float
   txHash           String? @db.Char(66)
   
+  @@unique([buyer,lotteryId])
 }

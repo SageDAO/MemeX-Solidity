@@ -44,9 +44,54 @@ async function main() {
 
     await updateLotteries();
     await updateAuctions();
+    await payRefunds();
 
     await prisma.$disconnect();
     logger.info("Game inspection script finished successfully");
+}
+
+async function payRefunds() {
+    logger.info("Checking pending refunds");
+
+    let pendingRefunds = await prisma.refund.findMany({
+        where: {
+            txHash: undefined
+        }
+    });
+
+    for (const pendingRefund of pendingRefunds) {
+        gasPrice = ethers.utils.formatUnits(
+            await ethers.provider.getGasPrice(),
+            "gwei"
+        );
+        if (gasPrice < 100) {
+            let pendingAmount = (
+                pendingRefund.refundableTokens *
+                ethers.BigNumber.from("1000000000000000000")
+            ).toString();
+            logger.info(
+                "Gas at " +
+                    gasPrice +
+                    " gwei. Sending " +
+                    pedingRefund.refundableTokens +
+                    " ASH refund to " +
+                    pendingRefund.buyer
+            );
+            let tx = await lotteryContract.refund(
+                pendingRefund.buyer,
+                pendingRefund.lotteryId,
+                pendingAmount
+            );
+            await prisma.refund.update({
+                where: {
+                    id: pendingRefund.id
+                },
+                data: {
+                    txHash: tx.hash
+                }
+            });
+        }
+    }
 }
 
 async function updateAuctions() {
@@ -93,7 +138,7 @@ async function updateLotteries() {
     for (const lottery of lotteries) {
         if (lottery.prizesAwardedAt != null || lottery.status == 1) {
             // skip if prizes awarded or lottery was cancelled
-            //continue;
+            continue;
         }
 
         if (lottery.contractAddress != null) {
@@ -110,9 +155,6 @@ async function fetchApprovedLotteries() {
     return await prisma.lottery.findMany({
         where: {
             Drop: {
-                id: {
-                    equals: 105 // REMOVER!!!!
-                },
                 approvedAt: {
                     not: null
                 }
@@ -309,23 +351,24 @@ async function createRefundRecords(lotteryInfo, tickets, winnerTicketNumbers) {
     var refunds = new Map();
     for (let i = 0; i < tickets.length; i++) {
         var refund = {
-            lotteryId: lotteryInfo.id,
+            lotteryId: lotteryInfo.lotteryID.toNumber(),
             buyer: tickets[i],
             refundableTokens: 0
         };
-        if (!refunds.has(tickets[i])) {
-            refunds.set(tickets[i], refund);
-        }
-        if (!winnerTicketNumbers.has(tickets[i])) {
+        if (!winnerTicketNumbers.has(i)) {
+            if (!refunds.has(tickets[i])) {
+                refunds.set(tickets[i], refund);
+            }
             let value = refunds.get(tickets[i]).refundableTokens;
             refund.refundableTokens = value + ticketCost;
             refunds.set(tickets[i], refund);
         }
     }
     const refundsArray = Array.from(refunds.values());
-    await prisma.ticketRefund.createMany({
+    await prisma.refund.createMany({
         data: refundsArray
     });
+    logger.info("Created refund records");
 }
 
 async function generateAndStoreProofs(leaves, tree, lotteryId) {
