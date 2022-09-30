@@ -62,6 +62,8 @@ model Auction {
   Drop                  Drop @relation(fields: [dropId], references: [id])
   Nft                   Nft  @relation(fields: [nftId], references: [id])
   Bids                  BidHistory[]
+
+  @@unique([nftId])
 }
 
 model SplitEntry {
@@ -225,6 +227,8 @@ model Config {
   featuredDropId  Int?
   FeaturedDrop    Drop?  @relation("ConfigFeaturedDrop", fields:[featuredDropId], references:[id])
   welcomeMessage  String
+
+  @@unique([featuredDropId])
 }
 
 model Follow {
