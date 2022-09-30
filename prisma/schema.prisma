@@ -61,6 +61,7 @@ model Auction {
   contractAddress       String?   @db.Char(42)
   Drop                  Drop @relation(fields: [dropId], references: [id])
   Nft                   Nft  @relation(fields: [nftId], references: [id])
+  Bids                  BidHistory[]
 }
 
 model SplitEntry {
@@ -192,6 +193,7 @@ model User {
   NftContract                   NftContract?  @relation("ArtistContract")
   EarnedPoints                  EarnedPoints?
   FavoriteDrops                 Drop[]        @relation("userFavoriteDrops")
+  Bids                          BidHistory[]  
 
   @@index([walletAddress])
   @@unique([username])
@@ -278,4 +280,14 @@ model Refund {
   txHash           String? @db.Char(66)
   
   @@unique([buyer,lotteryId])
+}
+
+model BidHistory {
+  id                    Int        @id @default(autoincrement())
+  auctionId             Int
+  bidderAddress         String @db.Char(42)
+  amount                Float
+  blockTimestamp        Int
+  Auction               Auction @relation(fields: [auctionId], references: [id])
+  Bidder                User @relation(fields: [bidderAddress], references: [walletAddress])
 }
