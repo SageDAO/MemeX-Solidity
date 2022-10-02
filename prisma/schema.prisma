@@ -256,10 +256,11 @@ enum WhitelistType {
   MERKLE
 }
 
-enum SaleEventType { 
+enum SaleEventType {
   LOTTERY
   AUCTION
   MARKETPLACE
+  REFUND  
 }
 
 model SaleEvent {
@@ -281,6 +282,7 @@ model Refund {
   buyer            String @db.Char(42)
   lotteryId        Int
   refundableTokens Float
+  blockTimestamp   Int?
   txHash           String? @db.Char(66)
   
   @@unique([buyer,lotteryId])

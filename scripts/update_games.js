@@ -55,7 +55,7 @@ async function payRefunds() {
 
     let pendingRefunds = await prisma.refund.findMany({
         where: {
-            txHash: undefined
+            txHash: null
         }
     });
 
@@ -73,7 +73,7 @@ async function payRefunds() {
                 "Gas at " +
                     gasPrice +
                     " gwei. Sending " +
-                    pedingRefund.refundableTokens +
+                    pendingRefund.refundableTokens +
                     " ASH refund to " +
                     pendingRefund.buyer
             );
@@ -82,12 +82,15 @@ async function payRefunds() {
                 pendingRefund.lotteryId,
                 pendingAmount
             );
+            let receipt = await tx.wait(1);
+            const block = await ethers.provider.getBlock(receipt.blockNumber);
             await prisma.refund.update({
                 where: {
                     id: pendingRefund.id
                 },
                 data: {
-                    txHash: tx.hash
+                    txHash: tx.hash,
+                    blockTimestamp: block.timestamp
                 }
             });
         }
