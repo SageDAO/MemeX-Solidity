@@ -363,6 +363,10 @@ async function main() {
                 ethers.utils.solidityKeccak256(["string"], ["role.points"]),
                 lottery.address
             );
+            await storage.grantRole(
+                ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
+                lottery.address
+            );
             //await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
             await randomness.setLotteryAddress(lottery.address);
         }
