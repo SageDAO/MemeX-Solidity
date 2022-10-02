@@ -260,7 +260,6 @@ enum SaleEventType {
   LOTTERY
   AUCTION
   MARKETPLACE
-  REFUND  
 }
 
 model SaleEvent {
