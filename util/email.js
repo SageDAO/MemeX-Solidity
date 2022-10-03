@@ -8,6 +8,22 @@ const transporter = nodemailer.createTransport({
     }
 });
 function sendMail(to, subject, header, message, img, link, action, logger) {
+    let imgSection = "";
+    if (img != "") {
+        imgSection = `<img
+        src="${img}"
+        alt="sdf"
+        class="content-img"
+        style="
+            display: block;
+            margin-top: 20px;
+            width: 311px;
+            height: 300px;
+            margin-left: auto;
+            margin-right: auto;
+        "
+    />`;
+    }
     const html = `
     <!DOCTYPE html>
     <html lang="en">
@@ -60,23 +76,12 @@ function sendMail(to, subject, header, message, img, link, action, logger) {
                 >
                     ${message}
                 </h4>
-                <img
-                    src="${img}"
-                    alt="sdf"
-                    class="content-img"
-                    style="
-                        display: block;
-                        margin-top: 20px;
-                        width: 311px;
-                        height: 300px;
-                        margin-left: auto;
-                        margin-right: auto;
-                    "
-                />
-                <a
-                    href="${link}"
-                    target="_blank"
-                    style="text-decoration: none"
+                    ${imgSection}
+
+                    <a  
+                        href="${link}"
+                        target="_blank"
+                        style="text-decoration: none"
                 >
                     <button
                         style="

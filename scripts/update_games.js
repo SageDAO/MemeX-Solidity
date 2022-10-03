@@ -93,6 +93,16 @@ async function payRefunds() {
                     blockTimestamp: block.timestamp
                 }
             });
+            sendMail(
+                winner.email,
+                "You received a SAGE refund!", // subject
+                "We just sent you a refund", // header
+                "Your ticket was not selected for minting, so we sent you a refund!", // message
+                nft.s3Path, // img
+                `https://etherscan.io/tx/${$tx.hash}`, // link
+                "Check Etherscan", // action
+                logger
+            );
         }
     }
 }
