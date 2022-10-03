@@ -143,7 +143,7 @@ model PrizeProof {
   uri           String
   Nft           Nft       @relation(fields: [nftId], references: [id])
   Lottery       Lottery   @relation(fields: [lotteryId], references: [id])
-  
+  User          User      @relation(fields: [winnerAddress], references: [walletAddress])
   @@id([lotteryId, winnerAddress, nftId])
 }
 
@@ -197,6 +197,7 @@ model User {
   EarnedPoints                  EarnedPoints?
   FavoriteDrops                 Drop[]        @relation("userFavoriteDrops")
   Bids                          BidHistory[]  
+  PrizeProofs                   PrizeProof[] 
 
   @@index([walletAddress])
   @@unique([username])
