@@ -93,12 +93,14 @@ async function payRefunds() {
                     blockTimestamp: block.timestamp
                 }
             });
+
+            let winner = getUserInfo(pendingRefund.buyer);
             sendMail(
                 winner.email,
                 "You received a SAGE refund!", // subject
                 "We just sent you a refund", // header
                 "Your ticket was not selected for minting, so we sent you a refund!", // message
-                nft.s3Path, // img
+                "", // no img
                 `https://etherscan.io/tx/${$tx.hash}`, // link
                 "Check Etherscan", // action
                 logger
@@ -402,15 +404,15 @@ async function generateAndStoreProofs(leaves, tree, lotteryId) {
     }
 }
 
+async function getUserInfo(walletAddress) {
+    return await prisma.user.findUnique({ where: { walletAddress } });
+}
+
+async function getNFTInfo(id) {
+    return await prisma.nft.findUnique({ where: { id } });
+}
+
 async function sendEmailNotificationsToWinners(leaves) {
-    async function getUserInfo(walletAddress) {
-        return await prisma.user.findUnique({ where: { walletAddress } });
-    }
-
-    async function getNFTInfo(id) {
-        return await prisma.nft.findUnique({ where: { id } });
-    }
-
     for (const leaf of leaves) {
         const winner = await getUserInfo(leaf.winnerAddress);
         if (winner.email && winner.receiveEmailNotification) {
