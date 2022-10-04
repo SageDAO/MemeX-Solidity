@@ -16,9 +16,9 @@ fi
 cd $SCRIPTDIR; cd ../..
 git pull
 case "$SCRIPTDIR" in
-  *dev*)     export HARDHAT_NETWORK=rinkeby ;;
-  *staging*) export HARDHAT_NETWORK=fantomtestnet ;;
-  *)         export HARDHAT_NETWORK=fantom ;;
+  *dev*)     export HARDHAT_NETWORK=goerli ;;
+  *staging*) export HARDHAT_NETWORK=goerli ;;
+  *)         export HARDHAT_NETWORK=mainnet ;;
 esac
 /home/ubuntu/.nvm/versions/node/v16.13.0/bin/node scripts/update_games.js
 
