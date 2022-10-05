@@ -384,6 +384,20 @@ async function createRefundRecords(lotteryInfo, tickets, winnerTicketNumbers) {
         data: refundsArray
     });
     logger.info("Created refund records");
+
+    for (refund of refundsArray) {
+        let user = getUserInfo(refund.buyer);
+        sendMail(
+            winner.email,
+            "A refund from SAGE", // subject
+            "", // header
+            "You have a refund for your non-winning tickets. SAGE will send the funds in batches soon. If you prefer, you can head to SAGE and claim them now.", // message
+            "", // no img
+            `${baseUrl}profile?notifications`, // link
+            "Claim refund", // action
+            logger
+        );
+    }
 }
 
 async function generateAndStoreProofs(leaves, tree, lotteryId) {
