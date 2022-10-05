@@ -101,7 +101,7 @@ async function payRefunds() {
                 "We just sent you a refund", // header
                 "Your ticket was not selected for minting, so we sent you a refund!", // message
                 "", // no img
-                `https://etherscan.io/tx/${$tx.hash}`, // link
+                `https://etherscan.io/tx/${tx.hash}`, // link
                 "Check Etherscan", // action
                 logger
             );
@@ -388,7 +388,7 @@ async function createRefundRecords(lotteryInfo, tickets, winnerTicketNumbers) {
     for (refund of refundsArray) {
         let user = getUserInfo(refund.buyer);
         sendMail(
-            winner.email,
+            user.email,
             "A refund from SAGE", // subject
             "", // header
             "You have a refund for your non-winning tickets. SAGE will send the funds in batches soon. If you prefer, you can head to SAGE and claim them now.", // message
