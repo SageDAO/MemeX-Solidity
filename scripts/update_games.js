@@ -94,9 +94,9 @@ async function payRefunds() {
                 }
             });
 
-            let winner = getUserInfo(pendingRefund.buyer);
+            let user = await getUserInfo(pendingRefund.buyer);
             sendMail(
-                winner.email,
+                user.email,
                 "You received a SAGE refund!", // subject
                 "We just sent you a refund", // header
                 "Your ticket was not selected for minting, so we sent you a refund!", // message
@@ -386,7 +386,7 @@ async function createRefundRecords(lotteryInfo, tickets, winnerTicketNumbers) {
     logger.info("Created refund records");
 
     for (refund of refundsArray) {
-        let user = getUserInfo(refund.buyer);
+        let user = await getUserInfo(refund.buyer);
         sendMail(
             user.email,
             "A refund from SAGE", // subject
