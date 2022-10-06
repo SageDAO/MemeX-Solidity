@@ -95,13 +95,19 @@ async function payRefunds() {
             });
 
             let user = await getUserInfo(pendingRefund.buyer);
+            let link;
+            if (hre.network.name != "goerli") {
+                link = `https://goerli.etherscan.io/tx/${tx.hash}`
+            } else {
+                `https://etherscan.io/tx/${tx.hash}`
+            }
             sendMail(
                 user.email,
                 "You received a SAGE refund!", // subject
                 "We just sent you a refund", // header
                 "Your ticket was not selected for minting, so we sent you a refund!", // message
                 "", // no img
-                `https://etherscan.io/tx/${tx.hash}`, // link
+                , // link
                 "Check Etherscan", // action
                 logger
             );
