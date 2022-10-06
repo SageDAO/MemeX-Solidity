@@ -22,8 +22,7 @@ contract Auction is
 
     mapping(uint256 => AuctionInfo) public auctions;
 
-    uint256 constant DEFAULT_DURATION = 86400;
-    uint256 private defaultTimeExtension;
+    uint256 constant DEFAULT_EXTENSION = 600;
     uint256 private bidIncrementPercentage; // 100 = 1,00% higher than the previous bid
 
     struct AuctionInfo {
@@ -31,6 +30,7 @@ contract Auction is
         INFT nftContract;
         uint32 startTime;
         uint32 endTime;
+        uint32 duration;
         bool settled;
         uint256 nftId;
         uint256 minimumPrice;
@@ -73,7 +73,6 @@ contract Auction is
      */
     function initialize(
         address _admin,
-        uint256 _defaultTimeExtension,
         uint256 _bidIncrementPercentage,
         address _token,
         address _storage
@@ -82,14 +81,9 @@ contract Auction is
         __Pausable_init();
         __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        defaultTimeExtension = _defaultTimeExtension;
         bidIncrementPercentage = _bidIncrementPercentage;
         erc20 = IERC20(_token);
         sageStorage = ISageStorage(_storage);
-    }
-
-    function setDefaultTimeExtension(uint16 _timeExtension) public onlyAdmin {
-        defaultTimeExtension = _timeExtension;
     }
 
     function setBidIncrementPercentage(uint16 _bidIncrementPercentage)
@@ -219,13 +213,11 @@ contract Auction is
             erc20.transfer(previousBidder, previousBid);
         }
 
-        uint256 timeExtension = defaultTimeExtension;
-
         if (endTime == 0) {
-            auction.endTime = uint32(timestamp + DEFAULT_DURATION);
+            auction.endTime = uint32(timestamp + auction.duration);
         } else {
-            if (endTime - timestamp < timeExtension) {
-                endTime = timestamp + timeExtension;
+            if (endTime - timestamp < DEFAULT_EXTENSION) {
+                endTime = timestamp + DEFAULT_EXTENSION;
                 auction.endTime = uint32(endTime);
             }
         }
@@ -245,10 +237,6 @@ contract Auction is
         returns (AuctionInfo memory)
     {
         return auctions[_auctionId];
-    }
-
-    function getDefaultTimeExtension() public view returns (uint256) {
-        return defaultTimeExtension;
     }
 
     function getBidIncrementPercentage() public view returns (uint256) {

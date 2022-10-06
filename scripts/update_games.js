@@ -101,8 +101,8 @@ async function payRefunds() {
             } else {
                 `https://etherscan.io/tx/${tx.hash}`;
             }
-            sendMail(
-                user.email,
+            sendEmail(
+                user,
                 "You received a SAGE refund!", // subject
                 "We just sent you a refund", // header
                 "Your ticket was not selected for minting, so we sent you a refund!", // message
@@ -393,8 +393,8 @@ async function createRefundRecords(lotteryInfo, tickets, winnerTicketNumbers) {
 
     for (refund of refundsArray) {
         let user = await getUserInfo(refund.buyer);
-        sendMail(
-            user.email,
+        sendEmail(
+            user,
             "A refund from SAGE", // subject
             "", // header
             "You have a refund for your non-winning tickets. SAGE will send the funds in batches soon. If you prefer, you can head to SAGE and claim them now.", // message
@@ -435,19 +435,17 @@ async function getNFTInfo(id) {
 async function sendEmailNotificationsToWinners(leaves) {
     for (const leaf of leaves) {
         const winner = await getUserInfo(leaf.winnerAddress);
-        if (winner.email && winner.receiveEmailNotification) {
-            const nft = await getNFTInfo(leaf.nftId);
-            sendMail(
-                winner.email,
-                "You won a SAGE NFT prize!", // subject
-                "Sage NFT Game Prize", // header
-                "Your ticket was selected for minting an NFT!", // message
-                nft.s3Path, // img
-                `${baseUrl}profile?notifications`, // link
-                "Claim NFT", // action
-                logger
-            );
-        }
+        const nft = await getNFTInfo(leaf.nftId);
+        sendEmail(
+            winner,
+            "You won a SAGE NFT prize!", // subject
+            "Sage NFT Game Prize", // header
+            "Your ticket was selected for minting an NFT!", // message
+            nft.s3Path, // img
+            `${baseUrl}profile?notifications`, // link
+            "Claim NFT", // action
+            logger
+        );
     }
 }
 

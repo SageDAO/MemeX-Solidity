@@ -35,7 +35,7 @@ describe("Auction Contract", function() {
         Auction = await ethers.getContractFactory("Auction");
         auction = await upgrades.deployProxy(
             Auction,
-            [owner.address, 3600, 100, mockERC20.address, sageStorage.address],
+            [owner.address, 100, mockERC20.address, sageStorage.address],
             { kind: "uups" }
         );
 
@@ -54,6 +54,7 @@ describe("Auction Contract", function() {
             nftContract: nft.address,
             startTime: parseInt(Date.now() / 1000),
             endTime: 0,
+            duration: 86400,
             settled: false,
             nftId: 1,
             minimumPrice: 2,
@@ -136,21 +137,10 @@ describe("Auction Contract", function() {
         ).to.be.revertedWith("Admin calls only");
     });
 
-    it("Should revert if calling setDefaultTimeExtension not being admin", async function() {
-        await expect(
-            auction.connect(addr1).setDefaultTimeExtension(1)
-        ).to.be.revertedWith("Admin calls only");
-    });
-
     it("Should revert if calling setBidIncrement not being admin", async function() {
         await expect(
             auction.connect(addr1).setBidIncrementPercentage(1)
         ).to.be.revertedWith("Admin calls only");
-    });
-
-    it("Should set a new default time extension", async function() {
-        await auction.setDefaultTimeExtension(60);
-        expect(await auction.getDefaultTimeExtension()).to.equal(60);
     });
 
     it("Should set a new bidIncrementPercentage", async function() {
@@ -211,17 +201,31 @@ describe("Auction Contract", function() {
         );
     });
 
-    it("Should allow late bids when no endTime was set", async function() {
-        await mockERC20.connect(addr1).approve(auction.address, 4);
+    it("Should allow late bids when no endTime was set and have extensions", async function() {
+        await mockERC20.connect(addr1).approve(auction.address, 20);
         await ethers.provider.send("evm_increaseTime", [30 * 86400]);
-        await auction.connect(addr1).bid(1, 2);
+        let resp = await auction.getAuction(1);
+        expect(resp.endTime).to.equal(0);
+        tx = await auction.connect(addr1).bid(1, 2);
+        receipt = tx.wait(1);
         expect(await mockERC20.balanceOf(auction.address)).to.equal(2);
         expect(await mockERC20.balanceOf(addr1.address)).to.equal(998);
-        let resp = await auction.getAuction(1);
+        resp = await auction.getAuction(1);
+        block = await ethers.provider.getBlock(receipt.blockNumber);
+        // endTime should be set to the current block + 1 day
+        expect(resp.endTime).to.equal(block.timestamp + 86400);
         expect(resp.highestBid).to.equal(2);
         expect(resp.highestBidder).to.equal(addr1.address);
-        await ethers.provider.send("evm_increaseTime", [86401]);
-        await expect(auction.connect(addr1).bid(1, 2)).to.be.revertedWith(
+        await ethers.provider.send("evm_increaseTime", [86398]);
+        tx = await auction.connect(addr1).bid(1, 3);
+        receipt = tx.wait(1);
+        block = await ethers.provider.getBlock(receipt.blockNumber);
+        resp = await auction.getAuction(1);
+        expect(resp.endTime).to.equal(block.timestamp + 600);
+        await ethers.provider.send("evm_increaseTime", [100]);
+        tx = await auction.connect(addr1).bid(1, 4);
+        await ethers.provider.send("evm_increaseTime", [600]);
+        await expect(auction.connect(addr1).bid(1, 5)).to.be.revertedWith(
             "Auction has ended"
         );
     });

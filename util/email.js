@@ -7,7 +7,10 @@ const transporter = nodemailer.createTransport({
         pass: process.env.MAIL_SERVICE_KEY
     }
 });
-function sendMail(to, subject, header, message, img, link, action, logger) {
+function sendEmail(to, subject, header, message, img, link, action, logger) {
+    if (to.email == null || to.email == "" || !to.receiveEmailNotification) {
+        return;
+    }
     let imgSection = "";
     if (img != "") {
         imgSection = `<img
@@ -180,7 +183,7 @@ function sendMail(to, subject, header, message, img, link, action, logger) {
 `;
     var mailOptions = {
         from: "notification@sage.art",
-        to: to,
+        to: to.email,
         subject: subject,
         html: html
     };
@@ -194,4 +197,4 @@ function sendMail(to, subject, header, message, img, link, action, logger) {
     });
 }
 
-module.exports = sendMail;
+module.exports = sendEmail;

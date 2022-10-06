@@ -20,7 +20,7 @@ function shouldDeployContract(name) {
         case "Lottery":
             return false;
         case "Auction":
-            return false;
+            return true;
         case "Factory":
             return false;
         case "Storage":
@@ -238,7 +238,7 @@ deployAuction = async (deployer, sageStorage) => {
     if (shouldDeployContract("Auction")) {
         const auction = await upgrades.deployProxy(
             Auction,
-            [deployer.address, 3600, 100, ashAddress, sageStorage.address],
+            [deployer.address, 100, ashAddress, sageStorage.address],
             { kind: "uups" }
         );
         await auction.deployed();
@@ -335,10 +335,13 @@ async function main() {
         await randomness.setLotteryAddress(lottery.address);
         await lottery.setRandomGenerator(randomness.address);
         await lottery.setRewardsContract(rewards.address);
-        // await nft.grantRole(MINTER_ROLE, lottery.address);
         await storage.grantRole(
             ethers.utils.solidityKeccak256(["string"], ["role.points"]),
             lottery.address
+        );
+        await storage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
+            auction.address
         );
     } else {
         // else, update only the new contract references
@@ -349,11 +352,6 @@ async function main() {
                 await lottery.setRandomGenerator(randomness.address);
             }
         }
-
-        // if (newNft) {
-        //     await nft.grantRole(MINTER_ROLE, lottery.address);
-        //     await nft.grantRole(MINTER_ROLE, auction.address);
-        // }
 
         if (newLottery) {
             await lottery.setRandomGenerator(randomness.address);
@@ -376,9 +374,12 @@ async function main() {
             }
         }
 
-        // if (newAuction) {
-        //     await nft.grantRole(MINTER_ROLE, auction.address);
-        // }
+        if (newAuction) {
+            await storage.grantRole(
+                ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
+                auction.address
+            );
+        }
     }
 
     const artifactsPath = path.join(".", "artifacts", "contracts");
