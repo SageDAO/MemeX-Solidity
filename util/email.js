@@ -21,7 +21,7 @@ function sendEmail(to, subject, header, message, img, link, action, logger) {
             display: block;
             margin-top: 20px;
             width: 311px;
-            height: 300px;
+            height: auto;
             margin-left: auto;
             margin-right: auto;
         "
