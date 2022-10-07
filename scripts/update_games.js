@@ -165,7 +165,7 @@ async function updateLotteries() {
         if (lottery.contractAddress != null) {
             const endTime = Math.floor(lottery.endTime / 1000);
             // if we're past endTime, inspect the lottery and take the required actions
-            if (now >= endTime && lottery.prizesAwardedAt == null) {
+            if (now >= endTime) {
                 await inspectLotteryState(lottery);
             }
         }
@@ -340,12 +340,12 @@ async function inspectLotteryState(lottery) {
                 await lotteryContract.setPrizeMerkleRoot(lottery.id, root);
             }
             // generate and store proofs for each winner
-            let hasProof = prisma.prizeProof.findFirst({
+            let hasProof = await prisma.prizeProof.findMany({
                 where: {
                     lotteryId: lottery.id
                 }
             });
-            if (!hasProof) {
+            if (hasProof.length == 0) {
                 await generateAndStoreProofs(leaves, tree, lottery.id);
             }
             await prisma.lottery.update({
