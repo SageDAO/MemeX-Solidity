@@ -22,7 +22,7 @@ contract Auction is
 
     mapping(uint256 => AuctionInfo) public auctions;
 
-    uint256 constant DEFAULT_EXTENSION = 600;
+    uint256 public constant DEFAULT_EXTENSION = 600;
     uint256 private bidIncrementPercentage; // 100 = 1,00% higher than the previous bid
 
     struct AuctionInfo {
