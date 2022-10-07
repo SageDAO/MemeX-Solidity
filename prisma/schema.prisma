@@ -54,7 +54,8 @@ model Auction {
   minimumPrice          String?
   settled               Boolean    @default(false)
   startTime             DateTime
-  endTime               DateTime
+  endTime               DateTime?
+  duration              Int?
   isLive                Boolean    @default(false) 
   nftId                 Int 
   winnerAddress         String?     @db.Char(42)
