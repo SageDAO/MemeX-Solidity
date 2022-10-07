@@ -5,7 +5,7 @@ const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
 const createLogger = require("./logs.js");
 
-const sendMail = require("../util/email.js");
+const sendEmail = require("../util/email.js");
 const baseUrl = process.env.BASE_URL;
 
 const { PrismaClient } = require("@prisma/client");
@@ -237,6 +237,7 @@ async function inspectLotteryState(lottery) {
         if (numberOfTicketsSold > 0) {
             // check if there are prizeProofs stored in the DB for that lottery
             // if there aren't any, create the proofs
+
             logger.info(
                 `Lottery #${lottery.id} is closed but has no prizes yet`
             );
@@ -339,10 +340,14 @@ async function inspectLotteryState(lottery) {
                 await lotteryContract.setPrizeMerkleRoot(lottery.id, root);
             }
             // generate and store proofs for each winner
-            await generateAndStoreProofs(leaves, tree, lottery.id);
-
-            await sendEmailNotificationsToWinners(leaves);
-
+            let hasProof = prisma.prizeProof.findFirst({
+                where: {
+                    lotteryId: lottery.id
+                }
+            });
+            if (!hasProof) {
+                await generateAndStoreProofs(leaves, tree, lottery.id);
+            }
             await prisma.lottery.update({
                 where: {
                     id: lottery.id
@@ -357,6 +362,8 @@ async function inspectLotteryState(lottery) {
                 tickets,
                 winnerTicketNumbers
             );
+
+            await sendEmailNotificationsToWinners(leaves);
 
             logger.info(
                 `Lottery #${lottery.id} had ${leaves.length} prizes distributed.`
