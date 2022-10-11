@@ -32,14 +32,13 @@ contract Auction is
         uint32 endTime;
         uint32 duration;
         bool settled;
-        uint256 nftId;
         uint256 minimumPrice;
         uint256 highestBid;
         uint256 auctionId;
         string nftUri;
     }
 
-    event AuctionCreated(uint256 auctionId, uint256 nftId);
+    event AuctionCreated(uint256 auctionId, address nftContract);
 
     event AuctionCancelled(
         uint256 indexed auctionId,
@@ -105,7 +104,10 @@ contract Auction is
         );
         auctions[_auctionInfo.auctionId] = _auctionInfo;
 
-        emit AuctionCreated(_auctionInfo.auctionId, _auctionInfo.nftId);
+        emit AuctionCreated(
+            _auctionInfo.auctionId,
+            address(_auctionInfo.nftContract)
+        );
     }
 
     function createAuctionBatch(AuctionInfo[] calldata _auctions)
@@ -127,15 +129,11 @@ contract Auction is
         require(
             endTime > 0 && block.timestamp > endTime,
             "Auction is still running"
-        );
+        );  
 
         auction.settled = true;
         if (highestBidder != address(0)) {
-            auction.nftContract.safeMint(
-                highestBidder,
-                auction.nftId,
-                auction.nftUri
-            );
+            auction.nftContract.safeMint(highestBidder, auction.nftUri);
 
             erc20.transfer(address(auction.nftContract), highestBid);
         }

@@ -18,6 +18,13 @@ contract SageNFT is
     Ownable
 {
     ISageStorage immutable sageStorage;
+
+    address constant TREASURY = 0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E;
+
+    address public immutable artist;
+
+    uint256 internal id;
+
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
     uint256 private constant DEFAULT_ROYALTY_PERCENTAGE = 1000; // in basis points (100 = 1%)
@@ -27,9 +34,11 @@ contract SageNFT is
     constructor(
         string memory _name,
         string memory _symbol,
-        address _sageStorage
+        address _sageStorage,
+        address _artist
     ) ERC721(_name, _symbol) {
         sageStorage = ISageStorage(_sageStorage);
+        artist = _artist;
     }
 
     /**
@@ -43,52 +52,54 @@ contract SageNFT is
         _;
     }
 
-    function artistMint(
-        address to,
-        uint256 tokenId,
-        string calldata uri
-    ) public onlyOwner {
+    modifier onlyArtist() {
+        require(msg.sender == artist, "Only artist calls");
+        _;
+    }
+
+    function nextId() internal returns (uint256) {
+        return id++;
+    }
+
+    function artistMint(address to, string calldata uri) public onlyArtist {
+        uint256 tokenId = nextId();
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
     }
 
-    function safeMint(
-        address to,
-        uint256 tokenId,
-        string calldata uri
-    ) public {
+    function safeMint(address to, string calldata uri) public {
         require(
             sageStorage.hasRole(sageStorage.MINTER_ROLE(), msg.sender),
             "No minting rights"
         );
+        uint256 tokenId = nextId();
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
     }
 
-    function getTreasuryAddress() public view returns (address) {
-        return sageStorage.getAddress(keccak256("address.treasury"));
+    function setTokenURI(uint256 _tokenId, string calldata _uri)
+        public
+        onlyAdmin
+    {
+        _setTokenURI(_tokenId, _uri);
     }
 
     function withdrawERC20(address erc20) public {
-        address treasury = getTreasuryAddress();
-        require(treasury != address(0), "No treasury address");
         IERC20 token = IERC20(erc20);
         uint256 balance = token.balanceOf(address(this));
-        uint256 artist = (balance * 8000) / 10000;
-        token.transfer(owner(), artist);
-        token.transfer(treasury, balance - artist);
+        uint256 _artist = (balance * 8000) / 10000;
+        token.transfer(owner(), _artist);
+        token.transfer(TREASURY, balance - _artist);
     }
 
     function withdraw() public {
-        address treasury = getTreasuryAddress();
-        require(treasury != address(0), "No treasury address");
         uint256 balance = address(this).balance;
-        uint256 artist = (balance * 8000) / 10000;
-        (bool sent, ) = owner().call{value: artist}("");
+        uint256 _artist = (balance * 8000) / 10000;
+        (bool sent, ) = owner().call{value: _artist}("");
         if (!sent) {
             revert();
         }
-        (sent, ) = treasury.call{value: balance - artist}("");
+        (sent, ) = TREASURY.call{value: balance - _artist}("");
         if (!sent) {
             revert();
         }
@@ -113,12 +124,12 @@ contract SageNFT is
         super._burn(tokenId);
     }
 
-    function burnFromAuthorizedAddress(uint256 id) public {
+    function burnFromAuthorizedAddress(uint256 _id) public {
         require(
             sageStorage.hasRole(sageStorage.BURNER_ROLE(), msg.sender),
             "No burning rights"
         );
-        _burn(id);
+        _burn(_id);
     }
 
     function tokenURI(uint256 tokenId)

@@ -312,6 +312,7 @@ async function inspectLotteryState(lottery) {
                 var leaf = {
                     lotteryId: Number(lottery.id),
                     winnerAddress: tickets[randomPosition],
+                    ticketNumber: randomPosition,
                     nftId: prizes[i].id,
                     uri: prizes[i].metadataPath,
                     proof: "",
@@ -506,7 +507,7 @@ function getEncodedLeaf(lotteryId, leaf) {
     return keccak256(
         abiCoder.encode(
             ["uint256", "address", "uint256", "string"],
-            [lotteryId, leaf.winnerAddress, leaf.nftId, leaf.uri]
+            [lotteryId, leaf.winnerAddress, leaf.ticketNumber, leaf.uri]
         )
     );
 }

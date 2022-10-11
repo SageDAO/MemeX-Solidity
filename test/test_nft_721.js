@@ -34,9 +34,9 @@ describe("NFT Contract", () => {
             ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
             addr2.address
         );
-        _id = 1;
+        _id = 0;
 
-        await nft.connect(addr2).safeMint(addr2.address, _id, uri);
+        await nft.connect(addr2).safeMint(addr2.address, uri);
     });
 
     it("Should increase minter balance", async function() {
@@ -45,12 +45,6 @@ describe("NFT Contract", () => {
 
     it("Should answer correct uri", async function() {
         expect(await nft.tokenURI(_id)).to.equal(uri);
-    });
-
-    it("Should revert trying to mint same id", async function() {
-        await expect(
-            nft.connect(addr2).safeMint(addr2.address, 1, uri)
-        ).to.be.revertedWith("ERC721: token already minted");
     });
 
     it("Should be able to burn", async function() {
@@ -91,7 +85,7 @@ describe("NFT Contract", () => {
     });
 
     it("Should transfer from a to b", async function() {
-        await nft.connect(addr2).transferFrom(addr2.address, addr3.address, 1);
+        await nft.connect(addr2).transferFrom(addr2.address, addr3.address, 0);
         expect(await nft.balanceOf(addr2.address)).to.equal(0);
         expect(await nft.balanceOf(addr3.address)).to.equal(1);
     });

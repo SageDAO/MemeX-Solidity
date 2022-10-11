@@ -140,6 +140,7 @@ model PrizeProof {
   claimedAt     DateTime?
   createdAt     DateTime
   nftId         Int
+  ticketNumber  Int
   lotteryId     Int
   uri           String
   Nft           Nft       @relation(fields: [nftId], references: [id])

@@ -515,18 +515,18 @@ contract Lottery is
     function claimPrize(
         uint256 _lotteryId,
         address _winner,
-        uint256 _prizeId,
+        uint256 _ticketNumber,
         string calldata _uri,
         bytes32[] calldata _proof
     ) public whenNotPaused {
         require(
-            !claimedPrizes[_lotteryId][_prizeId],
+            !claimedPrizes[_lotteryId][_ticketNumber],
             "Participant already claimed prize"
         );
 
         require(
             _verify(
-                _leaf(_lotteryId, _winner, _prizeId, _uri),
+                _leaf(_lotteryId, _winner, _ticketNumber, _uri),
                 prizeMerkleRoots[_lotteryId],
                 _proof
             ),
@@ -545,9 +545,9 @@ contract Lottery is
         participants[_lotteryId][_winner].claimedPrize = true;
         INFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
-        claimedPrizes[_lotteryId][_prizeId] = true;
-        nftContract.safeMint(_winner, _prizeId, _uri);
-        emit PrizeClaimed(_lotteryId, _winner, _prizeId);
+        claimedPrizes[_lotteryId][_ticketNumber] = true;
+        nftContract.safeMint(_winner, _uri);
+        emit PrizeClaimed(_lotteryId, _winner, _ticketNumber);
     }
 
     function _leaf(

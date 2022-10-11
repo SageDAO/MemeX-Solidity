@@ -35,6 +35,11 @@ describe("Marketplace Contract", () => {
         );
         nft = await ethers.getContractAt("SageNFT", nftContractAddress);
 
+        await sageStorage.setAddress(
+            ethers.utils.solidityKeccak256(["string"], ["address.treasury"]),
+            owner.address
+        );
+
         Marketplace = await ethers.getContractFactory("Marketplace");
         market = await Marketplace.deploy(
             sageStorage.address,
@@ -45,9 +50,10 @@ describe("Marketplace Contract", () => {
             market.address
         );
 
+        
         _lotteryAddress = addr1.address;
         _id = 1;
-        await nft.connect(artist).artistMint(artist.address, _id, uri);
+        await nft.connect(artist).artistMint(artist.address, uri);
     });
 
     it("Should sell using signed offer", async function() {
@@ -69,7 +75,7 @@ describe("Marketplace Contract", () => {
                     artist.address,
                     nftContractAddress,
                     "1000000000000000000",
-                    1,
+                    0,
                     futureTimestamp,
                     1,
                     true
@@ -84,7 +90,7 @@ describe("Marketplace Contract", () => {
                 artist.address,
                 nftContractAddress,
                 "1000000000000000000",
-                1,
+                0,
                 futureTimestamp,
                 1,
                 signedOffer
@@ -105,7 +111,7 @@ describe("Marketplace Contract", () => {
         nftContract = await ethers.getContractAt("SageNFT", cAddress);
         await nftContract
             .connect(artist2)
-            .artistMint(artist2.address, 1, "test");
+            .artistMint(artist2.address, "test");
     });
 
     it("Non artist should not deploy contract", async function() {
@@ -132,7 +138,7 @@ describe("Marketplace Contract", () => {
                         artist.address, //signer address
                         nftContractAddress, //nft contract address
                         100, //price
-                        1, //tokenId
+                        0, //tokenId
                         futureTimestamp, //expireAt
                         1, //chainId
                         true //isSellOrder
@@ -146,18 +152,18 @@ describe("Marketplace Contract", () => {
                 artist.address,
                 nftContractAddress,
                 100,
-                1,
+                0,
                 futureTimestamp,
                 1,
                 signedOffer
             );
-        await nft.connect(addr1).transferFrom(addr1.address, artist.address, 1);
+        await nft.connect(addr1).transferFrom(addr1.address, artist.address, 0);
         await expect(
             market.connect(addr1).buyFromSellOffer(
                 artist.address, //signer address
                 nftContractAddress, //nft contract address
                 100, //price
-                1, //tokenId
+                0, //tokenId
                 futureTimestamp, //expireAt
                 1, // chainId
                 signedOffer

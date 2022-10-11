@@ -1,12 +1,12 @@
 CONTRACTS = {
     goerli: {
-        marketplaceAddress: "0x40DC903878049BF2ca14E43eD422b9947c97bBD9",
+        marketplaceAddress: "0x76a6e787ab3f2dba23d0C12354e2a0D38e46e0cF",
         storageAddress: "0xF615Ea96BEac2C8f0B3a467474D4c5d89E1CE0Bb",
-        factoryAddress: "0x3C3920be49eab5F949f9Fd332E458f1f4F092E8f",
-        lotteryAddress: "0x584eEe48f78CCAc92C434e50Fbc8827FF73FD35F",
+        factoryAddress: "0x76d6C0Bd9B51F1f751B71D68A9797A79F8243a14",
+        lotteryAddress: "0x4631e41E1C2a7DD0b328232631043D1d7D8873fd",
         randomnessAddress: "0xc1202264727FC40239295C61aa25E6Daacd2A650",
         rewardsAddress: "0x29292dbA15c6DeDb50aFD8B8CaF1C30A74331768", //imp 0x05A45Ee2E54DF5B273394Ac4368e6c3CDa89c5c6
-        auctionAddress: "0x107BB386c699C11C5Ad33cdF61029bC86Bb0B3cF", //imp 0xc827cef79121F5Cf41684C311D7C0C4AaDdDC7c5
+        auctionAddress: "0xb717Dfe02A44153F01B1e0Eb876a7e8345dcde61", //imp 0xc827cef79121F5Cf41684C311D7C0C4AaDdDC7c5
         ashAddress: "0x4afD23683118561B39084Cc26BaE966e03033174",
         vrfCoordinator: "0x2Ca8E0C643bDe4C2E08ab1fA0da3401AdAD7734D",
         linkToken: "0x326C977E6efc84E512bB9C30f76E30c160eD06FB",

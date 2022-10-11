@@ -125,7 +125,7 @@ contract Marketplace {
         require(!cancelledOrders[message], "Offer was cancelled");
         cancelledOrders[message] = true;
         nftContract.safeTransferFrom(currentOwner, msg.sender, tokenId, "");
-        if (currentOwner == INFT(contractAddress).owner()) {
+        if (currentOwner == INFT(contractAddress).artist()) {
             token.transferFrom(msg.sender, contractAddress, price);
         } else {
             (address royaltyDest, uint256 royaltyValue) = IERC2981(

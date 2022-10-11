@@ -40,17 +40,26 @@ contract NFTFactory {
         sageStorage = ISageStorage(_sageStorage);
     }
 
+    function getTreasuryAddress() public view returns (address) {
+        return sageStorage.getAddress(keccak256("address.treasury"));
+    }
+
     function createNFTContract(
         address artistAddress,
         string calldata name,
         string calldata symbol
-    ) internal {
+    ) internal returns (SageNFT) {
         require(
             address(artistContracts[artistAddress]) == address(0),
             "Contract already exists"
         );
-        SageNFT newContract = new SageNFT(name, symbol, address(sageStorage));
-        newContract.transferOwnership(artistAddress);
+
+        SageNFT newContract = new SageNFT(
+            name,
+            symbol,
+            address(sageStorage),
+            artistAddress
+        );
         artistContracts[artistAddress] = newContract;
         sageStorage.setBool(
             keccak256(
@@ -58,8 +67,8 @@ contract NFTFactory {
             ),
             true
         );
-
         emit NewNFTContract(address(newContract), artistAddress);
+        return newContract;
     }
 
     function deployByAdmin(
@@ -74,7 +83,8 @@ contract NFTFactory {
         public
         onlyArtist
     {
-        createNFTContract(msg.sender, name, symbol);
+        SageNFT newContract = createNFTContract(msg.sender, name, symbol);
+        newContract.transferOwnership(getTreasuryAddress());
     }
 
     function getContractAddress(address artistAddress)

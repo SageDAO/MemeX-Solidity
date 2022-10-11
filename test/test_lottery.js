@@ -449,7 +449,7 @@ describe("Lottery Contract", function() {
             );
             leafC = abiCoder.encode(
                 ["uint256", "address", "uint256", "string"],
-                [2, addr1.address, 2, "ipfs://ccc"]
+                [2, addr1.address, 3, "ipfs://ccc"]
             );
             buf2hex = x => "0x" + x.toString("hex");
             leaves = [leafA, leafB, leafC].map(leaf => keccak256(leaf));
@@ -509,8 +509,8 @@ describe("Lottery Contract", function() {
 
             await lottery
                 .connect(addr1)
-                .claimPrize(2, addr1.address, 2, "ipfs://ccc", prizeProofC);
-            expect(await lottery.prizeClaimed(2, 2)).to.equal(true);
+                .claimPrize(2, addr1.address, 3, "ipfs://ccc", prizeProofC);
+            expect(await lottery.prizeClaimed(2, 3)).to.equal(true);
         });
 
         it("Should throw trying to claim twice", async function() {

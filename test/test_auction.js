@@ -56,7 +56,6 @@ describe("Auction Contract", function() {
             endTime: 0,
             duration: 86400,
             settled: false,
-            nftId: 1,
             minimumPrice: 2,
             highestBid: 0,
             auctionId: 1,
@@ -64,7 +63,6 @@ describe("Auction Contract", function() {
         };
         await auction.createAuction(auctionInfo);
         auctionInfo.auctionId = 2;
-        auctionInfo.nftId = 2;
         auctionInfo.endTime = parseInt(Date.now() / 1000) + 2 * 86400;
         auctionInfo.nftUri = "ipfs://bbbb";
         await auction.createAuction(auctionInfo);
@@ -193,7 +191,7 @@ describe("Auction Contract", function() {
         await auction.connect(addr2).bid(2, 2);
         await ethers.provider.send("evm_increaseTime", [2 * 86401]);
         await auction.settleAuction(2);
-        expect(await nft.tokenURI(2)).to.be.equal("ipfs://bbbb");
+        expect(await nft.tokenURI(0)).to.be.equal("ipfs://bbbb");
         balance = await nft.balanceOf(addr2.address);
         expect(balance).to.equal(1);
         expect(await mockERC20.balanceOf(nft.address)).to.equal(
