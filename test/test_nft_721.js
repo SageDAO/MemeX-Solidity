@@ -34,7 +34,7 @@ describe("NFT Contract", () => {
             ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
             addr2.address
         );
-        _id = 0;
+        _id = 1;
 
         await nft.connect(addr2).safeMint(addr2.address, uri);
     });
@@ -54,9 +54,7 @@ describe("NFT Contract", () => {
     });
 
     it("Should not be able to burn other user's NFTs", async function() {
-        await expect(nft.connect(addr1).burn(_id)).to.be.revertedWith(
-            "ERC721: caller is not token owner nor approved"
-        );
+        await expect(nft.connect(addr1).burn(_id)).to.be.reverted;
     });
 
     it("Should be able to burn any token from authorized SC", async function() {
@@ -85,7 +83,7 @@ describe("NFT Contract", () => {
     });
 
     it("Should transfer from a to b", async function() {
-        await nft.connect(addr2).transferFrom(addr2.address, addr3.address, 0);
+        await nft.connect(addr2).transferFrom(addr2.address, addr3.address, _id);
         expect(await nft.balanceOf(addr2.address)).to.equal(0);
         expect(await nft.balanceOf(addr3.address)).to.equal(1);
     });

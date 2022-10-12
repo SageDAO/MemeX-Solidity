@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../Utils/StringUtils.sol";
 import "../../interfaces/ISageStorage.sol";
@@ -17,13 +18,16 @@ contract SageNFT is
     ERC721URIStorage,
     Ownable
 {
+    using Counters for Counters.Counter;
     ISageStorage immutable sageStorage;
 
     address constant TREASURY = 0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E;
 
     address public immutable artist;
 
-    uint256 internal id;
+    string private contractMetadata;
+
+    Counters.Counter private nextTokenId;
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
@@ -39,6 +43,8 @@ contract SageNFT is
     ) ERC721(_name, _symbol) {
         sageStorage = ISageStorage(_sageStorage);
         artist = _artist;
+        // nextTokenId is initialized to 1, since starting at 0 leads to higher gas cost for the first minter
+        nextTokenId.increment();
     }
 
     /**
@@ -57,14 +63,14 @@ contract SageNFT is
         _;
     }
 
-    function nextId() internal returns (uint256) {
-        return id++;
+    function contractURI() public view returns (string memory) {
+        return contractMetadata;
     }
 
     function artistMint(address to, string calldata uri) public onlyArtist {
-        uint256 tokenId = nextId();
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
+        uint256 currentTokenId = nextTokenId.current();
+        _safeMint(to, currentTokenId);
+        _setTokenURI(currentTokenId, uri);
     }
 
     function safeMint(address to, string calldata uri) public {
@@ -72,9 +78,9 @@ contract SageNFT is
             sageStorage.hasRole(sageStorage.MINTER_ROLE(), msg.sender),
             "No minting rights"
         );
-        uint256 tokenId = nextId();
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
+        uint256 currentTokenId = nextTokenId.current();
+        _safeMint(to, currentTokenId);
+        _setTokenURI(currentTokenId, uri);
     }
 
     function setTokenURI(uint256 _tokenId, string calldata _uri)
@@ -141,12 +147,31 @@ contract SageNFT is
         return super.tokenURI(tokenId);
     }
 
+    function setContractMetadata(string calldata _contractMetadata)
+        public
+        onlyAdmin
+    {
+        contractMetadata = _contractMetadata;
+    }
+
+    /**
+     * Override isApprovedForAll to whitelist user's OpenSea proxy accounts to enable gas-less listings.
+     */
     function isApprovedForAll(address owner, address operator)
         public
         view
         override(ERC721, IERC721)
         returns (bool)
     {
+        // Whitelist OpenSea proxy contract.
+        ProxyRegistry proxyRegistry = ProxyRegistry(
+            0xa5409ec958C83C3f309868babACA7c86DCB077c1
+        );
+        if (address(proxyRegistry.proxies(owner)) == operator) {
+            return true;
+        }
+
+        // Whitelist Sage's marketplace
         if (
             sageStorage.getAddress(
                 keccak256(abi.encodePacked("address.marketplace"))
@@ -154,6 +179,7 @@ contract SageNFT is
         ) {
             return true;
         }
+
         return super.isApprovedForAll(owner, operator);
     }
 
@@ -183,4 +209,10 @@ contract SageNFT is
             (salePrice * DEFAULT_ROYALTY_PERCENTAGE) / 10000
         );
     }
+}
+
+contract OwnableDelegateProxy {}
+
+contract ProxyRegistry {
+    mapping(address => OwnableDelegateProxy) public proxies;
 }
