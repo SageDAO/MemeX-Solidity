@@ -19,8 +19,8 @@
   },
   "dependencies": {
     "@chainlink/contracts": "^0.4.1",
-    "@openzeppelin/contracts": "^4.6.0",
-    "@openzeppelin/contracts-upgradeable": "^4.6.0",
+    "@openzeppelin/contracts": "^4.7.3",
+    "@openzeppelin/contracts-upgradeable": "^4.7.3",
     "@prisma/client": "^4.4.0",
     "bignumber": "^1.1.0",
     "dotenv": "^16.0.1",
