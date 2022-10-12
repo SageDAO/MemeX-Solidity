@@ -55,7 +55,7 @@ describe("NFT Contract", () => {
 
     it("Should not be able to burn other user's NFTs", async function() {
         await expect(nft.connect(addr1).burn(_id)).to.be.revertedWith(
-            "ERC721Burnable: caller is not owner nor approved"
+            "ERC721: caller is not token owner nor approved"
         );
     });
 
