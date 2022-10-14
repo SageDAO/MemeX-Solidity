@@ -88,6 +88,20 @@ describe("NFT Contract", () => {
         expect(await nft.balanceOf(addr3.address)).to.equal(1);
     });
 
+    it("Admin should update metadata", async function() {
+        await nft.setTokenURI(1, 'ipfs://newdata');
+        expect(await nft.tokenURI(1)).to.equal('ipfs://newdata')
+    });
+
+    it("Creator should update metadata", async function() {
+        await nft.connect(artist).setTokenURI(1, 'ipfs://newdata');
+        expect(await nft.tokenURI(1)).to.equal('ipfs://newdata')
+    });
+
+    it("User should not update metadata", async function() {
+        await expect(nft.connect(addr2).setTokenURI(1, 'ipfs://newdata')).to.revertedWith('Only creator or admin calls')
+    });
+
     it("Should signal implementation of EIP-2981", async function() {
         const INTERFACE_ID_ERC2981 = 0x2a55205a;
 

@@ -86,10 +86,12 @@ contract SageNFT is
         _incMint(to, uri);
     }
 
-    function setTokenURI(uint256 _tokenId, string calldata _uri)
-        public
-        onlyAdmin
-    {
+    function setTokenURI(uint256 _tokenId, string calldata _uri) public {
+        require(
+            sageStorage.hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ||
+                msg.sender == artist,
+            "Only creator or admin calls"
+        );
         _setTokenURI(_tokenId, _uri);
     }
 
@@ -97,14 +99,14 @@ contract SageNFT is
         IERC20 token = IERC20(erc20);
         uint256 balance = token.balanceOf(address(this));
         uint256 _artist = (balance * 8000) / 10000;
-        token.transfer(owner(), _artist);
+        token.transfer(artist, _artist);
         token.transfer(TREASURY, balance - _artist);
     }
 
     function withdraw() public {
         uint256 balance = address(this).balance;
         uint256 _artist = (balance * 8000) / 10000;
-        (bool sent, ) = owner().call{value: _artist}("");
+        (bool sent, ) = artist.call{value: _artist}("");
         if (!sent) {
             revert();
         }
@@ -204,10 +206,4 @@ contract SageNFT is
             (salePrice * DEFAULT_ROYALTY_PERCENTAGE) / 10000
         );
     }
-}
-
-contract OwnableDelegateProxy {}
-
-contract ProxyRegistry {
-    mapping(address => OwnableDelegateProxy) public proxies;
 }

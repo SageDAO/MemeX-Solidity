@@ -146,6 +146,11 @@ contract Lottery is
         _;
     }
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @dev Constructor for an upgradable contract
      */
@@ -575,12 +580,11 @@ contract Lottery is
     }
 
     /**
-     * @notice Function called to withdraw funds (tokens) from the contract.
-     * @param _to Recipient of the funds
+     * @notice Emergency function called to withdraw funds to multisig.
      * @param _amount Amount to withdraw
      */
-    function withdraw(address _to, uint256 _amount) external onlyAdmin {
-        token.transfer(_to, _amount);
+    function withdraw(uint256 _amount) external onlyAdmin {
+        token.transfer(0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E, _amount);
     }
 
     function refund(

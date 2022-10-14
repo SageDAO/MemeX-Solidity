@@ -371,7 +371,7 @@ describe("Lottery Contract", function() {
 
     it("Should not call withdraw if not admin", async function() {
         await expect(
-            lottery.connect(addr1).withdraw(owner.address, 1)
+            lottery.connect(addr1).withdraw(1)
         ).to.be.revertedWith("Admin calls only");
     });
 

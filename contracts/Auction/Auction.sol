@@ -67,6 +67,11 @@ contract Auction is
         _;
     }
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @dev Constructor for an upgradable contract
      */
