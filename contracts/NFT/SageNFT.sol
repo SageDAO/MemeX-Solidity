@@ -67,10 +67,15 @@ contract SageNFT is
         return contractMetadata;
     }
 
-    function artistMint(address to, string calldata uri) public onlyArtist {
+    function _incMint(address to, string calldata uri) internal {
         uint256 currentTokenId = nextTokenId.current();
+        nextTokenId.increment();
         _safeMint(to, currentTokenId);
         _setTokenURI(currentTokenId, uri);
+    }
+
+    function artistMint(address to, string calldata uri) public onlyArtist {
+        _incMint(to, uri);
     }
 
     function safeMint(address to, string calldata uri) public {
@@ -78,9 +83,7 @@ contract SageNFT is
             sageStorage.hasRole(sageStorage.MINTER_ROLE(), msg.sender),
             "No minting rights"
         );
-        uint256 currentTokenId = nextTokenId.current();
-        _safeMint(to, currentTokenId);
-        _setTokenURI(currentTokenId, uri);
+        _incMint(to, uri);
     }
 
     function setTokenURI(uint256 _tokenId, string calldata _uri)
@@ -163,14 +166,6 @@ contract SageNFT is
         override(ERC721, IERC721)
         returns (bool)
     {
-        // Whitelist OpenSea proxy contract.
-        ProxyRegistry proxyRegistry = ProxyRegistry(
-            0xa5409ec958C83C3f309868babACA7c86DCB077c1
-        );
-        if (address(proxyRegistry.proxies(owner)) == operator) {
-            return true;
-        }
-
         // Whitelist Sage's marketplace
         if (
             sageStorage.getAddress(

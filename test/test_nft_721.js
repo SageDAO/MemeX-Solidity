@@ -19,7 +19,7 @@ describe("NFT Contract", () => {
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
         await sageStorage.grantAdmin(nftFactory.address);
-        await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
+        await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE", );
 
         nftContractAddress = await nftFactory.getContractAddress(
             artist.address

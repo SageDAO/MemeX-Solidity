@@ -191,7 +191,7 @@ describe("Auction Contract", function() {
         await auction.connect(addr2).bid(2, 2);
         await ethers.provider.send("evm_increaseTime", [2 * 86401]);
         await auction.settleAuction(2);
-        expect(await nft.tokenURI(0)).to.be.equal("ipfs://bbbb");
+        expect(await nft.tokenURI(1)).to.be.equal("ipfs://bbbb");
         balance = await nft.balanceOf(addr2.address);
         expect(balance).to.equal(1);
         expect(await mockERC20.balanceOf(nft.address)).to.equal(

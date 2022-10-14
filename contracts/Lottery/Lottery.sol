@@ -67,10 +67,9 @@ contract Lottery is
         uint32 maxTickets; // max number of tickets for the lottery
         uint32 maxTicketsPerUser; // max number of tickets per user
         uint32 numberOfTicketsSold; // number of tickets sold
+        uint32 numberOfEditions;
         Status status; // Status for lotto
         INFT nftContract; // reference to the NFT Contract
-        uint128 firstPrizeId;
-        uint128 lastPrizeId;
         uint256 lotteryID; // ID for lotto
         uint256 ticketCostPoints; // Cost per ticket in points for member users (who earned points)
         uint256 ticketCostTokens; // Cost per ticket in ETH for member users (who earned points)
@@ -320,8 +319,7 @@ contract Lottery is
         INFT _nftContract,
         uint16 _maxTickets,
         Status _status,
-        uint128 _firstPrizeId,
-        uint128 _lastPrizeId
+        uint32 _numberOfEditions
     ) public onlyAdmin validLottery(_startTime, _closeTime) {
         LotteryInfo storage lottery = lotteryHistory[lotteryId];
         lottery.startTime = _startTime;
@@ -331,8 +329,7 @@ contract Lottery is
         lottery.nftContract = _nftContract;
         lottery.maxTickets = _maxTickets;
         lottery.status = _status;
-        lottery.firstPrizeId = _firstPrizeId;
-        lottery.lastPrizeId = _lastPrizeId;
+        lottery.numberOfEditions = _numberOfEditions;
         emit LotteryStatusChanged(lotteryId, _status);
     }
 
@@ -345,10 +342,9 @@ contract Lottery is
         onlyAdmin
         validLottery(_lotteryInfo.startTime, _lotteryInfo.closeTime)
     {
-        require(_lotteryInfo.firstPrizeId > 0, "Invalid prizes");
-        require(_lotteryInfo.numberOfTicketsSold == 0, "Invalid value");
+        require(_lotteryInfo.numberOfEditions > 0, "Invalid prizes");
         require(
-            lotteryHistory[_lotteryInfo.lotteryID].firstPrizeId == 0,
+            lotteryHistory[_lotteryInfo.lotteryID].numberOfEditions == 0,
             "Lottery already exists"
         );
         lotteries.push(_lotteryInfo.lotteryID);

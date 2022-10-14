@@ -99,37 +99,16 @@ describe("Lottery Contract", function() {
             numberOfTicketsSold: 0,
             status: 0,
             nftContract: nft.address,
-            firstPrizeId: 1,
-            lastPrizeId: 2,
+            numberOfEditions: 2,
             lotteryID: 1,
             ticketCostPoints: 10,
             ticketCostTokens: 0
         };
         await lottery.createLottery(lotteryInfo);
-        //     1,
-        //     10,
-        //     0,
-        //     block.timestamp,
-        //     block.timestamp + 86400 * 3,
-        //     nft.address,
-        //     0,
-        //     0,
-        //     1,
-        //     2
-        // );
         lotteryInfo.lotteryID = 2;
         lotteryInfo.ticketCostPoints = 0;
         lotteryInfo.ticketCostTokens = 1;
         await lottery.createLottery(lotteryInfo);
-        //     2,
-        //     0,
-        //     1,
-        //     block.timestamp,
-        //     block.timestamp + 86400 * 3,
-        //     nft.address,
-        //     0,
-        //     0,
-        //     3,[i - 10]
         abiCoder = ethers.utils.defaultAbiCoder;
         leafA = keccak256(
             abiCoder.encode(["address", "uint256"], [addr1.address, 150])
@@ -163,8 +142,7 @@ describe("Lottery Contract", function() {
                 numberOfTicketsSold: 0,
                 status: 0,
                 nftContract: nft.address,
-                firstPrizeId: 1,
-                lastPrizeId: 2,
+                numberOfEditions: 2,
                 lotteryID: i + 10,
                 ticketCostPoints: 10,
                 ticketCostTokens: 0
@@ -185,7 +163,6 @@ describe("Lottery Contract", function() {
             nft.address,
             1,
             3,
-            1,
             2
         );
         expect(await lottery.getLotteryCount()).to.equal(2);
@@ -281,7 +258,6 @@ describe("Lottery Contract", function() {
             nft.address,
             1,
             3,
-            1,
             2
         );
         expect(
@@ -484,7 +460,6 @@ describe("Lottery Contract", function() {
                 nft.address,
                 1,
                 3,
-                1,
                 2
             );
             await lottery

@@ -75,7 +75,7 @@ describe("Marketplace Contract", () => {
                     artist.address,
                     nftContractAddress,
                     "1000000000000000000",
-                    0,
+                    1,
                     futureTimestamp,
                     1,
                     true
@@ -90,7 +90,7 @@ describe("Marketplace Contract", () => {
                 artist.address,
                 nftContractAddress,
                 "1000000000000000000",
-                0,
+                1,
                 futureTimestamp,
                 1,
                 signedOffer
@@ -138,7 +138,7 @@ describe("Marketplace Contract", () => {
                         artist.address, //signer address
                         nftContractAddress, //nft contract address
                         100, //price
-                        0, //tokenId
+                        1, //tokenId
                         futureTimestamp, //expireAt
                         1, //chainId
                         true //isSellOrder
@@ -152,18 +152,18 @@ describe("Marketplace Contract", () => {
                 artist.address,
                 nftContractAddress,
                 100,
-                0,
+                1,
                 futureTimestamp,
                 1,
                 signedOffer
             );
-        await nft.connect(addr1).transferFrom(addr1.address, artist.address, 0);
+        await nft.connect(addr1).transferFrom(addr1.address, artist.address, 1);
         await expect(
             market.connect(addr1).buyFromSellOffer(
                 artist.address, //signer address
                 nftContractAddress, //nft contract address
                 100, //price
-                0, //tokenId
+                1, //tokenId
                 futureTimestamp, //expireAt
                 1, // chainId
                 signedOffer
