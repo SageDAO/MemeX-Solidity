@@ -86,12 +86,10 @@ contract SageNFT is
         _incMint(to, uri);
     }
 
-    function setTokenURI(uint256 _tokenId, string calldata _uri) public {
-        require(
-            sageStorage.hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ||
-                msg.sender == artist,
-            "Only creator or admin calls"
-        );
+    function setTokenURI(uint256 _tokenId, string calldata _uri)
+        public
+        onlyAdmin
+    {
         _setTokenURI(_tokenId, _uri);
     }
 
@@ -152,10 +150,12 @@ contract SageNFT is
         return super.tokenURI(tokenId);
     }
 
-    function setContractMetadata(string calldata _contractMetadata)
-        public
-        onlyAdmin
-    {
+    function setContractMetadata(string calldata _contractMetadata) public {
+        require(
+            sageStorage.hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ||
+                (msg.sender == artist && bytes(contractMetadata).length == 0),
+            "Only creator or admin calls"
+        );
         contractMetadata = _contractMetadata;
     }
 

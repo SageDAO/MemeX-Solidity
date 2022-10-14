@@ -18,11 +18,11 @@ function shouldDeployContract(name) {
         case "RNG":
             return false;
         case "Lottery":
-            return false;
+            return true;
         case "Auction":
             return true;
         case "Factory":
-            return false;
+            return true;
         case "Storage":
             return false;
         case "Marketplace":

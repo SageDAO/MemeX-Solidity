@@ -2,7 +2,7 @@ CONTRACTS = {
     goerli: {
         marketplaceAddress: "0x76a6e787ab3f2dba23d0C12354e2a0D38e46e0cF",
         storageAddress: "0xF615Ea96BEac2C8f0B3a467474D4c5d89E1CE0Bb",
-        factoryAddress: "0xFE38dA3117f8932c7322133B81B3C7DB62387E94",
+        factoryAddress: "0xBCD30d26fef05A4AAAC7760A906A3339B10c4D08",
         lotteryAddress: "0x6c6510441018e8b51384891f7560A3BAEfD6c23a",
         randomnessAddress: "0xc1202264727FC40239295C61aa25E6Daacd2A650",
         rewardsAddress: "0x29292dbA15c6DeDb50aFD8B8CaF1C30A74331768", //imp 0x05A45Ee2E54DF5B273394Ac4368e6c3CDa89c5c6

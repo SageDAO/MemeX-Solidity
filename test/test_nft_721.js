@@ -93,9 +93,13 @@ describe("NFT Contract", () => {
         expect(await nft.tokenURI(1)).to.equal('ipfs://newdata')
     });
 
-    it("Creator should update metadata", async function() {
-        await nft.connect(artist).setTokenURI(1, 'ipfs://newdata');
-        expect(await nft.tokenURI(1)).to.equal('ipfs://newdata')
+    it.only("Creator should update contract metadata", async function() {
+        await nft.connect(artist).setContractMetadata('ipfs://newdata');
+        expect(await nft.contractURI()).to.equal('ipfs://newdata')
+        // admin can still change
+        await nft.setContractMetadata('ipfs://newdata2');
+        // but not artist again
+        await expect(nft.connect(artist).setContractMetadata('ipfs://newdata3')).to.revertedWith('Only creator or admin calls');
     });
 
     it("User should not update metadata", async function() {
