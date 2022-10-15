@@ -35,7 +35,7 @@ describe("Auction Contract", function() {
         Auction = await ethers.getContractFactory("Auction");
         auction = await upgrades.deployProxy(
             Auction,
-            [owner.address, 100, mockERC20.address, sageStorage.address],
+            [owner.address, mockERC20.address, sageStorage.address],
             { kind: "uups" }
         );
 
@@ -90,7 +90,7 @@ describe("Auction Contract", function() {
         expect(resp.highestBidder).to.equal(addr1.address);
     });
 
-    it("Should revert if bid lower than higest bid increment", async function() {
+    it("Should revert if bid lower than highest bid increment", async function() {
         auctionInfo.auctionId = 4;
         await auction.createAuction(auctionInfo);
         await mockERC20.connect(addr2).approve(auction.address, 10000);
@@ -133,17 +133,6 @@ describe("Auction Contract", function() {
         await expect(
             auction.connect(addr1).updateAuction(1, 3, 0)
         ).to.be.revertedWith("Admin calls only");
-    });
-
-    it("Should revert if calling setBidIncrement not being admin", async function() {
-        await expect(
-            auction.connect(addr1).setBidIncrementPercentage(1)
-        ).to.be.revertedWith("Admin calls only");
-    });
-
-    it("Should set a new bidIncrementPercentage", async function() {
-        await auction.setBidIncrementPercentage(200);
-        expect(await auction.getBidIncrementPercentage()).to.equal(200);
     });
 
     it("Should revert if bid lower than highest bid - ERC20", async function() {

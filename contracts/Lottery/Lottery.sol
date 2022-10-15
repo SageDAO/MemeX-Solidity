@@ -47,8 +47,9 @@ contract Lottery is
     // lotteryId => tokenId => claimed state
     mapping(uint256 => mapping(uint256 => bool)) public claimedPrizes;
 
-    //lotteryid => address => participantInfo
-    mapping(uint256 => mapping(address => ParticipantInfo)) public participants;
+    //lotteryid => address => participantTicketCount
+    mapping(uint256 => mapping(address => uint256))
+        public participantTicketCount;
 
     // lotteryid => address => available refund
     mapping(uint256 => mapping(address => uint256)) public refunds;
@@ -75,9 +76,12 @@ contract Lottery is
         uint256 ticketCostTokens; // Cost per ticket in ETH for member users (who earned points)
     }
 
-    struct ParticipantInfo {
-        uint16 totalTicketsBought;
-        bool claimedPrize;
+    struct ProofData {
+        uint256 lotteryId;
+        address winner;
+        uint256 ticketNumber;
+        string uri;
+        bytes32[] proof;
     }
 
     enum Status {
@@ -468,10 +472,9 @@ contract Lottery is
             );
         }
 
-        ParticipantInfo storage participantInfo = participants[_lotteryId][
+        uint256 numTicketsBought = participantTicketCount[_lotteryId][
             msg.sender
         ];
-        uint256 numTicketsBought = participantInfo.totalTicketsBought;
         if (lottery.maxTicketsPerUser > 0) {
             require(
                 numTicketsBought + _numberOfTicketsToBuy <=
@@ -503,9 +506,10 @@ contract Lottery is
 
         if (numTicketsBought == 0) {
             ++lottery.participantsCount;
-            participants[_lotteryId][msg.sender] = participantInfo;
         }
-        participantInfo.totalTicketsBought += uint16(_numberOfTicketsToBuy);
+        participantTicketCount[_lotteryId][msg.sender] += uint16(
+            _numberOfTicketsToBuy
+        );
         address[] storage tickets = lotteryTickets[_lotteryId];
         for (uint256 i; i < _numberOfTicketsToBuy; ++i) {
             tickets.push(msg.sender);
@@ -513,23 +517,25 @@ contract Lottery is
         }
     }
 
-    function claimPrize(
-        uint256 _lotteryId,
-        address _winner,
-        uint256 _ticketNumber,
-        string calldata _uri,
-        bytes32[] calldata _proof
-    ) public whenNotPaused {
+    function claimPrizeBatch(ProofData[] calldata _proofData) public {
+        uint256 numPrizes = _proofData.length;
+        for (uint256 i = 0; i < numPrizes; ++i) {
+            claimPrize(_proofData[i]);
+        }
+    }
+
+    function claimPrize(ProofData calldata _proofData) public whenNotPaused {
+        uint256 _lotteryId = _proofData.lotteryId;
         require(
-            !claimedPrizes[_lotteryId][_ticketNumber],
+            !claimedPrizes[_lotteryId][_proofData.ticketNumber],
             "Participant already claimed prize"
         );
 
         require(
             _verify(
-                _leaf(_lotteryId, _winner, _ticketNumber, _uri),
+                _leaf(_proofData),
                 prizeMerkleRoots[_lotteryId],
-                _proof
+                _proofData.proof
             ),
             "Invalid merkle proof"
         );
@@ -543,21 +549,31 @@ contract Lottery is
             token.transfer(address(lottery.nftContract), ticketCostTokens);
         }
 
-        participants[_lotteryId][_winner].claimedPrize = true;
         INFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
-        claimedPrizes[_lotteryId][_ticketNumber] = true;
-        nftContract.safeMint(_winner, _uri);
-        emit PrizeClaimed(_lotteryId, _winner, _ticketNumber);
+        claimedPrizes[_lotteryId][_proofData.ticketNumber] = true;
+        nftContract.safeMint(_proofData.winner, _proofData.uri);
+        emit PrizeClaimed(
+            _lotteryId,
+            _proofData.winner,
+            _proofData.ticketNumber
+        );
     }
 
-    function _leaf(
-        uint256 _lotteryId,
-        address _winner,
-        uint256 _prizeId,
-        string memory _uri
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(_lotteryId, _winner, _prizeId, _uri));
+    function _leaf(ProofData memory _proofData)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return
+            keccak256(
+                abi.encode(
+                    _proofData.lotteryId,
+                    _proofData.winner,
+                    _proofData.ticketNumber,
+                    _proofData.uri
+                )
+            );
     }
 
     function _verify(
@@ -573,10 +589,7 @@ contract Lottery is
         view
         returns (uint256)
     {
-        ParticipantInfo storage participantInfo = participants[_lotteryId][
-            _user
-        ];
-        return participantInfo.totalTicketsBought;
+        return participantTicketCount[_lotteryId][msg.sender];
     }
 
     /**

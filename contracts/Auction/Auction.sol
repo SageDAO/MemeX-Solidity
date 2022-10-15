@@ -23,7 +23,7 @@ contract Auction is
     mapping(uint256 => AuctionInfo) public auctions;
 
     uint256 public constant DEFAULT_EXTENSION = 600;
-    uint256 private bidIncrementPercentage; // 100 = 1,00% higher than the previous bid
+    uint256 private constant bidIncrementPercentage = 100; // 1,00% higher than the previous bid
 
     struct AuctionInfo {
         address highestBidder;
@@ -77,7 +77,6 @@ contract Auction is
      */
     function initialize(
         address _admin,
-        uint256 _bidIncrementPercentage,
         address _token,
         address _storage
     ) public initializer {
@@ -85,16 +84,8 @@ contract Auction is
         __Pausable_init();
         __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        bidIncrementPercentage = _bidIncrementPercentage;
         erc20 = IERC20(_token);
         sageStorage = ISageStorage(_storage);
-    }
-
-    function setBidIncrementPercentage(uint16 _bidIncrementPercentage)
-        public
-        onlyAdmin
-    {
-        bidIncrementPercentage = _bidIncrementPercentage;
     }
 
     function createAuction(AuctionInfo calldata _auctionInfo) public onlyAdmin {
@@ -134,7 +125,7 @@ contract Auction is
         require(
             endTime > 0 && block.timestamp > endTime,
             "Auction is still running"
-        );  
+        );
 
         auction.settled = true;
         if (highestBidder != address(0)) {

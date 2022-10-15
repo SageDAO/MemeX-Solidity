@@ -462,9 +462,10 @@ describe("Lottery Contract", function() {
                 3,
                 2
             );
+            prizeProof = {lotteryId: 2, winner: addr1.address, ticketNumber: 1, uri: "ipfs://aaa", proof: prizeProofA}
             await lottery
                 .connect(addr1)
-                .claimPrize(2, addr1.address, 1, "ipfs://aaa", prizeProofA);
+                .claimPrize(prizeProof);
             expect(await nft.balanceOf(addr1.address)).to.equal(1);
             expect(await mockERC20.balanceOf(nftContractAddress)).to.equal(1);
             await expect(
@@ -477,26 +478,24 @@ describe("Lottery Contract", function() {
             await lottery.connect(addr1).buyTickets(2, 1);
             await lottery.connect(addr2).buyTickets(2, 1);
             expect(await lottery.prizeClaimed(2, 1)).to.equal(false);
+            prizeProof = [{lotteryId: 2, winner: addr1.address, ticketNumber: 1, uri: "ipfs://aaa", proof: prizeProofA,},
+            {lotteryId: 2, winner: addr1.address, ticketNumber: 3, uri: "ipfs://ccc", proof: prizeProofC}]
             await lottery
                 .connect(addr1)
-                .claimPrize(2, addr1.address, 1, "ipfs://aaa", prizeProofA);
-            expect(await lottery.prizeClaimed(2, 1)).to.equal(true);
-
-            await lottery
-                .connect(addr1)
-                .claimPrize(2, addr1.address, 3, "ipfs://ccc", prizeProofC);
+                .claimPrizeBatch(prizeProof);
             expect(await lottery.prizeClaimed(2, 3)).to.equal(true);
         });
 
         it("Should throw trying to claim twice", async function() {
             await lottery.connect(addr1).buyTickets(2, 1);
+            prizeProof = {lotteryId: 2, winner: addr1.address, ticketNumber: 1, uri: "ipfs://aaa", proof: prizeProofA}
             await lottery
                 .connect(addr1)
-                .claimPrize(2, addr1.address, 1, "ipfs://aaa", prizeProofA);
+                .claimPrize(prizeProof);
             await expect(
                 lottery
                     .connect(addr1)
-                    .claimPrize(2, addr1.address, 1, "ipfs://aaa", prizeProofA)
+                    .claimPrize(prizeProof)
             ).to.be.revertedWith("Participant already claimed prize");
         });
     });
