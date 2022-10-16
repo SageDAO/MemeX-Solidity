@@ -124,10 +124,12 @@ async function updateAuctions() {
         if (auction.claimedAt != null) {
             continue;
         }
-        const endTime = Math.floor(auction.endTime / 1000);
+        
         if (auction.contractAddress != null) {
+            let auctionInfo = await auctionContract.getAuction(auction.id);
+            const endTime = auctionInfo.endTime;
             // if we're past endTime, inspect the auction and take the required actions
-            if (now >= endTime && auction.winnerAddress == null) {
+            if (endTime > 0 && now >= endTime && auction.winnerAddress == null) {
                 await updateAuctionInfo(auction);
             }
         }
