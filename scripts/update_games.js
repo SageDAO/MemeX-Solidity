@@ -1,6 +1,6 @@
-import Arweave from "arweave";
-import Transaction from "arweave/node/lib/transaction";
-import { computePrimes } from "jwk-rsa-compute-primes";
+require("arweave");
+require("arweave/node/lib/transaction");
+const computePrimes = require("jwk-rsa-compute-primes");
 
 const { assert } = require("chai");
 
