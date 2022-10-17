@@ -104,7 +104,8 @@ model Nft {
   id                       Int          @id @default(autoincrement())
   name                     String
   description              String
-  metadataPath             String
+  metadataPath             String?
+  arweavePath              String?
   s3Path                   String
   s3PathOptimized          String
   tags                     String?
@@ -231,6 +232,7 @@ model Config {
   featuredDropId  Int?
   FeaturedDrop    Drop?  @relation("ConfigFeaturedDrop", fields:[featuredDropId], references:[id])
   welcomeMessage  String
+  gasLimitForTxs  Int
 
   @@unique([featuredDropId])
 }
