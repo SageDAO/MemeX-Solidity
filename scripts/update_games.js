@@ -1,3 +1,7 @@
+import Arweave from "arweave";
+import Transaction from "arweave/node/lib/transaction";
+import { computePrimes } from "jwk-rsa-compute-primes";
+
 const { assert } = require("chai");
 
 const hre = require("hardhat");
@@ -124,12 +128,16 @@ async function updateAuctions() {
         if (auction.claimedAt != null) {
             continue;
         }
-        
+
         if (auction.contractAddress != null) {
             let auctionInfo = await auctionContract.getAuction(auction.id);
             const endTime = auctionInfo.endTime;
             // if we're past endTime, inspect the auction and take the required actions
-            if (endTime > 0 && now >= endTime && auction.winnerAddress == null) {
+            if (
+                endTime > 0 &&
+                now >= endTime &&
+                auction.winnerAddress == null
+            ) {
                 await updateAuctionInfo(auction);
             }
         }
@@ -311,12 +319,33 @@ async function inspectLotteryState(lottery) {
                     `Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${tickets[randomPosition]}`
                 );
 
+                if (totalPrizes > 1) {
+                    // means more than one edition will be awarded
+                    const editionLabel = ` ${prizesAwarded}/${totalPrizes}`;
+                    const nftName = prizes[i].name + editionLabel;
+                    const nftData = { ...prizes[i], name: nftName };
+                    // create new metadata on arweave
+                    var metadataPath = await createMetadataOnArweave(nftData);
+                    // update database
+                    await prisma.nft.update({
+                        where: {
+                            id: prizes[i].id
+                        },
+                        data: {
+                            name: nftName,
+                            metadataPath
+                        }
+                    });
+                } else {
+                    // use existing metadata and do not change nft name
+                    var metadataPath = prizes[i].metadataPath;
+                }
                 var leaf = {
                     lotteryId: Number(lottery.id),
                     winnerAddress: tickets[randomPosition],
                     ticketNumber: randomPosition,
                     nftId: prizes[i].id,
-                    uri: prizes[i].metadataPath,
+                    uri: metadataPath,
                     proof: "",
                     createdAt: new Date()
                 };
@@ -373,6 +402,44 @@ async function inspectLotteryState(lottery) {
             );
         }
     }
+}
+
+async function createMetadataOnArweave(nftData) {
+
+    // init Arweave
+    const arweaveJwk = computePrimes(
+        JSON.parse(process.env.ARWEAVE_JSON_JWK || "")
+    );
+    const arweave = Arweave.init({
+        host: "arweave.net",
+        port: 443,
+        protocol: "https",
+        timeout: 120000
+    });
+
+    // create NFT metadata
+    const jsonData = JSON.stringify({
+        name: nftData.name,
+        description: nftData.description,
+        image: nftData.arweavePath
+    });
+
+    // send arweave transaction
+    const tx = await arweave.createTransaction({ data: jsonData }, arweaveJwk);
+    tx.addTag("Content-Type", "application/json");
+    await arweave.transactions.sign(tx, arweaveJwk);
+    await arweave.transactions.post(tx);
+    console.log(
+        `NFT '${nftData.name}' metadata saved with Arweave ID ${tx.id}`
+    );
+
+    // retrieve & display arweave balance
+    const address = await arweave.wallets.jwkToAddress(arweaveJwk);
+    var balance = await arweave.wallets.getBalance(address);
+    balance = arweave.ar.winstonToAr(balance);
+    console.log(`Arweave balance for wallet ${address} is ${balance}`);
+
+    return `https://arweave.net/${tx.id}`;
 }
 
 async function createRefundRecords(lotteryInfo, tickets, winnerTicketNumbers) {
