@@ -73,12 +73,6 @@ contract NFTFactory {
             artistAddress
         );
         artistContracts[artistAddress] = newContract;
-        sageStorage.setBool(
-            keccak256(
-                abi.encodePacked("market.contract_wl", address(newContract))
-            ),
-            true
-        );
         emit NewNFTContract(address(newContract), artistAddress);
         return newContract;
     }
@@ -105,17 +99,5 @@ contract NFTFactory {
         returns (address)
     {
         return address(artistContracts[artistAddress]);
-    }
-
-    function removeWhitelistedContract(address contractAddress)
-        public
-        onlyAdmin
-    {
-        sageStorage.setBool(
-            keccak256(
-                abi.encodePacked("market.contract_wl", address(contractAddress))
-            ),
-            false
-        );
     }
 }

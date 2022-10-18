@@ -99,14 +99,6 @@ contract Marketplace {
         uint256 chainId,
         bytes calldata signature
     ) public {
-        require(
-            sageStorage.getBool(
-                keccak256(
-                    abi.encodePacked("market.contract_wl", contractAddress)
-                )
-            ),
-            "Only whitelisted contracts"
-        );
         require(expiresAt > block.timestamp, "Offer expired");
         bytes32 message = verifySignature(
             signer,
@@ -152,14 +144,6 @@ contract Marketplace {
         uint256 chainId,
         bytes calldata signature
     ) public {
-        require(
-            sageStorage.getBool(
-                keccak256(
-                    abi.encodePacked("market.contract_wl", contractAddress)
-                )
-            ),
-            "Only whitelisted contracts"
-        );
         require(expiresAt > block.timestamp, "Offer expired");
         bytes32 message = verifySignature(
             buyer,

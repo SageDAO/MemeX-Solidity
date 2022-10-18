@@ -112,7 +112,7 @@ describe("NFT Contract", () => {
         await expect(nft.connect(addr2).setTokenURI(1, 'ipfs://newdata')).to.revertedWith('Admin calls only')
     });
 
-    it.only("Should reset artist contract from multisig and allow to deploy a new one", async function () {
+    it("Should reset artist contract from multisig and allow to deploy a new one", async function () {
         const addressBefore = await nftFactory.getContractAddress(artist.address);
         await nftFactory.resetArtistContract(artist.address);
         await nftFactory.connect(artist).deployByArtist("Deployed by artist", "SAGE");

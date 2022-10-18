@@ -160,7 +160,7 @@ contract SageNFT is
     }
 
     /**
-     * Override isApprovedForAll to whitelist user's OpenSea proxy accounts to enable gas-less listings.
+     * Override isApprovedForAll to whitelist SAGE's market
      */
     function isApprovedForAll(address owner, address operator)
         public
