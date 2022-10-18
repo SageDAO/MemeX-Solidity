@@ -1,7 +1,3 @@
-require("arweave");
-require("arweave/node/lib/transaction");
-const computePrimes = require("jwk-rsa-compute-primes");
-
 const { assert } = require("chai");
 
 const hre = require("hardhat");
@@ -405,8 +401,10 @@ async function inspectLotteryState(lottery) {
 }
 
 async function createMetadataOnArweave(nftData) {
+    const Arweave = require("arweave");
 
     // init Arweave
+    const { computePrimes } = await import("jwk-rsa-compute-primes");
     const arweaveJwk = computePrimes(
         JSON.parse(process.env.ARWEAVE_JSON_JWK || "")
     );
