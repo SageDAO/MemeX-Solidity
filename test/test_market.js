@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const keccak256 = require("keccak256");
+const ADMIN_ROLE = ethers.utils.solidityKeccak256(["string"], ["role.admin"])
 
 const uri = "ipfs://aaaa/";
 
@@ -27,18 +28,13 @@ describe("Marketplace Contract", () => {
 
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
-        await sageStorage.grantAdmin(nftFactory.address);
+        await sageStorage.grantRole(ADMIN_ROLE, nftFactory.address);
 
         await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
         nftContractAddress = await nftFactory.getContractAddress(
             artist.address
         );
         nft = await ethers.getContractAt("SageNFT", nftContractAddress);
-
-        await sageStorage.setAddress(
-            ethers.utils.solidityKeccak256(["string"], ["address.treasury"]),
-            owner.address
-        );
 
         Marketplace = await ethers.getContractFactory("Marketplace");
         market = await Marketplace.deploy(
@@ -50,7 +46,12 @@ describe("Marketplace Contract", () => {
             market.address
         );
 
-        
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.artist"]),
+            artist2.address
+        );
+
+        await sageStorage.revokeRole('0x0000000000000000000000000000000000000000000000000000000000000000', owner.address);
         _lotteryAddress = addr1.address;
         _id = 1;
         await nft.connect(artist).artistMint(artist.address, uri);
@@ -102,10 +103,6 @@ describe("Marketplace Contract", () => {
     });
 
     it("Artist should deploy contract and mint", async function() {
-        await sageStorage.grantRole(
-            ethers.utils.solidityKeccak256(["string"], ["role.artist"]),
-            artist2.address
-        );
         await nftFactory.connect(artist2).deployByArtist("Artist2", "SAGE");
         let cAddress = await nftFactory.getContractAddress(artist2.address);
         nftContract = await ethers.getContractAt("SageNFT", cAddress);
@@ -116,7 +113,7 @@ describe("Marketplace Contract", () => {
 
     it("Non artist should not deploy contract", async function() {
         await expect(
-            nftFactory.connect(artist2).deployByArtist("Artist2", "SAGE")
+            nftFactory.connect(addr1).deployByArtist("Artist2", "SAGE")
         ).to.be.reverted;
     });
 

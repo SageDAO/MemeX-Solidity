@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
@@ -18,7 +17,6 @@ import "../../interfaces/ISageStorage.sol";
 
 contract Lottery is
     Initializable,
-    AccessControlUpgradeable,
     ILottery,
     UUPSUpgradeable,
     PausableUpgradeable
@@ -121,8 +119,18 @@ contract Lottery is
     /**
      * @dev Throws if not called by an admin account.
      */
-    modifier onlyAdmin() {
+    modifier onlyMultisig() {
         require(sageStorage.hasRole(0x00, msg.sender), "Admin calls only");
+        _;
+    }
+    /**
+     * @dev Throws if not called by an admin account.
+     */
+    modifier onlyAdmin() {
+        require(
+            sageStorage.hasRole(keccak256("role.admin"), msg.sender),
+            "Admin calls only"
+        );
         _;
     }
 
@@ -164,7 +172,6 @@ contract Lottery is
         address _token,
         address _sageStorage
     ) public initializer {
-        __AccessControl_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
         token = IERC20(_token);
@@ -379,13 +386,17 @@ contract Lottery is
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         require(lottery.startTime > 0, "Invalid lottery id");
         require(lottery.closeTime < block.timestamp, "Lottery is not closed");
-        if (lottery.status == Status.Created) {
-            lottery.status = Status.Closed;
-            emit LotteryStatusChanged(_lotteryId, lottery.status);
-        }
+        Status status = lottery.status;
         // should fail if the lottery is completed (already called drawWinningNumbers and received a response)
-        require(lottery.status == Status.Closed, "Lottery must be closed!");
-        randomGenerator.requestRandomWords(_lotteryId);
+        require(status != Status.Completed, "Lottery must not be completed");
+        if (lottery.numberOfTicketsSold <= lottery.numberOfEditions) {
+            // No random seed required (every ticket is a winner)
+            lottery.status = Status.Completed;
+        } else {
+            lottery.status = Status.Closed;
+            randomGenerator.requestRandomWords(_lotteryId);
+        }
+        emit LotteryStatusChanged(_lotteryId, lottery.status);
     }
 
     /**
@@ -399,7 +410,7 @@ contract Lottery is
         onlyRandomGenerator
     {
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
-        require(lottery.status == Status.Closed, "Lottery must be closed");
+        require(lottery.status != Status.Completed, "Lottery must be closed");
 
         lottery.status = Status.Completed;
         randomSeeds[_lotteryId] = _randomNumber;
@@ -589,7 +600,7 @@ contract Lottery is
         view
         returns (uint256)
     {
-        return participantTicketCount[_lotteryId][msg.sender];
+        return participantTicketCount[_lotteryId][_user];
     }
 
     /**
@@ -640,6 +651,6 @@ contract Lottery is
     function _authorizeUpgrade(address newImplementation)
         internal
         override
-        onlyAdmin
+        onlyMultisig
     {}
 }

@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -12,7 +11,6 @@ import "../../interfaces/ISageStorage.sol";
 
 contract Auction is
     Initializable,
-    AccessControlUpgradeable,
     UUPSUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
@@ -60,10 +58,18 @@ contract Auction is
     );
 
     /**
-     * @dev Throws if not called by an admin account.
+     * @dev Throws if not called by the multisig account.
      */
-    modifier onlyAdmin() {
+    modifier onlyMultisig() {
         require(sageStorage.hasRole(0x00, msg.sender), "Admin calls only");
+        _;
+    }
+
+    modifier onlyAdmin() {
+        require(
+            sageStorage.hasRole(keccak256("role.admin"), msg.sender),
+            "Admin calls only"
+        );
         _;
     }
 
@@ -75,15 +81,9 @@ contract Auction is
     /**
      * @dev Constructor for an upgradable contract
      */
-    function initialize(
-        address _admin,
-        address _token,
-        address _storage
-    ) public initializer {
-        __AccessControl_init();
+    function initialize(address _token, address _storage) public initializer {
         __Pausable_init();
         __UUPSUpgradeable_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         erc20 = IERC20(_token);
         sageStorage = ISageStorage(_storage);
     }
@@ -233,7 +233,7 @@ contract Auction is
         return auctions[_auctionId];
     }
 
-    function getBidIncrementPercentage() public view returns (uint256) {
+    function getBidIncrementPercentage() public pure returns (uint256) {
         return bidIncrementPercentage;
     }
 
@@ -248,6 +248,6 @@ contract Auction is
     function _authorizeUpgrade(address newImplementation)
         internal
         override
-        onlyAdmin
+        onlyMultisig
     {}
 }

@@ -2,10 +2,8 @@ const { expect } = require("chai");
 const { ethers, upgrades } = require("hardhat");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
+const ADMIN_ROLE = ethers.utils.solidityKeccak256(["string"], ["role.admin"])
 const { ONE } = require("bignumber/lib/rsa/jsbn");
-
-const MANAGE_POINTS_ROLE = keccak256("MANAGE_POINTS_ROLE");
-const MINTER_ROLE = keccak256("MINTER_ROLE");
 
 const ONE_ETH = ethers.utils.parseEther("1");
 const TWO_ETH = ethers.utils.parseEther("2");
@@ -21,6 +19,7 @@ describe("Lottery Contract", function() {
             addr3,
             addr4,
             artist,
+            multisig,
             ...addrs
         ] = await ethers.getSigners();
         artist = addr1;
@@ -31,7 +30,7 @@ describe("Lottery Contract", function() {
         Rewards = await ethers.getContractFactory("Rewards");
         rewards = await upgrades.deployProxy(
             Rewards,
-            [owner.address, sageStorage.address],
+            [sageStorage.address],
             {
                 kind: "uups"
             }
@@ -66,7 +65,7 @@ describe("Lottery Contract", function() {
 
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
-        await sageStorage.grantAdmin(nftFactory.address);
+        await sageStorage.grantRole(ADMIN_ROLE, nftFactory.address);
 
         await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
         nftContractAddress = await nftFactory.getContractAddress(
@@ -82,6 +81,7 @@ describe("Lottery Contract", function() {
             ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
             lottery.address
         );
+        await sageStorage.revokeRole('0x0000000000000000000000000000000000000000000000000000000000000000', owner.address);
         await lottery.setRandomGenerator(mockRng.address);
 
         Whitelist = await ethers.getContractFactory("Whitelist");
@@ -317,14 +317,13 @@ describe("Lottery Contract", function() {
         await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
         await ethers.provider.send("evm_mine", []);
         await lottery.requestRandomNumber(2);
-        await mockRng.fulfillRandomWords(2, [1]);
         await expect(lottery.requestRandomNumber(2)).to.be.revertedWith(
-            "Lottery must be closed"
+            "Lottery must not be completed"
         );
     });
 
     it("Should allow a second RNG request if no response was received", async function() {
-        await lottery.connect(addr2).buyTickets(2, 1);
+        await lottery.connect(addr2).buyTickets(2, 3);
         await ethers.provider.send("evm_increaseTime", [86000 * 4]); // long wait, enough to be after the end of the lottery
         await ethers.provider.send("evm_mine", []);
         await lottery.requestRandomNumber(2);

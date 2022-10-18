@@ -14,7 +14,7 @@ function shouldDeployContract(name) {
     // An easy way to select which contracts we want to deploy.
     switch (name) {
         case "Rewards":
-            return false;
+            return true;
         case "RNG":
             return false;
         case "Lottery":
@@ -24,9 +24,9 @@ function shouldDeployContract(name) {
         case "Factory":
             return true;
         case "Storage":
-            return false;
+            return true;
         case "Marketplace":
-            return false;
+            return true;
     }
     return false;
 }
@@ -56,7 +56,7 @@ deployRewards = async (deployer, sageStorage) => {
     if (shouldDeployContract("Rewards")) {
         rewards = await upgrades.deployProxy(
             Rewards,
-            [deployer.address, sageStorage.address],
+            [sageStorage.address],
             {
                 kind: "uups"
             }
@@ -161,15 +161,10 @@ deployStorage = async deployer => {
     const storageAddress = CONTRACTS[hre.network.name]["storageAddress"];
 
     const Storage = await hre.ethers.getContractFactory("SageStorage");
-    const treasuryAddress = "0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E";
     if (shouldDeployContract("Storage")) {
         const storage = await Storage.deploy(deployer.address);
         await storage.deployed();
         console.log("Storage deployed to:", storage.address);
-        await storage.setAddress(
-            keccak256("address.treasury"),
-            treasuryAddress
-        );
         replaceAddress(storageAddress, storage.address);
         return [storage, true];
     } else {
@@ -238,7 +233,7 @@ deployAuction = async (deployer, sageStorage) => {
     if (shouldDeployContract("Auction")) {
         const auction = await upgrades.deployProxy(
             Auction,
-            [deployer.address, 100, ashAddress, sageStorage.address],
+            [ashAddress, sageStorage.address],
             { kind: "uups" }
         );
         await auction.deployed();
@@ -310,7 +305,7 @@ async function main() {
     newFactory = result[1];
 
     if (newFactory) {
-        await storage.grantAdmin(nftFactory.address);
+        await storage.grantRole(keccak256("role.storage"), nftFactory.address);
     }
 
     result = await deployRewards(deployer, storage);

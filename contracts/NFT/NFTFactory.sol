@@ -7,7 +7,10 @@ import "../../interfaces/ISageStorage.sol";
 error PermissionDenied();
 
 contract NFTFactory {
-    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
+    bytes32 public constant ADMIN_ROLE = keccak256("role.admin");
+    bytes32 public constant ARTIST_ROLE = keccak256("role.artist");
+    address public constant TREASURY_ADDRESS =
+        0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E;
 
     mapping(address => SageNFT) artistContracts;
     ISageStorage immutable sageStorage;
@@ -22,15 +25,20 @@ contract NFTFactory {
      */
     modifier onlyAdmin() {
         require(
-            sageStorage.hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            sageStorage.hasRole(ADMIN_ROLE, msg.sender),
             "Admin calls only"
         );
         _;
     }
 
+    modifier onlyMultisig() {
+        require(sageStorage.hasRole(0x00, msg.sender), "Admin calls only");
+        _;
+    }
+
     modifier onlyArtist() {
         require(
-            sageStorage.hasRole(sageStorage.ARTIST_ROLE(), msg.sender),
+            sageStorage.hasRole(ARTIST_ROLE, msg.sender),
             "Artist calls only"
         );
         _;
@@ -40,8 +48,12 @@ contract NFTFactory {
         sageStorage = ISageStorage(_sageStorage);
     }
 
-    function getTreasuryAddress() public view returns (address) {
-        return sageStorage.getAddress(keccak256("address.treasury"));
+    function getTreasuryAddress() public pure returns (address) {
+        return TREASURY_ADDRESS;
+    }
+
+    function resetArtistContract(address _artist) public onlyMultisig {
+        artistContracts[_artist] = SageNFT(payable(address(0)));
     }
 
     function createNFTContract(

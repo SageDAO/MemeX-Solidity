@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const keccak256 = require("keccak256");
-const MINTER_ROLE = keccak256("MINTER_ROLE");
+const ADMIN_ROLE = ethers.utils.solidityKeccak256(["string"], ["role.admin"])
 
 describe("Auction Contract", function() {
     beforeEach(async () => {
@@ -16,10 +16,10 @@ describe("Auction Contract", function() {
 
         SageStorage = await ethers.getContractFactory("SageStorage");
         sageStorage = await SageStorage.deploy(owner.address);
-
+        await sageStorage.grantRole(ADMIN_ROLE, owner.address);
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
-        await sageStorage.grantAdmin(nftFactory.address);
+        await sageStorage.grantRole(ADMIN_ROLE, nftFactory.address);
         await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
         nftContractAddress = await nftFactory.getContractAddress(
             artist.address
@@ -35,7 +35,7 @@ describe("Auction Contract", function() {
         Auction = await ethers.getContractFactory("Auction");
         auction = await upgrades.deployProxy(
             Auction,
-            [owner.address, mockERC20.address, sageStorage.address],
+            [mockERC20.address, sageStorage.address],
             { kind: "uups" }
         );
 
@@ -43,6 +43,7 @@ describe("Auction Contract", function() {
             ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
             auction.address
         );
+        await sageStorage.revokeRole('0x0000000000000000000000000000000000000000000000000000000000000000', owner.address);
 
         // ContractBidder = await ethers.getContractFactory('MockAuctionBidder');
         // contractBidder = await ContractBidder.deploy(auction.address);
@@ -63,7 +64,7 @@ describe("Auction Contract", function() {
         };
         await auction.createAuction(auctionInfo);
         auctionInfo.auctionId = 2;
-        auctionInfo.endTime = parseInt(Date.now() / 1000) + 2 * 86400;
+        auctionInfo.endTime = parseInt(Date.now() / 1000) + 5 * 86400;
         auctionInfo.nftUri = "ipfs://bbbb";
         await auction.createAuction(auctionInfo);
     });
@@ -178,7 +179,7 @@ describe("Auction Contract", function() {
         ercBalance = await mockERC20.balanceOf(nft.address);
         await mockERC20.connect(addr2).approve(auction.address, 2);
         await auction.connect(addr2).bid(2, 2);
-        await ethers.provider.send("evm_increaseTime", [2 * 86401]);
+        await ethers.provider.send("evm_increaseTime", [5 * 86401]);
         await auction.settleAuction(2);
         expect(await nft.tokenURI(1)).to.be.equal("ipfs://bbbb");
         balance = await nft.balanceOf(addr2.address);

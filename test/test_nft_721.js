@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const ADMIN_ROLE = ethers.utils.solidityKeccak256(["string"], ["role.admin"])
 
 const uri = "ipfs://aaaa/";
 
@@ -11,6 +12,7 @@ describe("NFT Contract", () => {
             addr2,
             addr3,
             artist,
+            multisig,
             ...addrs
         ] = await ethers.getSigners();
         SageStorage = await ethers.getContractFactory("SageStorage");
@@ -18,9 +20,13 @@ describe("NFT Contract", () => {
 
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
-        await sageStorage.grantAdmin(nftFactory.address);
+        await sageStorage.grantRole(ADMIN_ROLE, nftFactory.address);
         await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE", );
 
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.artist"]),
+            artist.address
+        );
         nftContractAddress = await nftFactory.getContractAddress(
             artist.address
         );
@@ -104,6 +110,14 @@ describe("NFT Contract", () => {
 
     it("User should not update metadata", async function() {
         await expect(nft.connect(addr2).setTokenURI(1, 'ipfs://newdata')).to.revertedWith('Admin calls only')
+    });
+
+    it.only("Should reset artist contract from multisig and allow to deploy a new one", async function () {
+        const addressBefore = await nftFactory.getContractAddress(artist.address);
+        await nftFactory.resetArtistContract(artist.address);
+        await nftFactory.connect(artist).deployByArtist("Deployed by artist", "SAGE");
+        const addressAfter = await nftFactory.getContractAddress(artist.address);
+        expect (addressBefore).not.equal(addressAfter);
     });
 
     it("Should signal implementation of EIP-2981", async function() {

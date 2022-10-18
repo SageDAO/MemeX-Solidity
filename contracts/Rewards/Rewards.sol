@@ -1,18 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../../interfaces/IRewards.sol";
 import "../../interfaces/ISageStorage.sol";
 
-contract Rewards is
-    Initializable,
-    AccessControlUpgradeable,
-    UUPSUpgradeable,
-    IRewards
-{
+contract Rewards is Initializable, UUPSUpgradeable, IRewards {
     ISageStorage private sageStorage;
 
     mapping(address => uint256) public totalPointsUsed;
@@ -42,8 +36,16 @@ contract Rewards is
     event PointsUsed(address indexed user, uint256 amount, uint256 remaining);
     event PointsEarned(address indexed user, uint256 amount);
 
-    modifier onlyAdmin() {
+    modifier onlyMultisig() {
         require(sageStorage.hasRole(0x00, msg.sender), "Admin calls only");
+        _;
+    }
+
+    modifier onlyAdmin() {
+        require(
+            sageStorage.hasRole(keccak256("role.admin"), msg.sender),
+            "Admin calls only"
+        );
         _;
     }
 
@@ -55,13 +57,8 @@ contract Rewards is
         _;
     }
 
-    function initialize(address _admin, address _sageStorage)
-        public
-        initializer
-    {
-        __AccessControl_init();
+    function initialize(address _sageStorage) public initializer {
         __UUPSUpgradeable_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         sageStorage = ISageStorage(_sageStorage);
     }
 
@@ -156,6 +153,6 @@ contract Rewards is
     function _authorizeUpgrade(address newImplementation)
         internal
         override
-        onlyAdmin
+        onlyMultisig
     {}
 }

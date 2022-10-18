@@ -7,22 +7,33 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract SageStorage is ISageStorage, AccessControl {
     //    mapping(address => bytes32) private roles;
 
+    bytes32 public constant ADMIN_ROLE = keccak256("role.admin");
     bytes32 public constant ARTIST_ROLE = keccak256("role.artist");
     bytes32 public constant MINTER_ROLE = keccak256("role.minter");
     bytes32 public constant BURNER_ROLE = keccak256("role.burner");
     bytes32 public constant MANAGE_POINTS_ROLE = keccak256("role.points");
 
+    address private constant MULTISIG =
+        0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E;
+
     /**
-     * @dev Throws if not called by an admin account.
+     * @dev Throws if not called by the multisig account.
      */
+    modifier onlyMultisig() {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Multisig calls only");
+        _;
+    }
+
     modifier onlyAdmin() {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Admin calls only");
+        require(hasRole(ADMIN_ROLE, msg.sender), "Admin calls only");
         _;
     }
 
     /// @dev Construct
     constructor(address admin) {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _setupRole(DEFAULT_ADMIN_ROLE, MULTISIG);
+        _setupRole(DEFAULT_ADMIN_ROLE, admin);
+        _setupRole(ADMIN_ROLE, admin);
     }
 
     // Storage maps
@@ -149,9 +160,5 @@ contract SageStorage is ISageStorage, AccessControl {
     /// @param _amount An amount to subtract from the record's value
     function subUint(bytes32 _key, uint256 _amount) public onlyAdmin {
         uintStorage[_key] = uintStorage[_key] -= _amount;
-    }
-
-    function grantAdmin(address account) public onlyAdmin {
-        _grantRole(DEFAULT_ADMIN_ROLE, account);
     }
 }

@@ -16,7 +16,7 @@ describe("Rewards Contract", function() {
         Rewards = await ethers.getContractFactory("Rewards");
         rewards = await upgrades.deployProxy(
             Rewards,
-            [owner.address, sageStorage.address],
+            [sageStorage.address],
             {
                 kind: "uups"
             }

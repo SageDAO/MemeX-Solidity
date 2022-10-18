@@ -50,7 +50,7 @@ contract SageNFT is
     /**
      * @dev Throws if not called by an admin account.
      */
-    modifier onlyAdmin() {
+    modifier onlyMultisig() {
         require(
             sageStorage.hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
             "Admin calls only"
@@ -88,7 +88,7 @@ contract SageNFT is
 
     function setTokenURI(uint256 _tokenId, string calldata _uri)
         public
-        onlyAdmin
+        onlyMultisig
     {
         _setTokenURI(_tokenId, _uri);
     }
