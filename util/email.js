@@ -7,15 +7,17 @@ const transporter = nodemailer.createTransport({
         pass: process.env.MAIL_SERVICE_KEY
     }
 });
-function sendEmail(to, subject, header, message, img, link, action, logger) {
-    if (to.email == null || to.email == "" || !to.receiveEmailNotification) {
+function sendEmail(to, subject, header, message, nft, link, action, logger) {
+    if (to == null || to.email == null || to.email == "" || !to.receiveEmailNotification) {
         return;
     }
     let imgSection = "";
-    if (img != "") {
-        imgSection = `<img
-        src="${img}"
-        alt="sdf"
+    if (nft != null) {
+        imgSection = `
+        <a download="${nft.name}" href="${nft.s3Path}" title="${nft.name}">
+        <img
+        src="${nft.s3Path}"
+        alt="${nft.name}"
         class="content-img"
         style="
             display: block;
@@ -25,7 +27,8 @@ function sendEmail(to, subject, header, message, img, link, action, logger) {
             margin-left: auto;
             margin-right: auto;
         "
-    />`;
+    />
+    </a>`;
     }
     const html = `
     <!DOCTYPE html>

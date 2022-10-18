@@ -22,7 +22,7 @@ async function main() {
     logger.info("Starting monitor_events script");
 
     // let test = await getUserInfo("0x58a26F4048CdFd3785aD2139AeD336595af22fF5");
-    // let nft = await getNFTInfo(3478);
+    // let nft = await getNFTInfo(3984);
     // let bigintPrice = ethers.BigNumber.from("900000000000000000");
     // let salePrice = bigintPrice / 1e18;
 
@@ -34,7 +34,7 @@ async function main() {
     //         "Your NFT sale for " +
     //             salePrice +
     //             " ASH was a success, time to celebrate.",
-    //         nft.s3Path,
+    //         nft,
     //         `${baseUrl}artists/${test.username}`,
     //         "Visit your gallery",
     //         logger
@@ -79,7 +79,7 @@ async function main() {
                 "Your NFT sale for " +
                     salePrice +
                     " ASH was a success, time to celebrate.",
-                nft.s3Path,
+                nft,
                 `${baseUrl}artists/${sellerInfo.username}`,
                 "Visit your gallery",
                 logger
@@ -167,7 +167,7 @@ async function main() {
                 `The NFT "${auctionInfo.Nft.name}" received a new bid of ` +
                     bidValue +
                     ` ASH, but there's still time if you want it!`,
-                auctionInfo.Nft.s3Path,
+                auctionInfo.Nft,
                 `${baseUrl}drops/${auctionInfo.Drop.id}`,
                 "View",
                 logger
