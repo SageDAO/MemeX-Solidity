@@ -15,14 +15,14 @@ contract Auction is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    IERC20 public erc20;
     ISageStorage private sageStorage;
 
     mapping(uint256 => AuctionInfo) public auctions;
-
     uint256 public constant DEFAULT_EXTENSION = 600;
     uint256 private constant bidIncrementPercentage = 100; // 1,00% higher than the previous bid
+    uint256 private constant ARTIST_SHARE = 8000;
 
+    IERC20 public token;
     struct AuctionInfo {
         address highestBidder;
         INFT nftContract;
@@ -84,7 +84,7 @@ contract Auction is
     function initialize(address _token, address _storage) public initializer {
         __Pausable_init();
         __UUPSUpgradeable_init();
-        erc20 = IERC20(_token);
+        token = IERC20(_token);
         sageStorage = ISageStorage(_storage);
     }
 
@@ -130,8 +130,9 @@ contract Auction is
         auction.settled = true;
         if (highestBidder != address(0)) {
             auction.nftContract.safeMint(highestBidder, auction.nftUri);
-
-            erc20.transfer(address(auction.nftContract), highestBid);
+            uint256 artistShare = (highestBid * ARTIST_SHARE) / 10000;
+            token.transfer(auction.nftContract.artist(), artistShare);
+            token.transfer(sageStorage.multisig(), highestBid - artistShare);
         }
 
         emit AuctionSettled(_auctionId, highestBidder, highestBid);
@@ -166,7 +167,7 @@ contract Auction is
         auction.highestBid = 0;
 
         if (previousBidder != address(0)) {
-            erc20.transfer(previousBidder, previousBid);
+            token.transfer(previousBidder, previousBid);
         }
         auctions[_auctionId].settled = true;
         emit AuctionCancelled(_auctionId, previousBidder);
@@ -195,7 +196,7 @@ contract Auction is
                 (auction.highestBid * (10000 + bidIncrementPercentage)) / 10000,
             "Bid is lower than highest bid increment"
         );
-        erc20.transferFrom(msg.sender, address(this), _amount);
+        token.transferFrom(msg.sender, address(this), _amount);
 
         // revert previous bid
         address previousBidder = auction.highestBidder;
@@ -204,7 +205,7 @@ contract Auction is
         auction.highestBid = _amount;
 
         if (previousBidder != address(0)) {
-            erc20.transfer(previousBidder, previousBid);
+            token.transfer(previousBidder, previousBid);
         }
 
         if (endTime == 0) {

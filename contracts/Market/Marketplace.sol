@@ -11,6 +11,7 @@ import "../../interfaces/ISageStorage.sol";
 contract Marketplace {
     IERC20 public token;
     ISageStorage immutable sageStorage;
+    uint256 private constant ARTIST_SHARE = 8000;
 
     mapping(bytes32 => bool) private cancelledOrders;
 
@@ -118,7 +119,17 @@ contract Marketplace {
         cancelledOrders[message] = true;
         nftContract.safeTransferFrom(currentOwner, msg.sender, tokenId, "");
         if (currentOwner == INFT(contractAddress).artist()) {
-            token.transferFrom(msg.sender, contractAddress, price);
+            uint256 artistShare = (price * ARTIST_SHARE) / 10000;
+            token.transferFrom(
+                msg.sender,
+                INFT(contractAddress).artist(),
+                artistShare
+            );
+            token.transferFrom(
+                msg.sender,
+                sageStorage.multisig(),
+                price - artistShare
+            );
         } else {
             (address royaltyDest, uint256 royaltyValue) = IERC2981(
                 contractAddress
@@ -162,8 +173,18 @@ contract Marketplace {
         require(!cancelledOrders[message], "Offer was cancelled");
         cancelledOrders[message] = true;
         nftContract.safeTransferFrom(currentOwner, buyer, tokenId, "");
-        if (currentOwner == INFT(contractAddress).owner()) {
-            token.transferFrom(buyer, contractAddress, price);
+        if (currentOwner == INFT(contractAddress).artist()) {
+            uint256 artistShare = (price * ARTIST_SHARE) / 10000;
+            token.transferFrom(
+                buyer,
+                INFT(contractAddress).artist(),
+                artistShare
+            );
+            token.transferFrom(
+                buyer,
+                sageStorage.multisig(),
+                price - artistShare
+            );
         } else {
             (address royaltyDest, uint256 royaltyValue) = IERC2981(
                 contractAddress

@@ -25,7 +25,7 @@ describe("Lottery Contract", function() {
         artist = addr1;
 
         SageStorage = await ethers.getContractFactory("SageStorage");
-        sageStorage = await SageStorage.deploy(owner.address);
+        sageStorage = await SageStorage.deploy(owner.address, multisig.address);
 
         Rewards = await ethers.getContractFactory("Rewards");
         rewards = await upgrades.deployProxy(
@@ -67,7 +67,7 @@ describe("Lottery Contract", function() {
         nftFactory = await NftFactory.deploy(sageStorage.address);
         await sageStorage.grantRole(ADMIN_ROLE, nftFactory.address);
 
-        await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
+        await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE", 8000);
         nftContractAddress = await nftFactory.getContractAddress(
             artist.address
         );
@@ -107,7 +107,7 @@ describe("Lottery Contract", function() {
         await lottery.createLottery(lotteryInfo);
         lotteryInfo.lotteryID = 2;
         lotteryInfo.ticketCostPoints = 0;
-        lotteryInfo.ticketCostTokens = 1;
+        lotteryInfo.ticketCostTokens = 10;
         await lottery.createLottery(lotteryInfo);
         abiCoder = ethers.utils.defaultAbiCoder;
         leafA = keccak256(
@@ -448,12 +448,11 @@ describe("Lottery Contract", function() {
         });
 
         it("Should claim prize with a merkle proof", async function() {
-            expect(await mockERC20.balanceOf(nftContractAddress)).to.equal(0);
             await lottery.connect(addr1).buyTickets(2, 1);
             await lottery.updateLottery(
                 1,
-                5,
-                ONE_ETH,
+                0,
+                100,
                 block.timestamp,
                 block.timestamp + 86400 * 3,
                 nft.address,
@@ -466,7 +465,6 @@ describe("Lottery Contract", function() {
                 .connect(addr1)
                 .claimPrize(prizeProof);
             expect(await nft.balanceOf(addr1.address)).to.equal(1);
-            expect(await mockERC20.balanceOf(nftContractAddress)).to.equal(1);
             await expect(
                 lottery.connect(addr1).refund(addr1.address, 1, 1)
             ).to.be.revertedWith("Can't refund the amount requested");

@@ -102,6 +102,7 @@ model Whitelist {
 
 model Nft {
   id                       Int          @id @default(autoincrement())
+  tokenId                  Int?
   name                     String
   description              String
   metadataPath             String?

@@ -16,10 +16,11 @@ describe("Marketplace Contract", () => {
             addr2,
             artist2,
             artist,
+            multisig,
             ...addrs
         ] = await ethers.getSigners();
         SageStorage = await ethers.getContractFactory("SageStorage");
-        sageStorage = await SageStorage.deploy(owner.address);
+        sageStorage = await SageStorage.deploy(owner.address, multisig.address);
 
         MockERC20 = await ethers.getContractFactory("MockERC20");
         mockERC20 = await MockERC20.deploy();
@@ -30,7 +31,7 @@ describe("Marketplace Contract", () => {
         nftFactory = await NftFactory.deploy(sageStorage.address);
         await sageStorage.grantRole(ADMIN_ROLE, nftFactory.address);
 
-        await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
+        await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE", 8000);
         nftContractAddress = await nftFactory.getContractAddress(
             artist.address
         );

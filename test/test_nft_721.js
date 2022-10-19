@@ -16,12 +16,11 @@ describe("NFT Contract", () => {
             ...addrs
         ] = await ethers.getSigners();
         SageStorage = await ethers.getContractFactory("SageStorage");
-        sageStorage = await SageStorage.deploy(owner.address);
+        sageStorage = await SageStorage.deploy(owner.address, multisig.address);
 
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
-        await sageStorage.grantRole(ADMIN_ROLE, nftFactory.address);
-        await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE", );
+        await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE", 8000);
 
         await sageStorage.grantRole(
             ethers.utils.solidityKeccak256(["string"], ["role.artist"]),
@@ -85,7 +84,7 @@ describe("NFT Contract", () => {
     it("Should calculate royalties", async function() {
         royaltyInfo = await nft.royaltyInfo(1, 100);
         expect(royaltyInfo[0]).to.equal(nft.address);
-        expect(royaltyInfo[1]).to.equal(10);
+        expect(royaltyInfo[1]).to.equal(12);
     });
 
     it("Should transfer from a to b", async function() {
@@ -94,8 +93,12 @@ describe("NFT Contract", () => {
         expect(await nft.balanceOf(addr3.address)).to.equal(1);
     });
 
-    it("Admin should update metadata", async function() {
-        await nft.setTokenURI(1, 'ipfs://newdata');
+    it("Admin should not update metadata", async function() {
+        await expect(nft.setTokenURI(1, 'ipfs://newdata')).to.be.reverted;
+    });
+
+    it("Multisig should update metadata", async function() {
+        await nft.connect(multisig).setTokenURI(1, 'ipfs://newdata');
         expect(await nft.tokenURI(1)).to.equal('ipfs://newdata')
     });
 

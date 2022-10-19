@@ -37,7 +37,7 @@ contract Rewards is Initializable, UUPSUpgradeable, IRewards {
     event PointsEarned(address indexed user, uint256 amount);
 
     modifier onlyMultisig() {
-        require(sageStorage.hasRole(0x00, msg.sender), "Admin calls only");
+        require(sageStorage.multisig() == msg.sender, "Admin calls only");
         _;
     }
 

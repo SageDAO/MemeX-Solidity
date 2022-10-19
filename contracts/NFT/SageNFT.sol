@@ -21,17 +21,16 @@ contract SageNFT is
     using Counters for Counters.Counter;
     ISageStorage immutable sageStorage;
 
-    address constant TREASURY = 0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E;
-
-    address public immutable artist;
+    address public artist;
+    uint256 private artistShare;
 
     string private contractMetadata;
 
-    Counters.Counter private nextTokenId;
+    Counters.Counter public nextTokenId;
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    uint256 private constant DEFAULT_ROYALTY_PERCENTAGE = 1000; // in basis points (100 = 1%)
+    uint256 private constant DEFAULT_ROYALTY_PERCENTAGE = 1200; // in basis points (100 = 1%)
 
     bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a; // implements ERC-2981 interface
 
@@ -39,10 +38,12 @@ contract SageNFT is
         string memory _name,
         string memory _symbol,
         address _sageStorage,
-        address _artist
+        address _artist,
+        uint256 _artistShare
     ) ERC721(_name, _symbol) {
         sageStorage = ISageStorage(_sageStorage);
         artist = _artist;
+        artistShare = _artistShare;
         // nextTokenId is initialized to 1, since starting at 0 leads to higher gas cost for the first minter
         nextTokenId.increment();
     }
@@ -51,10 +52,7 @@ contract SageNFT is
      * @dev Throws if not called by an admin account.
      */
     modifier onlyMultisig() {
-        require(
-            sageStorage.hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "Admin calls only"
-        );
+        require(sageStorage.multisig() == msg.sender, "Admin calls only");
         _;
     }
 
@@ -74,8 +72,8 @@ contract SageNFT is
         _setTokenURI(currentTokenId, uri);
     }
 
-    function artistMint(address to, string calldata uri) public onlyArtist {
-        _incMint(to, uri);
+    function artistMint(string calldata uri) public onlyArtist {
+        _incMint(msg.sender, uri);
     }
 
     function safeMint(address to, string calldata uri) public {
@@ -93,22 +91,30 @@ contract SageNFT is
         _setTokenURI(_tokenId, _uri);
     }
 
+    function setArtist(address _artist) public onlyMultisig {
+        artist = _artist;
+    }
+
+    function setArtistShare(uint256 _artistShare) public onlyMultisig {
+        artistShare = _artistShare;
+    }
+
     function withdrawERC20(address erc20) public {
         IERC20 token = IERC20(erc20);
         uint256 balance = token.balanceOf(address(this));
-        uint256 _artist = (balance * 8000) / 10000;
+        uint256 _artist = (balance * 8333) / 10000;
         token.transfer(artist, _artist);
-        token.transfer(TREASURY, balance - _artist);
+        token.transfer(sageStorage.multisig(), balance - _artist);
     }
 
     function withdraw() public {
         uint256 balance = address(this).balance;
-        uint256 _artist = (balance * 8000) / 10000;
-        (bool sent, ) = artist.call{value: _artist}("");
+        uint256 _share = (balance * artistShare) / 10000;
+        (bool sent, ) = artist.call{value: _share}("");
         if (!sent) {
             revert();
         }
-        (sent, ) = TREASURY.call{value: balance - _artist}("");
+        (sent, ) = sageStorage.multisig().call{value: balance - _share}("");
         if (!sent) {
             revert();
         }

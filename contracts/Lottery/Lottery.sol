@@ -26,6 +26,7 @@ contract Lottery is
     address private signerAddress;
 
     IERC20 public token;
+    uint256 private constant ARTIST_SHARE = 8000;
 
     // Address of the randomness generator
     IRandomNumberGenerator private randomGenerator;
@@ -39,6 +40,7 @@ contract Lottery is
     // lotteryId => whitelist contract address
     mapping(uint256 => address) public whitelists;
 
+    // Merkle trees are used to scale for hundreds or thousands of prizes without huge gas costs
     // loteryId => merkle tree root
     mapping(uint256 => bytes32) public prizeMerkleRoots;
 
@@ -120,7 +122,7 @@ contract Lottery is
      * @dev Throws if not called by an admin account.
      */
     modifier onlyMultisig() {
-        require(sageStorage.hasRole(0x00, msg.sender), "Admin calls only");
+        require(sageStorage.multisig() == msg.sender, "Admin calls only");
         _;
     }
     /**
@@ -554,10 +556,14 @@ contract Lottery is
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
         uint256 ticketCostTokens = lottery.ticketCostTokens;
         if (ticketCostTokens > 0) {
-            // After claiming a prize the refundable balance should decrease.
             // Reverts if the user doesn't have enough refundable balance.
             refunds[_lotteryId][msg.sender] -= ticketCostTokens;
-            token.transfer(address(lottery.nftContract), ticketCostTokens);
+            uint256 artistShare = (ticketCostTokens * ARTIST_SHARE) / 10000;
+            token.transfer(lottery.nftContract.artist(), artistShare);
+            token.transfer(
+                sageStorage.multisig(),
+                ticketCostTokens - artistShare
+            );
         }
 
         INFT nftContract = lotteryHistory[_lotteryId].nftContract;
@@ -608,7 +614,7 @@ contract Lottery is
      * @param _amount Amount to withdraw
      */
     function withdraw(uint256 _amount) external onlyAdmin {
-        token.transfer(0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E, _amount);
+        token.transfer(sageStorage.multisig(), _amount);
     }
 
     function refund(

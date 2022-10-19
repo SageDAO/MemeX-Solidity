@@ -8,10 +8,10 @@ const MANAGE_POINTS_ROLE = keccak256("MANAGE_POINTS_ROLE");
 
 describe("Rewards Contract", function() {
     beforeEach(async () => {
-        [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
+        [owner, addr1, addr2, multisig, ...addrs] = await ethers.getSigners();
 
         SageStorage = await ethers.getContractFactory("SageStorage");
-        sageStorage = await SageStorage.deploy(owner.address);
+        sageStorage = await SageStorage.deploy(owner.address, multisig.address);
 
         Rewards = await ethers.getContractFactory("Rewards");
         rewards = await upgrades.deployProxy(
@@ -27,7 +27,6 @@ describe("Rewards Contract", function() {
             addr2.address
         );
         // addr2 will simulate the lottery contract
-        await rewards.grantRole(MANAGE_POINTS_ROLE, addr2.address);
     });
 
     it("Users start with 0 rewards", async function() {
@@ -74,9 +73,4 @@ describe("Rewards Contract", function() {
         expect(reward.pointRewardPerDay).to.equal(200000000);
     });
 
-    it("Should not call grantRole if doesn't have role", async function() {
-        await expect(
-            rewards.connect(addr1).grantRole(MANAGE_POINTS_ROLE, owner.address)
-        ).to.be.revertedWith("");
-    });
 });

@@ -11,16 +11,16 @@ describe("Auction Contract", function() {
             addr2,
             addr3,
             artist,
+            multisig,
             ...addrs
         ] = await ethers.getSigners();
 
         SageStorage = await ethers.getContractFactory("SageStorage");
-        sageStorage = await SageStorage.deploy(owner.address);
-        await sageStorage.grantRole(ADMIN_ROLE, owner.address);
+        sageStorage = await SageStorage.deploy(owner.address, multisig.address);
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
         await sageStorage.grantRole(ADMIN_ROLE, nftFactory.address);
-        await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE");
+        await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE", 8000);
         nftContractAddress = await nftFactory.getContractAddress(
             artist.address
         );
@@ -176,16 +176,16 @@ describe("Auction Contract", function() {
     });
 
     it("Should settle auction - ERC20", async function() {
-        ercBalance = await mockERC20.balanceOf(nft.address);
-        await mockERC20.connect(addr2).approve(auction.address, 2);
-        await auction.connect(addr2).bid(2, 2);
+        ercBalance = await mockERC20.balanceOf(artist.address);
+        await mockERC20.connect(addr2).approve(auction.address, 10);
+        await auction.connect(addr2).bid(2, 10);
         await ethers.provider.send("evm_increaseTime", [5 * 86401]);
         await auction.settleAuction(2);
         expect(await nft.tokenURI(1)).to.be.equal("ipfs://bbbb");
         balance = await nft.balanceOf(addr2.address);
         expect(balance).to.equal(1);
-        expect(await mockERC20.balanceOf(nft.address)).to.equal(
-            ercBalance.add(2)
+        expect(await mockERC20.balanceOf(artist.address)).to.equal(
+            ercBalance.add(8)
         );
     });
 

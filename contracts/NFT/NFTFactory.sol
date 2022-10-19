@@ -9,8 +9,7 @@ error PermissionDenied();
 contract NFTFactory {
     bytes32 public constant ADMIN_ROLE = keccak256("role.admin");
     bytes32 public constant ARTIST_ROLE = keccak256("role.artist");
-    address public constant TREASURY_ADDRESS =
-        0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E;
+    uint256 private constant DEFAULT_ARTIST_SHARE = 8333;
 
     mapping(address => SageNFT) artistContracts;
     ISageStorage immutable sageStorage;
@@ -48,10 +47,6 @@ contract NFTFactory {
         sageStorage = ISageStorage(_sageStorage);
     }
 
-    function getTreasuryAddress() public pure returns (address) {
-        return TREASURY_ADDRESS;
-    }
-
     function resetArtistContract(address _artist) public onlyMultisig {
         artistContracts[_artist] = SageNFT(payable(address(0)));
     }
@@ -59,7 +54,8 @@ contract NFTFactory {
     function createNFTContract(
         address artistAddress,
         string calldata name,
-        string calldata symbol
+        string calldata symbol,
+        uint256 artistShare
     ) internal returns (SageNFT) {
         require(
             address(artistContracts[artistAddress]) == address(0),
@@ -70,7 +66,8 @@ contract NFTFactory {
             name,
             symbol,
             address(sageStorage),
-            artistAddress
+            artistAddress,
+            artistShare
         );
         artistContracts[artistAddress] = newContract;
         emit NewNFTContract(address(newContract), artistAddress);
@@ -80,17 +77,23 @@ contract NFTFactory {
     function deployByAdmin(
         address artistAddress,
         string calldata name,
-        string calldata symbol
+        string calldata symbol,
+        uint256 artistShare
     ) public onlyAdmin {
-        createNFTContract(artistAddress, name, symbol);
+        createNFTContract(artistAddress, name, symbol, artistShare);
     }
 
     function deployByArtist(string calldata name, string calldata symbol)
         public
         onlyArtist
     {
-        SageNFT newContract = createNFTContract(msg.sender, name, symbol);
-        newContract.transferOwnership(getTreasuryAddress());
+        SageNFT newContract = createNFTContract(
+            msg.sender,
+            name,
+            symbol,
+            DEFAULT_ARTIST_SHARE
+        );
+        newContract.transferOwnership(sageStorage.multisig());
     }
 
     function getContractAddress(address artistAddress)
