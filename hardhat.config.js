@@ -20,7 +20,7 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
 module.exports = {
     networks: {
         mainnet: {
-            url: "http://127.0.0.1:8545",
+            url: process.env.PROVIDER_URL,
             accounts: [process.env.DEPLOYER_PK]
         },
         rinkeby: {
