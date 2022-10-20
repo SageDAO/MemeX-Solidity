@@ -162,7 +162,7 @@ deployStorage = async deployer => {
 
     const Storage = await hre.ethers.getContractFactory("SageStorage");
     if (shouldDeployContract("Storage")) {
-        const storage = await Storage.deploy(deployer.address);
+        const storage = await Storage.deploy(deployer.address, "0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E");
         await storage.deployed();
         console.log("Storage deployed to:", storage.address);
         replaceAddress(storageAddress, storage.address);
