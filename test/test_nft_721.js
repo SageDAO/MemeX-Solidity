@@ -8,6 +8,7 @@ describe("NFT Contract", () => {
     beforeEach(async () => {
         [
             owner,
+            admin,
             addr1,
             addr2,
             addr3,
@@ -17,12 +18,16 @@ describe("NFT Contract", () => {
         ] = await ethers.getSigners();
         SageStorage = await ethers.getContractFactory("SageStorage");
         sageStorage = await SageStorage.deploy(owner.address, multisig.address);
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.admin"]),
+            admin.address
+        );
 
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
         await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE", 8000);
 
-        await sageStorage.grantRole(
+        await sageStorage.connect(admin).grantRole(
             ethers.utils.solidityKeccak256(["string"], ["role.artist"]),
             artist.address
         );

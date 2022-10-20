@@ -32,6 +32,11 @@ contract SageStorage is ISageStorage, AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, _multisig);
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         _setupRole(ADMIN_ROLE, _admin);
+        _setRoleAdmin(ARTIST_ROLE, ADMIN_ROLE);
+    }
+
+    function setRoleAdmin(bytes32 role, bytes32 adminRole) public onlyMultisig {
+        _setRoleAdmin(role, adminRole);
     }
 
     // Storage maps
