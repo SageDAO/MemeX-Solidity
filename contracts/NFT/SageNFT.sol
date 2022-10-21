@@ -29,6 +29,8 @@ contract SageNFT is
     Counters.Counter public nextTokenId;
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
+    bytes32 public constant MINTER_ROLE = keccak256("role.minter");
+    bytes32 public constant BURNER_ROLE = keccak256("role.burner");
 
     uint256 private constant DEFAULT_ROYALTY_PERCENTAGE = 1200; // in basis points (100 = 1%)
 
@@ -78,7 +80,7 @@ contract SageNFT is
 
     function safeMint(address to, string calldata uri) public {
         require(
-            sageStorage.hasRole(sageStorage.MINTER_ROLE(), msg.sender),
+            sageStorage.hasRole(MINTER_ROLE, msg.sender),
             "No minting rights"
         );
         _incMint(to, uri);
@@ -141,7 +143,7 @@ contract SageNFT is
 
     function burnFromAuthorizedAddress(uint256 _id) public {
         require(
-            sageStorage.hasRole(sageStorage.BURNER_ROLE(), msg.sender),
+            sageStorage.hasRole(BURNER_ROLE, msg.sender),
             "No burning rights"
         );
         _burn(_id);

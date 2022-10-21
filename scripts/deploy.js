@@ -76,31 +76,6 @@ deployRewards = async (deployer, sageStorage) => {
     return [rewards, false];
 };
 
-deployNFT = async (deployer, lottery) => {
-    const nftAddress = CONTRACTS[hre.network.name]["nftAddress"];
-    const Nft = await hre.ethers.getContractFactory("NFT");
-    if (shouldDeployContract("NFT")) {
-        console.log("deploying NFT contract");
-        nft = await upgrades.deployProxy(
-            Nft,
-            ["Sage NFTs", "SAGE", deployer.address],
-            { kind: "uups" }
-        );
-        await nft.deployed();
-        console.log("NFT deployed to:", nft.address);
-        // await timer(40000); // wait so the etherscan index can be updated, then verify the contract code
-        // await hre.run("verify:verify", {
-        //   address: nft.address,
-        //   constructorArguments: ["Sage NFTs", "SAGE", deployer.address],
-        // });
-        replaceAddress(nftAddress, nft.address);
-        return [nft, true];
-    } else {
-        nft = Nft.attach(nftAddress);
-    }
-    return [nft, false];
-};
-
 deployLottery = async (rewards, storage, deployer) => {
     const lotteryAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
     const ashAddress = CONTRACTS[hre.network.name]["ashAddress"];
@@ -304,10 +279,6 @@ async function main() {
     nftFactory = result[0];
     newFactory = result[1];
 
-    if (newFactory) {
-        await storage.grantRole(keccak256("role.storage"), nftFactory.address);
-    }
-
     result = await deployRewards(deployer, storage);
     rewards = result[0];
     newRewards = result[1];
@@ -323,7 +294,6 @@ async function main() {
     result = await deployAuction(deployer, storage);
     auction = result[0];
     newAuction = result[1];
-
     // if launching from scratch, update all contract references and roles just once
     if (newRandomness && newFactory && newLottery && newRewards) {
         console.log("Updating all references and roles");
@@ -351,7 +321,7 @@ async function main() {
         if (newLottery) {
             await lottery.setRandomGenerator(randomness.address);
             await lottery.setRewardsContract(rewards.address);
-            // await nft.grantRole(MINTER_ROLE, lottery.address);
+            
             await storage.grantRole(
                 ethers.utils.solidityKeccak256(["string"], ["role.points"]),
                 lottery.address
@@ -360,7 +330,7 @@ async function main() {
                 ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
                 lottery.address
             );
-            //await rewards.grantRole(MANAGE_POINTS_ROLE, lottery.address);
+            
             await randomness.setLotteryAddress(lottery.address);
         }
         if (newRewards) {

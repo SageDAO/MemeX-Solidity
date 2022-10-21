@@ -19,8 +19,11 @@ describe("Auction Contract", function() {
         sageStorage = await SageStorage.deploy(owner.address, multisig.address);
         NftFactory = await ethers.getContractFactory("NFTFactory");
         nftFactory = await NftFactory.deploy(sageStorage.address);
-        await sageStorage.grantRole(ADMIN_ROLE, nftFactory.address);
-        await nftFactory.deployByAdmin(artist.address, "Sage test", "SAGE", 8000);
+        await sageStorage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.artist"]),
+            artist.address
+        );
+        await nftFactory.connect(artist).deployByArtist("Sage test", "SAGE");
         nftContractAddress = await nftFactory.getContractAddress(
             artist.address
         );

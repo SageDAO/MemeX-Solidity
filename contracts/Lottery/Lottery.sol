@@ -554,19 +554,18 @@ contract Lottery is
         );
 
         LotteryInfo storage lottery = lotteryHistory[_lotteryId];
+        INFT nftContract = lottery.nftContract;
         uint256 ticketCostTokens = lottery.ticketCostTokens;
         if (ticketCostTokens > 0) {
             // Reverts if the user doesn't have enough refundable balance.
             refunds[_lotteryId][msg.sender] -= ticketCostTokens;
             uint256 artistShare = (ticketCostTokens * ARTIST_SHARE) / 10000;
-            token.transfer(lottery.nftContract.artist(), artistShare);
+            token.transfer(nftContract.artist(), artistShare);
             token.transfer(
                 sageStorage.multisig(),
                 ticketCostTokens - artistShare
             );
         }
-
-        INFT nftContract = lotteryHistory[_lotteryId].nftContract;
 
         claimedPrizes[_lotteryId][_proofData.ticketNumber] = true;
         nftContract.safeMint(_proofData.winner, _proofData.uri);
