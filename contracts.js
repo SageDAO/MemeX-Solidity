@@ -15,12 +15,12 @@ CONTRACTS = {
         chainlinkSubscriptionId: 2683
     },
     mainnet: {
-        lotteryAddress: "0xf71aaedd6a10dB52D885472747823edDb78f7619",
-        storageAddress: "0xF615Ea96BEac2C8f0B3a467474D4c5d89E1CE0Bb",
-        factoryAddress: "0x3C3920be49eab5F949f9Fd332E458f1f4F092E8f",
-        randomnessAddress: "0x28601963052668f60a0652B649D62f45c7Aa9304",
-        rewardsAddress: "0xe15E098CBF9f479Dba9cC7450b59E0e7bf1596B1",
-        auctionAddress: "0x857053dd8E42F4f7eB3862ECaE025067013e0def",
+        lotteryAddress: "0xFCCCed6439ab16313B39048019aA50566d6bd72b",
+        storageAddress: "0xEc620c97C0c2f893e6D86B8C0008B654fA738a9e",
+        factoryAddress: "0x8fCe9aA49BACe6d7f1d906A229450baEa7406dB6",
+        randomnessAddress: "0xa148E37DB040fFe7F4e88E99Cfdf444C754176DF",
+        rewardsAddress: "0x9faC40CA206b61e48AdC5c440d5dcbCc5F9beE35",
+        auctionAddress: "0x78209A2985595ff3128Fc69291b51443f918d636",
         ashAddress: "0x64d91f12ece7362f91a6f8e7940cd55f05060b92",
         linkToken: "0x514910771af9ca656af840dff83e8264ecf986ca",
         vrfCoordinator: "0x271682DEB8C4E0901D1a1550aD2e64D568E69909",
