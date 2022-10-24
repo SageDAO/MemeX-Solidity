@@ -244,6 +244,9 @@ async function getAuctionInfo(auctionId) {
 // fs.readFile("test.html", "utf-8", function(err, body) {
 //     sendMail("dante@sage.art", "Sage notification", body);
 // });
+function exit(code) {
+    process.exit(code);
+}
 
 main()
 .then(() => setTimeout(exit, 2000, 0))
