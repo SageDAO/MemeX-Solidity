@@ -246,9 +246,10 @@ async function getAuctionInfo(auctionId) {
 // });
 
 main()
-    .then(() => process.exit(0))
+.then(() => setTimeout(exit, 2000, 0))
     .catch(error => {
         prisma.$disconnect();
         logger.info(error.stack);
+        setTimeout(exit, 2000, 1);
         process.exit(1);
     });
