@@ -24,8 +24,8 @@ CONTRACTS = {
         ashAddress: "0x64d91f12ece7362f91a6f8e7940cd55f05060b92",
         linkToken: "0x514910771af9ca656af840dff83e8264ecf986ca",
         vrfCoordinator: "0x271682DEB8C4E0901D1a1550aD2e64D568E69909",
-        keyHash: "",
-        chainlinkSubscriptionId: 0
+        keyHash: "0x8af398995b04c28e9951adb9721ef74c74f93e6a478f39e7e0777be13527e7ef",
+        chainlinkSubscriptionId: 478
     }
 };
 

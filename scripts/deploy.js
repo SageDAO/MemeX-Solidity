@@ -14,19 +14,19 @@ function shouldDeployContract(name) {
     // An easy way to select which contracts we want to deploy.
     switch (name) {
         case "Rewards":
-            return true;
+            return false;
         case "RNG":
             return false;
         case "Lottery":
-            return true;
+            return false;
         case "Auction":
-            return true;
+            return false;
         case "Factory":
-            return true;
+            return false;
         case "Storage":
-            return true;
+            return false;
         case "Marketplace":
-            return true;
+            return false;
     }
     return false;
 }
@@ -136,8 +136,9 @@ deployStorage = async deployer => {
     const storageAddress = CONTRACTS[hre.network.name]["storageAddress"];
 
     const Storage = await hre.ethers.getContractFactory("SageStorage");
+    const ashAddress = CONTRACTS[hre.network.name]["ashAddress"];
     if (shouldDeployContract("Storage")) {
-        const storage = await Storage.deploy(deployer.address, "0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E");
+        const storage = await Storage.deploy(deployer.address, "0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E", ashAddress);
         await storage.deployed();
         console.log("Storage deployed to:", storage.address);
         replaceAddress(storageAddress, storage.address);

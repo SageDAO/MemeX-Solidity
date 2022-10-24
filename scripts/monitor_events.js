@@ -142,10 +142,19 @@ async function main() {
         }
     );
 
-    auction.on("AuctionSettled", (auctionId, highestBidder, highestBid) => {
+    auction.on("AuctionSettled", async (auctionId, highestBidder, highestBid) => {
         logger.info(
             `EVENT AuctionSettled: auction ${auctionId} settled for highest bidder ${highestBidder} with bid ${highestBid}`
         );
+        await prisma.auction.update({
+            where: {
+                id: auctionId
+            },
+            data: {
+                winnerAddress: highestBidder,
+                settled: true
+            }
+        });
     });
 
     auction.on(

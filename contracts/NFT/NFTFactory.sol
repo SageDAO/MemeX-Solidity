@@ -47,8 +47,11 @@ contract NFTFactory {
         sageStorage = ISageStorage(_sageStorage);
     }
 
-    function resetArtistContract(address _artist) public onlyMultisig {
-        artistContracts[_artist] = SageNFT(payable(address(0)));
+    function setArtistContract(address _artist, address payable _contract)
+        public
+        onlyMultisig
+    {
+        artistContracts[_artist] = SageNFT(_contract);
     }
 
     function createNFTContract(

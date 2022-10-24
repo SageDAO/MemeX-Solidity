@@ -19,7 +19,7 @@ describe("NFT Contract", () => {
         SageStorage = await ethers.getContractFactory("SageStorage");
         sageStorage = await SageStorage.deploy(owner.address, multisig.address);
         await sageStorage.grantRole(
-            ethers.utils.solidityKeccak256(["string"], ["role.admin"]),
+            ADMIN_ROLE,
             admin.address
         );
 
@@ -122,7 +122,7 @@ describe("NFT Contract", () => {
 
     it("Should reset artist contract from multisig and allow to deploy a new one", async function () {
         const addressBefore = await nftFactory.getContractAddress(artist.address);
-        await nftFactory.resetArtistContract(artist.address);
+        await nftFactory.setArtistContract(artist.address, '0x0000000000000000000000000000000000000000');
         await nftFactory.connect(artist).deployByArtist("Deployed by artist", "SAGE");
         const addressAfter = await nftFactory.getContractAddress(artist.address);
         expect (addressBefore).not.equal(addressAfter);

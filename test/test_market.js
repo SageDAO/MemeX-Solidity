@@ -55,7 +55,7 @@ describe("Marketplace Contract", () => {
         await sageStorage.revokeRole('0x0000000000000000000000000000000000000000000000000000000000000000', owner.address);
         _lotteryAddress = addr1.address;
         _id = 1;
-        await nft.connect(artist).artistMint(artist.address, uri);
+        await nft.connect(artist).artistMint(uri);
     });
 
     it("Should sell using signed offer", async function() {
@@ -98,8 +98,11 @@ describe("Marketplace Contract", () => {
                 signedOffer
             );
         expect(await mockERC20.balanceOf(addr1.address)).to.be.eq(0);
-        expect(await mockERC20.balanceOf(nft.address)).to.be.eq(
-            "1000000000000000000"
+        expect(await mockERC20.balanceOf(artist.address)).to.be.eq(
+            "800000000000000000"
+        );
+        expect(await mockERC20.balanceOf(multisig.address)).to.be.eq(
+            "200000000000000000"
         );
     });
 
@@ -109,7 +112,7 @@ describe("Marketplace Contract", () => {
         nftContract = await ethers.getContractAt("SageNFT", cAddress);
         await nftContract
             .connect(artist2)
-            .artistMint(artist2.address, "test");
+            .artistMint("test");
     });
 
     it("Non artist should not deploy contract", async function() {
