@@ -52,40 +52,40 @@ async function main() {
     const Auction = await hre.ethers.getContractFactory("Auction");
     const auction = await Auction.attach(auctionAddress);
 
-    const marketplaceAddress =
-        CONTRACTS[hre.network.name]["marketplaceAddress"];
-    const Marketplace = await hre.ethers.getContractFactory("Marketplace");
-    const marketplace = await Marketplace.attach(marketplaceAddress);
+    // const marketplaceAddress =
+    //     CONTRACTS[hre.network.name]["marketplaceAddress"];
+    // const Marketplace = await hre.ethers.getContractFactory("Marketplace");
+    // const marketplace = await Marketplace.attach(marketplaceAddress);
 
     const rngAddress = CONTRACTS[hre.network.name]["randomnessAddress"];
     const RNG = await hre.ethers.getContractFactory("RNG");
     const rng = await RNG.attach(rngAddress);
 
     // listen to events
-    marketplace.on(
-        "ListedNFTSold",
-        async (seller, buyer, contractAddress, tokenId, price) => {
-            logger.info(
-                `EVENT ListedNFTSold: NFT ${tokenId}/${contractAddress} sold for ${price}`
-            );
-            let sellerInfo = await getUserInfo(seller);
-            let salePrice = price / 1e18;
-            let nft = await getNFTInfo(tokenId.toNumber());
+    // marketplace.on(
+    //     "ListedNFTSold",
+    //     async (seller, buyer, contractAddress, tokenId, price) => {
+    //         logger.info(
+    //             `EVENT ListedNFTSold: NFT ${tokenId}/${contractAddress} sold for ${price}`
+    //         );
+    //         let sellerInfo = await getUserInfo(seller);
+    //         let salePrice = price / 1e18;
+    //         let nft = await getNFTInfo(tokenId.toNumber());
 
-            sendEmail(
-                sellerInfo,
-                "New NFT Sale",
-                "NFT Sale",
-                "Your NFT sale for " +
-                    salePrice +
-                    " ASH was a success, time to celebrate.",
-                nft,
-                `${baseUrl}artists/${sellerInfo.username}`,
-                "Visit your gallery",
-                logger
-            );
-        }
-    );
+    //         sendEmail(
+    //             sellerInfo,
+    //             "New NFT Sale",
+    //             "NFT Sale",
+    //             "Your NFT sale for " +
+    //                 salePrice +
+    //                 " ASH was a success, time to celebrate.",
+    //             nft,
+    //             `${baseUrl}artists/${sellerInfo.username}`,
+    //             "Visit your gallery",
+    //             logger
+    //         );
+    //     }
+    // );
 
     lottery.on("LotteryStatusChanged", (lotteryId, stat) => {
         logger.info(
