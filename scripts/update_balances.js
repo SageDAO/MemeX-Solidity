@@ -338,7 +338,7 @@ async function main() {
             const message = getEncodedLeaf(leaf);
             const signature = await wallet.signMessage(message);
             logger.info(
-                `Address: ${leaf.address} Points: ${leaf.points} Message: ${signature}`
+                `Address: ${leaf.address} Points: ${leaf.points}`
             );
 
             updates.push(
@@ -411,7 +411,6 @@ async function getRewardRates() {
 }
 
 function getEncodedLeaf(leaf) {
-    logger.info(`Encoding leaf: ${leaf.address} ${leaf.points}`);
     return keccak256(
         abiCoder.encode(
             ["address", "uint256"],
