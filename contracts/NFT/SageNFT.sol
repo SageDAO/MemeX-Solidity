@@ -104,7 +104,7 @@ contract SageNFT is
     function withdrawERC20(address erc20) public {
         IERC20 token = IERC20(erc20);
         uint256 balance = token.balanceOf(address(this));
-        uint256 _artist = (balance * 8333) / 10000;
+        uint256 _artist = (balance * artistShare) / 10000;
         token.transfer(artist, _artist);
         token.transfer(sageStorage.multisig(), balance - _artist);
     }

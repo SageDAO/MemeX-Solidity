@@ -17,7 +17,8 @@ CONTRACTS = {
     mainnet: {
         lotteryAddress: "0xFCCCed6439ab16313B39048019aA50566d6bd72b", //imp 0xbb03246366ffb993a382c2f2e27f582ae1ca2471
         storageAddress: "0xEc620c97C0c2f893e6D86B8C0008B654fA738a9e",
-        factoryAddress: "0x8fCe9aA49BACe6d7f1d906A229450baEa7406dB6",
+        factoryAddress: "0x12abc7c2Fbe0454EAea59A09873B16a3c85209C6",
+        factoryAddress_old: "0x8fCe9aA49BACe6d7f1d906A229450baEa7406dB6",
         randomnessAddress: "0xa148E37DB040fFe7F4e88E99Cfdf444C754176DF",
         rewardsAddress: "0x9faC40CA206b61e48AdC5c440d5dcbCc5F9beE35",
         auctionAddress: "0x78209A2985595ff3128Fc69291b51443f918d636", //imp 0x2fbe2943cb78dc92e6a2a48140bbaf250192a8c8
