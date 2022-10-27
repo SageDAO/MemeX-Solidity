@@ -18,6 +18,9 @@ model Drop {
   approvedBy                       String?     @db.Char(42)
   bannerImageS3Path                String
   description                      String
+  mobileCoverS3Path                String?
+  tileImageS3Path                  String?
+  featuredMediaS3Path              String?
   artistAddress                    String      @db.Char(42)
   NftContract                      NftContract @relation("ContractDrops", fields:[artistAddress], references: [artistAddress])
   ApprovedByUser                   User?       @relation("Drop_approvedByToUser", fields: [approvedBy], references: [walletAddress])
@@ -195,6 +198,8 @@ model User {
   role                          Role          @default(USER)
   bio                           String?       @db.VarChar(400)
   profilePicture                String?
+  country                       String?
+  state                         String?
   bannerImageS3Path            	String?
   receiveEmailNotification      Boolean       @default(true)
   username                      String?       @db.VarChar(40)
