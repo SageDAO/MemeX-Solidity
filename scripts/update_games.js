@@ -573,7 +573,7 @@ main()
     });
 
 function getEncodedLeaf(lotteryId, leaf) {
-    logger.info(`Encoding leaf: ${leaf.winnerAddress} ${leaf.nftId} ${leaft.ticketNumber} ${leaft.uri}`);
+    logger.info(`Encoding leaf: ${leaf.winnerAddress} ${leaf.nftId} ${leaf.ticketNumber} ${leaf.uri}`);
     return keccak256(
         abiCoder.encode(
             ["uint256", "address", "uint256", "string"],
