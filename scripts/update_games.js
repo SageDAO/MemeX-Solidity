@@ -444,6 +444,9 @@ async function createRefundRecords(lotteryInfo, tickets, winnerTicketNumbers) {
     const ticketCost =
         ethers.BigNumber.from(lotteryInfo.ticketCostTokens) /
         1000000000000000000;
+    if (ticketCost == 0) {
+        return;
+    }
     var refunds = new Map();
     for (let i = 0; i < tickets.length; i++) {
         var refund = {
@@ -570,7 +573,7 @@ main()
     });
 
 function getEncodedLeaf(lotteryId, leaf) {
-    logger.info(`Encoding leaf: ${leaf.winnerAddress} ${leaf.nftId}`);
+    logger.info(`Encoding leaf: ${leaf.winnerAddress} ${leaf.nftId} ${leaft.ticketNumber} ${leaft.uri}`);
     return keccak256(
         abiCoder.encode(
             ["uint256", "address", "uint256", "string"],
