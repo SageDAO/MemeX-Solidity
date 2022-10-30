@@ -128,6 +128,13 @@ describe("NFT Contract", () => {
         expect (addressBefore).not.equal(addressAfter);
     });
 
+    it("Should set artist contract to an existing one", async function () {
+        const existing = await nftFactory.getContractAddress(artist.address);
+        await nftFactory.setArtistContract(addr3.address, existing);
+        const fetched = await nftFactory.getContractAddress(addr3.address);
+        expect(fetched).equal(fetched);
+    })
+
     it("Should signal implementation of EIP-2981", async function() {
         const INTERFACE_ID_ERC2981 = 0x2a55205a;
 
