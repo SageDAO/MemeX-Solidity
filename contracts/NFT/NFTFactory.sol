@@ -90,13 +90,7 @@ contract NFTFactory {
         public
         onlyArtist
     {
-        SageNFT newContract = createNFTContract(
-            msg.sender,
-            name,
-            symbol,
-            DEFAULT_ARTIST_SHARE
-        );
-        newContract.transferOwnership(sageStorage.multisig());
+        createNFTContract(msg.sender, name, symbol, DEFAULT_ARTIST_SHARE);
     }
 
     function getContractAddress(address artistAddress)
