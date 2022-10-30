@@ -78,6 +78,14 @@ contract SageNFT is
         _incMint(msg.sender, uri);
     }
 
+    function transferOwnership(address newOwner) public override onlyMultisig {
+        require(
+            newOwner != address(0),
+            "Ownable: new owner is the zero address"
+        );
+        _transferOwnership(newOwner);
+    }
+
     function safeMint(address to, string calldata uri) public {
         require(
             sageStorage.hasRole(MINTER_ROLE, msg.sender),
