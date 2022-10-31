@@ -12,7 +12,6 @@ datasource db {
 model Drop {
   id                               Int         @id @default(autoincrement())
   name                             String
-  whitelistId                      Int?
   createdAt                        DateTime    @default(now())
   approvedAt                       DateTime?
   approvedBy                       String?     @db.Char(42)
@@ -24,7 +23,6 @@ model Drop {
   artistAddress                    String      @db.Char(42)
   NftContract                      NftContract @relation("ContractDrops", fields:[artistAddress], references: [artistAddress])
   ApprovedByUser                   User?       @relation("Drop_approvedByToUser", fields: [approvedBy], references: [walletAddress])
-  Whitelist                        Whitelist?  @relation(fields: [whitelistId], references: [id])
   Auctions                         Auction[]
   Lotteries                        Lottery[]
   UserFavoriteDrops                User[]      @relation("userFavoriteDrops")
@@ -41,10 +39,12 @@ model Lottery {
   costPerTicketPoints         Int        @default(0)
   maxTickets                  Int        @default(0)
   maxTicketsPerUser           Int        @default(0)
+  whitelistId                 Int?
   prizesAwardedAt             DateTime?
   endTime                     DateTime
   startTime                   DateTime
   Drop                        Drop       @relation(fields: [dropId], references: [id])
+  Whitelist                   Whitelist?  @relation(fields: [whitelistId], references: [id])
   Nfts                        Nft[]
   PrizeProofs                 PrizeProof[]  
   Refunds                     Refund[] 
@@ -86,21 +86,15 @@ model Splitter {
   SplitterEntries        SplitEntry[]
 }
 
-model WhitelistEntry {
-  id          Int           @id @default(autoincrement())
-  whitelistId Int
-  minBalance  String?
-  tokenId     BigInt?
-  type        WhitelistType
-  Whitelist   Whitelist     @relation(fields: [whitelistId], references: [id])
-}
-
 model Whitelist {
   id               Int              @id @default(autoincrement())
   contractAddress  String           @db.Char(42)
+  targetAddress    String?          @db.Char(42)
+  tokenId          Int?
+  minBalance       Int?
   name             String
-  Drops            Drop[]
-  WhitelistEntries WhitelistEntry[]
+  Type             WhitelistType
+  Lotteries        Lottery[]
 }
 
 model Nft {
