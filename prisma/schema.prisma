@@ -191,6 +191,7 @@ model User {
   createdAt                     DateTime      @default(now())
   role                          Role          @default(USER)
   bio                           String?       @db.VarChar(400)
+  ashBalanceAtCreation          String        @default("0")
   profilePicture                String?
   country                       String?
   state                         String?
