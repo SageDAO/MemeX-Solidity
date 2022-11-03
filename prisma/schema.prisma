@@ -192,6 +192,7 @@ model User {
   role                          Role          @default(USER)
   bio                           String?       @db.VarChar(400)
   ashBalanceAtCreation          String        @default("0")
+  blockNumberAtCreation         Int           @default(0)
   profilePicture                String?
   country                       String?
   state                         String?
