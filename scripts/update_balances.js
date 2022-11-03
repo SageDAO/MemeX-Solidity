@@ -316,7 +316,8 @@ async function main() {
         dbUsers = await prisma.user.findMany({
             select: {
                 walletAddress: true,
-                createdAt: true
+                createdAt: true,
+                ashBalanceAtCreation: true
             }
         });
         for (user of dbUsers) {
