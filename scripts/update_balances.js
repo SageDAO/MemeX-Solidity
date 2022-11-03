@@ -165,7 +165,7 @@ async function getTransactionsFromBlockchain(
     return transactions;
 }
 
-async function fetchUserBalanceAtTimestamp(address, timestamp) {
+async function updateUserBalanceAtTimestamp(address, timestamp) {
     url = `https://api.etherscan.io/api?module=block&action=getblocknobytime&timestamp=${timestamp}&closest=before&apikey=${process.env.ETHERSCAN_KEY}`
     let response = await fetch(url);
     let json = await response.json();
@@ -181,10 +181,9 @@ async function fetchUserBalanceAtTimestamp(address, timestamp) {
  * @param {*} end
  * @returns points earned based on assetType between begin and end
  */
-async function getUserPointsAtTimestamp(address, assetType, begin, end) {
+async function getUserPointsAtTimestamp(address, assetType, begin, end, ashBalanceAtCreation) {
+    let assetBalance = ashBalanceAtCreation;
 
-    let assetBalance = await fetchUserBalanceAtTimestamp(address, begin);
-    
     let refTimestamp = begin;
     let points = BigNumber(0);
     let limit = BigNumber(assetType.positionSizeLimit);
@@ -301,7 +300,7 @@ async function main() {
 
     let rewardRateTypes = await getRewardRates();
 
-    // TODO REMOVER!! await getLatestTransactionsFromAllBlockchains(rewardRateTypes);
+    await getLatestTransactionsFromAllBlockchains(rewardRateTypes);
 
     if (publishResults) {
         const Rewards = await ethers.getContractFactory("Rewards");
@@ -321,22 +320,6 @@ async function main() {
             }
         });
         for (user of dbUsers) {
-            if (user.ashBalanceAtCreation == "0") {
-                userBalance = await fetchUserBalanceAtTimestamp(user.walletAddress, Date.parse(user.createdAt) / 1000);
-                console.log("user " + user.walletAddress + ' balance ' + userBalance)
-                await prisma.user.update({
-                    where: {
-                        walletAddress: {
-                            equals: user.walletAddress
-                        },
-                    },
-                    data: {
-                        ashBalanceAtCreation: userBalance.toString()
-                    }
-                });
-            }
-            continue;
-
             if (isValidAddress(user.walletAddress)) {
                 let earnedPoints = await getUserEarnedPoints(
                     rewardRateTypes,
@@ -411,7 +394,8 @@ async function getUserEarnedPoints(rewardRateTypes, user) {
                 user.walletAddress,
                 rewardRateType,
                 Date.parse(user.createdAt) / 1000,
-                parseInt(Date.now() / 1000)
+                parseInt(Date.now() / 1000),
+                user.ashBalanceAtCreation
             )
         );
     }
