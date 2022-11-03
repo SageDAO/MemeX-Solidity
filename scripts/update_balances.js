@@ -181,8 +181,8 @@ async function updateUserBalanceAtTimestamp(address, timestamp) {
  * @param {*} end
  * @returns points earned based on assetType between begin and end
  */
-async function getUserPointsAtTimestamp(address, assetType, begin, end, ashBalanceAtCreation) {
-    let assetBalance = ashBalanceAtCreation;
+async function getUserPointsAtTimestamp(user, assetType, begin, end) {
+    let assetBalance = BigNumber(user.ashBalanceAtCreation);
 
     let refTimestamp = begin;
     let points = BigNumber(0);
@@ -190,7 +190,7 @@ async function getUserPointsAtTimestamp(address, assetType, begin, end, ashBalan
     let rewardRate = BigNumber(assetType.rewardRate);
 
     let userTransactions = await getUserTransactions(
-        address,
+        user.address,
         assetType,
         begin + 1,
         end
