@@ -190,7 +190,7 @@ async function getUserPointsAtTimestamp(user, assetType, begin, end) {
     let rewardRate = BigNumber(assetType.rewardRate);
 
     let userTransactions = await getUserTransactions(
-        user.address,
+        user.walletAddress,
         assetType,
         begin + 1,
         end
@@ -204,7 +204,7 @@ async function getUserPointsAtTimestamp(user, assetType, begin, end) {
                     .multipliedBy(transaction.blockTimestamp - refTimestamp)
             );
             refTimestamp = transaction.blockTimestamp;
-            if (transaction.from === address) {
+            if (transaction.from === user.walletAddress) {
                 assetBalance = assetBalance.minus(BigNumber(transaction.value));
             } else {
                 assetBalance = assetBalance.plus(BigNumber(transaction.value));
@@ -391,11 +391,10 @@ async function getUserEarnedPoints(rewardRateTypes, user) {
     for (let rewardRateType of rewardRateTypes) {
         earnedPoints = earnedPoints.plus(
             await getUserPointsAtTimestamp(
-                user.walletAddress,
+                user,
                 rewardRateType,
                 Date.parse(user.createdAt) / 1000,
-                parseInt(Date.now() / 1000),
-                user.ashBalanceAtCreation
+                parseInt(Date.now() / 1000)
             )
         );
     }
