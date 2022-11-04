@@ -1,5 +1,6 @@
 CONTRACTS = {
     goerli: {
+        whitelistAddress:"0xF52473832bCa4333f77D69535DD7762c5843E048",
         marketplaceAddress: "0x11049f4231B8D32403821B8A157325E2B0FB6cab",
         storageAddress: "0xd03ecE827177d7D7ACA0EF6065A605abcAF62d22",
         factoryAddress: "0xfD2126F97519b90B81196373178E0b97AcD0CDC4",
@@ -15,9 +16,11 @@ CONTRACTS = {
         chainlinkSubscriptionId: 2683
     },
     mainnet: {
+        whitelistAddressAlpha:"0x87faDb21a0beFbc588b9e137eC8915f61da1523d",
+        whitelistAddress:"0xEfd5840Eea51Fcae9e15872124E659F2Ca006266",
         lotteryAddress: "0xFCCCed6439ab16313B39048019aA50566d6bd72b", //imp 0xbb03246366ffb993a382c2f2e27f582ae1ca2471
         storageAddress: "0xEc620c97C0c2f893e6D86B8C0008B654fA738a9e",
-        factoryAddress: "0x12abc7c2Fbe0454EAea59A09873B16a3c85209C6",
+        factoryAddress: "0x4A33B3F83268180cAf3CC4A66FA1977ad2551051",
         factoryAddress_old: "0x8fCe9aA49BACe6d7f1d906A229450baEa7406dB6",
         randomnessAddress: "0xa148E37DB040fFe7F4e88E99Cfdf444C754176DF",
         rewardsAddress: "0x9faC40CA206b61e48AdC5c440d5dcbCc5F9beE35",
