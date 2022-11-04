@@ -315,7 +315,7 @@ async function inspectLotteryState(lottery) {
                     `Awarded prize ${prizesAwarded} of ${totalPrizes} to winner: ${tickets[randomPosition]}`
                 );
 
-                if (totalPrizes > 1) {
+                if (prizes.length > 1) {
                     // means more than one edition will be awarded
                     const editionLabel = ` ${prizesAwarded}/${totalPrizes}`;
                     const nftName = prizes[i].name + editionLabel;
