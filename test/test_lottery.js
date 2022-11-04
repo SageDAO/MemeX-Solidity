@@ -85,7 +85,7 @@ describe("Lottery Contract", function() {
         await lottery.setRandomGenerator(mockRng.address);
 
         Whitelist = await ethers.getContractFactory("Whitelist");
-        whitelist = await Whitelist.deploy(owner.address);
+        whitelist = await Whitelist.deploy();
 
         // create a new lottery
         blockNum = await ethers.provider.getBlockNumber();
@@ -514,17 +514,8 @@ describe("Lottery Contract", function() {
             ).to.be.revertedWith("Not whitelisted");
         });
 
-        it("Should revert if not enough balance on whitelisted tokens", async () => {
-            await whitelist.addAddress(mockERC20.address, 1001, 1);
-            await expect(
-                lottery
-                    .connect(addr1)
-                    .buyTicketsWithSignedMessage(150, 1, 1, signedMessageA)
-            ).to.be.revertedWith("Not whitelisted");
-        });
-
         it("Should allow purchase if whitelisted", async () => {
-            await whitelist.addAddress(mockERC20.address, 1, 1);
+            await whitelist.addAddress(addr1.address);
             await expect(
                 lottery
                     .connect(addr1)

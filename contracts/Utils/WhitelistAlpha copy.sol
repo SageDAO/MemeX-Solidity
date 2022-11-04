@@ -5,9 +5,8 @@ interface IBalanceOf {
     function balanceOf(address owner) external view returns (uint256 balance);
 }
 
-// Mock whitelist used for tests
-contract Whitelist {
-    mapping(address => bool) whitelisted;
+contract WhitelistAlpha {
+    address constant ALPHA = 0x48AF7b1c9dac8871C064f62FcEC0d9d6F7c269f5;
 
     constructor() {}
 
@@ -22,10 +21,6 @@ contract Whitelist {
         view
         returns (bool)
     {
-        return whitelisted[_address];
-    }
-
-    function addAddress(address _address) public {
-        whitelisted[_address] = true;
+        return (IBalanceOf(ALPHA).balanceOf(_address) > 0);
     }
 }

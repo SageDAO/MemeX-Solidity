@@ -20,6 +20,7 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
 module.exports = {
     networks: {
         mainnet: {
+            gasPrice: 10000000000,
             url: process.env.PROVIDER_URL,
             accounts: [process.env.DEPLOYER_PK]
         },
@@ -50,7 +51,8 @@ module.exports = {
     },
     etherscan: {
         apiKey: {
-            rinkeby: process.env.ETHERSCAN_KEY
+            goerli: process.env.ETHERSCAN_KEY,
+            mainnet: process.env.ETHERSCAN_KEY
         }
     },
     solidity: {
