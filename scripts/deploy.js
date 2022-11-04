@@ -30,7 +30,7 @@ function shouldDeployContract(name) {
         case "Marketplace":
             return false;
         case "OpenEdition":
-            return false;
+            return true;
     }
     return false;
 }
@@ -107,11 +107,11 @@ deployLottery = async (rewards, storage, deployer) => {
 };
 
 deployOpenEdition = async (rewards, storage, deployer) => {
-    const openEditionAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
+    const openEditionAddress = CONTRACTS[hre.network.name]["openEditionAddress"];
     const ashAddress = CONTRACTS[hre.network.name]["ashAddress"];
-    const OpenEdition = await hre.ethers.getContractFactory("Lottery");
+    const OpenEdition = await hre.ethers.getContractFactory("SAGEOpenEdition");
 
-    if (shouldDeployContract("Lottery")) {
+    if (shouldDeployContract("OpenEdition")) {
         const openEdition = await OpenEdition.deploy(
             rewards.address, deployer.address, ashAddress, storage.address
         );
