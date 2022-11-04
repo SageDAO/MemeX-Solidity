@@ -13,6 +13,8 @@ const timer = ms => new Promise(res => setTimeout(res, ms));
 function shouldDeployContract(name) {
     // An easy way to select which contracts we want to deploy.
     switch (name) {
+        case "Whitelist":
+            return false;
         case "Rewards":
             return false;
         case "RNG":
@@ -26,6 +28,8 @@ function shouldDeployContract(name) {
         case "Storage":
             return false;
         case "Marketplace":
+            return false;
+        case "OpenEdition":
             return false;
     }
     return false;
@@ -102,6 +106,30 @@ deployLottery = async (rewards, storage, deployer) => {
     return [lottery, false];
 };
 
+deployOpenEdition = async (rewards, storage, deployer) => {
+    const openEditionAddress = CONTRACTS[hre.network.name]["lotteryAddress"];
+    const ashAddress = CONTRACTS[hre.network.name]["ashAddress"];
+    const OpenEdition = await hre.ethers.getContractFactory("Lottery");
+
+    if (shouldDeployContract("Lottery")) {
+        const openEdition = await OpenEdition.deploy(
+            rewards.address, deployer.address, ashAddress, storage.address
+        );
+        await openEdition.deployed();
+        console.log("Open edition deployed to:", openEdition.address);
+        // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+        // await hre.run("verify:verify", {
+        //   address: lottery.address,
+        //   constructorArguments: [rewards.address, deployer.address],
+        // });
+        replaceAddress(openEditionAddress, openEdition.address);
+        return [openEdition, true];
+    } else {
+        openEdition = OpenEdition.attach(openEditionAddress);
+    }
+    return [openEdition, false];
+};
+
 deployRNG = async () => {
     const randAddress = CONTRACTS[hre.network.name]["randomnessAddress"];
     const vrfCoordinator = CONTRACTS[hre.network.name]["vrfCoordinator"];
@@ -138,7 +166,7 @@ deployStorage = async deployer => {
     const Storage = await hre.ethers.getContractFactory("SageStorage");
     const ashAddress = CONTRACTS[hre.network.name]["ashAddress"];
     if (shouldDeployContract("Storage")) {
-        const storage = await Storage.deploy(deployer.address, "0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E", ashAddress);
+        const storage = await Storage.deploy(deployer.address, "0x7AF3bA4A5854438a6BF27E4d005cD07d5497C33E");
         await storage.deployed();
         console.log("Storage deployed to:", storage.address);
         replaceAddress(storageAddress, storage.address);
@@ -227,6 +255,26 @@ deployAuction = async (deployer, sageStorage) => {
     return [auction, false];
 };
 
+deployWhitelist = async() => {
+    const whitelistAddress = CONTRACTS[hre.network.name]["whitelistAddress"];
+    const Whitelist = await hre.ethers.getContractFactory("WhitelistIntern");
+    if (shouldDeployContract("Whitelist")) {
+        whitelist = await Whitelist.deploy();
+        console.log("Whitelist deployed to:", whitelist.address);
+        // await timer(60000); // wait so the etherscan index can be updated, then verify the contract code
+        // await hre.run("verify:verify", {
+        //   address: randomness.address,
+        //   constructorArguments: [_lotteryAddr],
+        // });
+        replaceAddress(whitelistAddress, whitelist.address);
+        return [whitelist, true];
+    } else {
+        whitelist = await Whitelist.attach(whitelistAddress);
+    }
+
+    return [whitelist, false];
+};
+
 deployRNGTemp = async _lotteryAddr => {
     const randAddress = CONTRACTS[hre.network.name]["randomnessAddress"];
     const Randomness = await hre.ethers.getContractFactory("RNGTemp");
@@ -272,9 +320,13 @@ async function main() {
     storage = result[0];
     newStorage = result[1];
 
-    result = await deployMarketplace(storage, deployer);
-    marketplace = result[0];
-    newMarketplace = result[1];
+    result = await deployWhitelist();
+    whitelist = result[0];
+    newWhitelist = result[1];
+
+    // result = await deployMarketplace(storage, deployer);
+    // marketplace = result[0];
+    // newMarketplace = result[1];
 
     result = await deployNftFactory(storage.address, deployer);
     nftFactory = result[0];
@@ -287,6 +339,10 @@ async function main() {
     result = await deployLottery(rewards, storage, deployer);
     lottery = result[0];
     newLottery = result[1];
+
+    result = await deployOpenEdition(rewards, storage, deployer);
+    openEdition = result[0];
+    newOpenEdition = result[1];
 
     values = await deployRNG(lottery.address);
     randomness = values[0];
@@ -303,6 +359,10 @@ async function main() {
         await lottery.setRewardsContract(rewards.address);
         await storage.grantRole(
             ethers.utils.solidityKeccak256(["string"], ["role.points"]),
+            lottery.address
+        );
+        await storage.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
             lottery.address
         );
         await storage.grantRole(
@@ -334,6 +394,16 @@ async function main() {
             
             await randomness.setLotteryAddress(lottery.address);
         }
+        if (newOpenEdition) {
+            await storage.grantRole(
+                ethers.utils.solidityKeccak256(["string"], ["role.points"]),
+                openEdition.address
+            );
+            await storage.grantRole(
+                ethers.utils.solidityKeccak256(["string"], ["role.minter"]),
+                lottery.address
+            );
+        }
         if (newRewards) {
             if (lottery && lottery.address != "") {
                 await lottery.setRewardsContract(rewards.address);
@@ -346,6 +416,17 @@ async function main() {
                 auction.address
             );
         }
+
+        // await hre.run("verify:verify", {
+        //       address: '0x0f4eACAC8f1EEfe7d0F6d4F21E40BcCfA2e447d5',
+        //       constructorArguments: [
+        //         "ORIGINALPLAN",
+        //         "OP-SAGE",
+        //         "0xEc620c97C0c2f893e6D86B8C0008B654fA738a9e",
+        //         "0xF0c7401Fb586b44d450cCf3279668173470c9C1e",
+        //         8333                
+        //       ],
+        //     });
     }
 
     const artifactsPath = path.join(".", "artifacts", "contracts");
