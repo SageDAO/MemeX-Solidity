@@ -25,9 +25,27 @@ model Drop {
   ApprovedByUser                   User?       @relation("Drop_approvedByToUser", fields: [approvedBy], references: [walletAddress])
   Auctions                         Auction[]
   Lotteries                        Lottery[]
+  OpenEditions                     OpenEdition[]
   UserFavoriteDrops                User[]      @relation("userFavoriteDrops")
   FeaturedDropConfig               Config?     @relation("ConfigFeaturedDrop")
 }
+
+model OpenEdition {
+  id                          Int        @id @default(autoincrement()) 
+  dropId                      Int    
+  isLive                      Boolean    @default(false)
+  costTokens                  Float      @default(0.0)
+  costPoints                  Int        @default(0)
+  maxMintsPerUser             Int        @default(0)
+  whitelistId                 Int?
+  nftId                       Int
+  Nft                         Nft        @relation(fields: [nftId], references: [id])
+  Drop                        Drop       @relation(fields: [dropId], references: [id])
+  Whitelist                   Whitelist?  @relation(fields: [whitelistId], references: [id])
+
+  @@unique([nftId])
+}
+
 
 model Lottery {
   id                          Int        @id @default(autoincrement()) 
@@ -95,6 +113,7 @@ model Whitelist {
   name             String
   Type             WhitelistType
   Lotteries        Lottery[]
+  OpenEditions     OpenEdition[]
 }
 
 model Nft {
@@ -112,12 +131,14 @@ model Nft {
   numberOfEditions         Int          @default(0)
   isHidden                 Boolean      @default(false)
   lotteryId                Int?
+  openEditionId            Int?
   price                    Float?
   ownerAddress             String?      @db.Char(42)
   artistAddress            String?      @db.Char(42) 
   PrizeProof               PrizeProof[]
   Auction                  Auction?  
   Lottery                  Lottery?     @relation(fields: [lotteryId], references: [id])
+  OpenEdition              OpenEdition? 
   NftContract              NftContract? @relation(fields: [artistAddress], references: [artistAddress])
   Offers                   Offer[]   
 }
