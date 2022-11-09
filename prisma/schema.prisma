@@ -37,6 +37,8 @@ model OpenEdition {
   costTokens                  Float      @default(0.0)
   costPoints                  Int        @default(0)
   maxMintsPerUser             Int        @default(0)
+  startTime                   DateTime
+  endTime                     DateTime
   whitelistId                 Int?
   nftId                       Int
   Nft                         Nft        @relation(fields: [nftId], references: [id])
